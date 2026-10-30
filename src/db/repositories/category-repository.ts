@@ -57,19 +57,22 @@ export async function atualizarCategoria(id: string, mudancas: { nome?: string; 
 }
 
 /**
- * Exclui a categoria e as subcategorias dela. As tarefas e procedimentos NÃO são apagados:
+ * Exclui a categoria e as subcategorias dela. Tarefas, grupos e procedimentos NÃO são apagados:
  * só ficam sem categoria.
  */
 export async function excluirCategoria(id: string) {
   await db.transaction(
     'rw',
-    [db.categories, db.subcategories, db.tasks, db.procedures],
+    [db.categories, db.subcategories, db.tasks, db.procedures, db.groupSeries],
     async () => {
       const momento = agora()
-      await db.tasks
-        .where('categoryId')
-        .equals(id)
-        .modify({ categoryId: undefined, subcategoryId: undefined, atualizadoEm: momento })
+      const semCategoria = {
+        categoryId: undefined,
+        subcategoryId: undefined,
+        atualizadoEm: momento,
+      }
+      await db.tasks.where('categoryId').equals(id).modify(semCategoria)
+      await db.groupSeries.where('categoryId').equals(id).modify(semCategoria)
       await db.procedures
         .where('categoryId')
         .equals(id)
@@ -119,14 +122,20 @@ export async function atualizarSubcategoria(
 
 /** Exclui a subcategoria; as tarefas continuam na categoria-mãe. */
 export async function excluirSubcategoria(id: string) {
-  await db.transaction('rw', db.subcategories, db.tasks, async () => {
+  await db.transaction('rw', db.subcategories, db.tasks, db.groupSeries, async () => {
     const subcategoria = await db.subcategories.get(id)
     if (!subcategoria) return
+    const semSubcategoria = { subcategoryId: undefined, atualizadoEm: agora() }
     await db.tasks
       .where('categoryId')
       .equals(subcategoria.categoryId)
       .filter((tarefa) => tarefa.subcategoryId === id)
-      .modify({ subcategoryId: undefined, atualizadoEm: agora() })
+      .modify(semSubcategoria)
+    await db.groupSeries
+      .where('categoryId')
+      .equals(subcategoria.categoryId)
+      .filter((serie) => serie.subcategoryId === id)
+      .modify(semSubcategoria)
     await db.subcategories.delete(id)
   })
 }

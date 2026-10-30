@@ -15,8 +15,11 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { reordenarTarefa, soltarTarefaNoDia } from '@/db/repositories/task-repository'
 import type { DataLocal, Subtask, Task } from '@/db/types'
+import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
+import { idDaEntrada, type GrupoDoDia } from '@/lib/grupos'
 import { nomeDoDia } from '@/lib/mover'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
+import { CartaoGrupo } from '@/features/semana/components/cartao-grupo'
 import { ColunaDia, PREFIXO_COLUNA } from '@/features/semana/components/coluna-dia'
 import { CartaoTarefa } from '@/features/semana/components/cartao-tarefa'
 import type { DiaDaSemana } from '@/features/semana/hooks/use-tarefas-da-semana'
@@ -36,13 +39,15 @@ const instrucoesLeitorDeTela = {
 }
 
 function colunasDe(semana: DiaDaSemana[]): Colunas {
-  return Object.fromEntries(
-    semana.map((dia) => [dia.data, dia.pendentes.map((tarefa) => tarefa.id)]),
-  )
+  return Object.fromEntries(semana.map((dia) => [dia.data, dia.entradas.map(idDaEntrada)]))
 }
 
-/** Sete colunas; arrastar move a tarefa entre dias ou reordena dentro do dia. */
+/**
+ * Sete colunas; arrastar move a tarefa ou o card entre dias ou reordena dentro do dia.
+ * Um item de card arrastado sozinho cai no card da mesma série no dia de destino.
+ */
 export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemanaProps) {
+  const { mover } = useMoverTarefas()
   const [colunas, setColunas] = useState(() => colunasDe(semana))
   const [semanaAnterior, setSemanaAnterior] = useState(semana)
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
@@ -62,10 +67,24 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     setColunas(colunasDe(semana))
   }
 
-  const tarefaPorId = new Map(
-    semana.flatMap((dia) => [...dia.pendentes, ...dia.concluidas]).map((t) => [t.id, t]),
-  )
-  const tituloDe = (id: string | number) => tarefaPorId.get(String(id))?.titulo ?? 'tarefa'
+  const tarefaPorId = new Map<string, Task>()
+  const grupoPorId = new Map<string, GrupoDoDia>()
+  /** Itens de card: arrastam sozinhos, mas não ocupam lugar nas colunas. */
+  const itemPorId = new Map<string, Task>()
+  for (const dia of semana) {
+    for (const entrada of dia.entradas) {
+      if (entrada.tipo === 'tarefa') tarefaPorId.set(entrada.tarefa.id, entrada.tarefa)
+      else {
+        grupoPorId.set(entrada.grupo.instancia.id, entrada.grupo)
+        for (const item of entrada.grupo.pendentes) itemPorId.set(item.id, item)
+      }
+    }
+  }
+  const tituloDe = (id: string | number) =>
+    tarefaPorId.get(String(id))?.titulo ??
+    itemPorId.get(String(id))?.titulo ??
+    grupoPorId.get(String(id))?.serie.titulo ??
+    'tarefa'
 
   function colunaDoAlvo(id: string) {
     return id.startsWith(PREFIXO_COLUNA) ? id.slice(PREFIXO_COLUNA.length) : colunaDe(colunas, id)
@@ -85,8 +104,9 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   }
 
   function handleDragStart({ active }: DragStartEvent) {
-    setIdAtivo(String(active.id))
-    setOrigem(colunaDe(colunas, String(active.id)) ?? null)
+    const id = String(active.id)
+    setIdAtivo(id)
+    setOrigem(colunaDe(colunas, id) ?? itemPorId.get(id)?.data ?? null)
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
@@ -94,6 +114,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     const id = String(active.id)
     const destino = colunaDoAlvo(String(over.id))
     const atual = colunaDe(colunas, id)
+    // Item de card não ocupa lugar na coluna: o destino aparece só ao soltar.
     if (!destino || !atual || destino === atual) return
     const indice = String(over.id).startsWith(PREFIXO_COLUNA)
       ? undefined
@@ -110,6 +131,10 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
 
     const destino = colunaDoAlvo(String(over.id))
     if (!destino) return
+    if (itemPorId.has(id)) {
+      if (destino !== diaDeOrigem) void mover([id], destino)
+      return
+    }
     // Dentro do dia de destino, a posição final é a do item sob o ponteiro.
     const indiceFinal = String(over.id).startsWith(PREFIXO_COLUNA)
       ? undefined
@@ -122,7 +147,9 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       if (isMudou) void reordenarTarefa(proximas[destino], id)
       return
     }
-    void soltarTarefaNoDia(id, destino, proximas[destino])
+    // Card: só os pendentes vão, para o card da série no destino (aviso com "Desfazer").
+    if (grupoPorId.has(id)) void mover([], destino, [id])
+    else void soltarTarefaNoDia(id, destino, proximas[destino])
   }
 
   function handleDragCancel() {
@@ -131,7 +158,8 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     setColunas(colunasDe(semana))
   }
 
-  const tarefaAtiva = idAtivo ? tarefaPorId.get(idAtivo) : undefined
+  const tarefaAtiva = idAtivo ? (tarefaPorId.get(idAtivo) ?? itemPorId.get(idAtivo)) : undefined
+  const grupoAtivo = idAtivo ? grupoPorId.get(idAtivo) : undefined
 
   return (
     <DndContext
@@ -149,10 +177,10 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
             key={dia.data}
             data={dia.data}
             hoje={hoje}
-            pendentes={colunas[dia.data]
-              .map((id) => tarefaPorId.get(id))
-              .filter((tarefa): tarefa is Task => tarefa !== undefined)}
-            concluidas={dia.concluidas}
+            ids={colunas[dia.data]}
+            tarefaPorId={tarefaPorId}
+            grupoPorId={grupoPorId}
+            quantidadeConcluidas={dia.quantidadeConcluidas}
             subtarefasPorTarefa={subtarefasPorTarefa}
           />
         ))}
@@ -166,6 +194,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
             isSobreposto
           />
         )}
+        {grupoAtivo && <CartaoGrupo grupo={grupoAtivo} hoje={hoje} isSobreposto />}
       </DragOverlay>
     </DndContext>
   )

@@ -9,13 +9,18 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { Task } from '@/db/types'
 import { corDaSubcategoria } from '@/lib/categorias'
-import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 
+export interface CategoriaEscolhida {
+  categoryId?: string
+  subcategoryId?: string
+}
+
 interface SubmenuCategoriaProps {
-  tarefa: Task
+  /** Categoria atual (da tarefa ou do grupo). */
+  atual: CategoriaEscolhida
+  onEscolher: (categoria: CategoriaEscolhida) => void
 }
 
 const SEM_CATEGORIA = 'sem-categoria'
@@ -30,18 +35,17 @@ function Amostra({ cor }: { cor: string }) {
   return <span aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: cor }} />
 }
 
-/** Escolha da categoria/subcategoria da tarefa dentro do menu ⋯. */
-export function SubmenuCategoria({ tarefa }: SubmenuCategoriaProps) {
+/** Escolha da categoria/subcategoria (de tarefa ou grupo) dentro do menu ⋯. */
+export function SubmenuCategoria({ atual, onEscolher }: SubmenuCategoriaProps) {
   const categorias = useCategoriasDoContexto()
-  const { definirCategoria } = useAcoesTarefa()
 
   function handleEscolher(valor: string) {
     if (valor === SEM_CATEGORIA) {
-      void definirCategoria(tarefa.id, {})
+      onEscolher({})
       return
     }
     const [categoryId, subcategoryId] = valor.split(SEPARADOR)
-    void definirCategoria(tarefa.id, { categoryId, subcategoryId })
+    onEscolher({ categoryId, subcategoryId })
   }
 
   return (
@@ -56,7 +60,7 @@ export function SubmenuCategoria({ tarefa }: SubmenuCategoriaProps) {
           </DropdownMenuItem>
         ) : (
           <DropdownMenuRadioGroup
-            value={valorDe(tarefa.categoryId, tarefa.subcategoryId)}
+            value={valorDe(atual.categoryId, atual.subcategoryId)}
             onValueChange={handleEscolher}
           >
             <DropdownMenuRadioItem value={SEM_CATEGORIA}>Sem categoria</DropdownMenuRadioItem>

@@ -27,6 +27,8 @@ export async function exportarDados(): Promise<Backup> {
     executions: await db.executions.toArray(),
     notes: await db.notes.toArray(),
     attachments: await db.attachments.toArray(),
+    groupSeries: await db.groupSeries.toArray(),
+    groupInstances: await db.groupInstances.toArray(),
   }))
   // Fora da transação: ler blobs não é operação do Dexie e encerraria a transação.
   const attachments = await Promise.all(tabelas.attachments.map(anexoParaArquivo))
@@ -57,6 +59,8 @@ export async function importarDados(backup: Backup) {
     await db.executions.bulkAdd(tabelas.executions)
     await db.notes.bulkAdd(tabelas.notes)
     await db.attachments.bulkAdd(anexos)
+    await db.groupSeries.bulkAdd(tabelas.groupSeries)
+    await db.groupInstances.bulkAdd(tabelas.groupInstances)
   })
 }
 

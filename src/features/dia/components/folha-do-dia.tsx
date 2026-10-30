@@ -9,8 +9,9 @@ import { useTarefasDoDia } from '@/features/dia/hooks/use-tarefas-do-dia'
 import { AvisoPendenciasOntem } from '@/features/dia/components/aviso-pendencias-ontem'
 import { BarraSelecao } from '@/features/dia/components/barra-selecao'
 import { GrupoConcluidas } from '@/features/dia/components/grupo-concluidas'
-import { ListaPendentes } from '@/features/dia/components/lista-pendentes'
+import { ListaDoDia } from '@/features/dia/components/lista-do-dia'
 import { NovaTarefa } from '@/features/dia/components/nova-tarefa'
+import { NovoGrupo } from '@/features/dia/components/novo-grupo'
 
 interface FolhaDoDiaProps {
   data: DataLocal
@@ -18,14 +19,21 @@ interface FolhaDoDiaProps {
   filtro: FiltroCategoria
 }
 
-/** A folha pautada do dia: pendentes, linha para nova tarefa e o grupo de concluídas. */
+/** A folha pautada do dia: pendentes e cards, linhas para criar e o grupo de concluídas. */
 export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
   const categorias = useCategoriasDoContexto()
-  const { pendentes, concluidas, subtarefasPorTarefa, extras, isCarregando } = useTarefasDoDia(
-    data,
-    filtro,
+  const { entradas, concluidas, gruposConcluidos, subtarefasPorTarefa, extras, isCarregando } =
+    useTarefasDoDia(data, filtro)
+  const isVazio = !isCarregando && entradas.length === 0
+  // Tudo o que dá para selecionar: tarefas soltas, cards e itens pendentes.
+  const idsSelecionaveis = entradas.flatMap((entrada) =>
+    entrada.tipo === 'tarefa'
+      ? [entrada.tarefa.id]
+      : [entrada.grupo.instancia.id, ...entrada.grupo.pendentes.map((item) => item.id)],
   )
-  const isVazio = !isCarregando && pendentes.length === 0
+  const idsGrupos = entradas.flatMap((entrada) =>
+    entrada.tipo === 'grupo' ? [entrada.grupo.instancia.id] : [],
+  )
   const selecao = useSelecao()
   const nomeDoFiltro = filtro.categoriaId
     ? classificarTarefa(
@@ -35,7 +43,7 @@ export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
     : undefined
 
   function mensagemVazia() {
-    if (concluidas.length > 0) return 'Tudo feito neste dia.'
+    if (concluidas.length > 0 || gruposConcluidos.length > 0) return 'Tudo feito neste dia.'
     if (nomeDoFiltro) return `Nada de ${nomeDoFiltro} neste dia. Escreva abaixo para criar.`
     return 'Nada marcado para este dia. Escreva a primeira tarefa abaixo.'
   }
@@ -45,7 +53,7 @@ export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
       <ContextoExtras.Provider value={extras}>
         <section aria-label="Tarefas do dia">
           {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
-          {pendentes.length > 0 && !selecao.isSelecionando && (
+          {entradas.length > 0 && !selecao.isSelecionando && (
             <div className="mt-6 -mb-3 flex justify-end">
               <Button variant="ghost" size="sm" className="text-grafite" onClick={selecao.iniciar}>
                 <CheckSquare /> Selecionar
@@ -56,22 +64,25 @@ export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
             {isVazio && (
               <p className="border-b border-pauta px-4 py-3 text-grafite">{mensagemVazia()}</p>
             )}
-            <ListaPendentes
-              pendentes={pendentes}
-              subtarefasPorTarefa={subtarefasPorTarefa}
-              hoje={hoje}
-            />
-            {!selecao.isSelecionando && <NovaTarefa data={data} filtro={filtro} />}
+            <ListaDoDia entradas={entradas} subtarefasPorTarefa={subtarefasPorTarefa} hoje={hoje} />
+            {!selecao.isSelecionando && (
+              <>
+                <NovaTarefa data={data} filtro={filtro} />
+                <NovoGrupo data={data} filtro={filtro} />
+              </>
+            )}
           </div>
           {selecao.isSelecionando && (
             <BarraSelecao
               data={data}
               hoje={hoje}
-              idsPendentes={pendentes.map((tarefa) => tarefa.id)}
+              idsPendentes={idsSelecionaveis}
+              idsGrupos={idsGrupos}
             />
           )}
           <GrupoConcluidas
             concluidas={concluidas}
+            gruposConcluidos={gruposConcluidos}
             subtarefasPorTarefa={subtarefasPorTarefa}
             hoje={hoje}
           />

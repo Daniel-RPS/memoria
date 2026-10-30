@@ -13,7 +13,7 @@ import {
   type Backup,
 } from '@/lib/backup'
 
-const VERSAO_BANCO = 2
+const VERSAO_BANCO = 3
 
 function backupVazio(): Backup {
   return {
@@ -31,6 +31,8 @@ function backupVazio(): Backup {
       executions: [],
       notes: [],
       attachments: [],
+      groupSeries: [],
+      groupInstances: [],
     },
   }
 }
@@ -52,6 +54,16 @@ describe('lerBackup', () => {
     backup.tabelas.tasks.push(tarefa)
     const resultado = lerBackup(JSON.stringify(backup), VERSAO_BANCO)
     expect(resultado).toEqual({ isValido: true, backup })
+  })
+
+  it('aceita backup do formato 1, sem grupos', () => {
+    const { groupSeries, groupInstances, ...semGrupos } = backupVazio().tabelas
+    const antigo = { ...backupVazio(), formato: 1, versaoBanco: 2, tabelas: semGrupos }
+    const resultado = lerBackup(JSON.stringify(antigo), VERSAO_BANCO)
+    expect(resultado).toMatchObject({
+      isValido: true,
+      backup: { tabelas: { groupSeries, groupInstances } },
+    })
   })
 
   it('recusa o que não é JSON', () => {

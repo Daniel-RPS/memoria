@@ -1,16 +1,17 @@
 # MemorIA
 
-App pessoal de organização em formato de calendário. Reúne tarefas do dia, subtarefas, categorias coloridas e **procedimentos reutilizáveis**: passo a passo que você executa várias vezes, como uma configuração de servidor ou uma rotina mensal.
+App pessoal de organização em formato de calendário. Reúne tarefas do dia, subtarefas, **grupos de tarefas**, categorias coloridas e **procedimentos reutilizáveis**: passo a passo que você executa várias vezes, como uma configuração de servidor ou uma rotina mensal.
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas. Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
 Legenda: ✅ pronto · 🔜 planejado
 
 ### Calendário e tarefas
+
 - ✅ Visão do dia com caixas de seleção, navegação entre dias e botão "Hoje"
 - ✅ Criar tarefa digitando na linha "Nova tarefa" e renomear clicando no título
 - ✅ Tarefas concluídas riscadas, agrupadas em "Concluídas" (recolhível) no fim do dia
@@ -20,10 +21,12 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
 - ✅ Filtro por categoria e subcategoria na visão do dia
 - ✅ Visão de semana (segunda a domingo)
+- ✅ Grupos de tarefas: um card (ex.: "Casa") com itens; ao mover, só os pendentes vão e os concluídos ficam no dia como registro
 - ✅ Visão de mês, com arrastar tarefas entre dias
 - ✅ Visão de ano, com a quantidade de tarefas e os atrasos de cada dia
 
 ### Mover tarefas
+
 - ✅ Arrastar uma tarefa de um dia para outro na visão de semana (mouse ou teclado)
 - ✅ Trazer as pendências de ontem para hoje
 - ✅ Adiar para amanhã
@@ -33,7 +36,18 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Arquivar (tirar do calendário sem concluir)
 - 🔜 Ver e restaurar tarefas arquivadas
 
+### Grupos de tarefas
+
+- ✅ "+ Novo grupo" cria um card com título, categoria opcional e itens com caixa de seleção
+- ✅ Progresso no card (ex.: 3/4), botão de recolher e "+ Adicionar item"
+- ✅ Mover, adiar ou trazer de ontem leva só os itens pendentes; os concluídos ficam no card do dia original
+- ✅ Cards do mesmo nome são a mesma **série**: no dia de destino, os itens se juntam ao card que já existe
+- ✅ Arrastar um item sozinho para outro dia, colocar uma tarefa solta no grupo e tirar um item do grupo
+- ✅ Cada item mostra há quantos dias está pendente
+- ✅ Arquivar um item ou o card inteiro
+
 ### Procedimentos
+
 - ✅ Criar e editar procedimentos com seções, passos, subpassos, trechos de código e alertas
 - ✅ Anexos no procedimento e em cada passo (vistos também no modo execução)
 - ✅ Campos variáveis preenchidos a cada execução (`{{nome}}` nos passos)
@@ -47,6 +61,7 @@ Legenda: ✅ pronto · 🔜 planejado
 > **Sobre senhas:** o MemorIA não guarda senhas. Ele guarda só **onde** a senha está, por exemplo "cofre X, item Y".
 
 ### Conteúdo e dados
+
 - ✅ Notas com texto livre que se salva sozinho, busca e anexos
 - ✅ Anexos em tarefas, notas e procedimentos: fotos, desenhos à mão livre, gravações de áudio e links
 - ✅ Anotação de texto em cada tarefa
@@ -54,17 +69,17 @@ Legenda: ✅ pronto · 🔜 planejado
 
 ## Stack
 
-| Área | Tecnologia |
-| --- | --- |
-| Interface | React 19 + TypeScript 7 + Vite 8 |
-| Estilo | Tailwind CSS 4 + shadcn/ui |
-| Rotas | React Router 8 |
-| Formulários | React Hook Form + Zod |
-| Dados locais | IndexedDB com Dexie 4 |
-| Arrastar e soltar | dnd-kit |
-| Datas | date-fns 4 (pt-BR) |
-| Testes | Vitest + Testing Library |
-| Qualidade | oxlint + Prettier |
+| Área              | Tecnologia                       |
+| ----------------- | -------------------------------- |
+| Interface         | React 19 + TypeScript 7 + Vite 8 |
+| Estilo            | Tailwind CSS 4 + shadcn/ui       |
+| Rotas             | React Router 8                   |
+| Formulários       | React Hook Form + Zod            |
+| Dados locais      | IndexedDB com Dexie 4            |
+| Arrastar e soltar | dnd-kit                          |
+| Datas             | date-fns 4 (pt-BR)               |
+| Testes            | Vitest + Testing Library         |
+| Qualidade         | oxlint + Prettier                |
 
 Não há servidor nem banco externo: o app roda inteiro no navegador.
 
@@ -96,6 +111,10 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Mover uma tarefa só muda o dia dela: nada é copiado ou apagado, e a contagem "pendente há N dias" continua contando desde o dia em que foi criada.
 - No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
 - Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje**.
+- **+ Novo grupo** (abaixo de Nova tarefa) cria um card. Escreva os itens em **Adicionar item**; os concluídos ficam riscados no fim do card.
+- Ao mover um grupo para outro dia (arrastando na semana ou pelo menu **⋯** do card), só os itens pendentes vão. Os concluídos ficam no dia original, e o card de lá vira concluído. Se nenhum item estava concluído, o card vai inteiro; se todos estavam, ele não pode ser movido.
+- Grupos com o mesmo nome são o mesmo grupo em dias diferentes: se o destino já tem o card "Casa", os itens entram nele. Renomear ou trocar a categoria do card vale para todos os dias.
+- Arraste uma tarefa solta para dentro de um card, ou um item para fora, para virar tarefa solta. Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**.
 - Em **Semana**, arraste as tarefas entre os dias. Pelo teclado: foque a tarefa, tecle espaço, use as setas e espaço de novo. Clique no dia para abrir a visão dele.
 - Em **Procedimentos**, crie o passo a passo. Valores que mudam (servidor, data, número do chamado) viram **campos variáveis**: escreva `{{Servidor}}` no passo e, ao executar, o valor digitado aparece no lugar, inclusive no comando copiado.
 - Para senhas, use um campo do tipo **credencial**: ele guarda só onde a senha está (ex.: "cofre X, item Y"). O MemorIA não tem campo de senha.
@@ -114,18 +133,18 @@ Depois, abra no navegador **`http://localhost:5173`**.
 
 Outros comandos:
 
-| Comando | O que faz |
-| --- | --- |
-| `npm run build` | Gera a versão de produção |
-| `npm test` | Roda os testes |
-| `npm run lint` | Verifica o código |
-| `npm run format` | Formata o código |
+| Comando          | O que faz                 |
+| ---------------- | ------------------------- |
+| `npm run build`  | Gera a versão de produção |
+| `npm test`       | Roda os testes            |
+| `npm run lint`   | Verifica o código         |
+| `npm run format` | Formata o código          |
 
 ## Backup e restauração
 
 Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou trocar de navegador apaga tudo**. O app pede ao navegador armazenamento persistente, mas o navegador nem sempre concede; a página **Backup** mostra a situação e permite pedir de novo.
 
-- **Fazer backup:** em **Backup → Baixar backup**, o app baixa `memoria-backup-AAAA-MM-DD.json` com tudo: tarefas, subtarefas, categorias, procedimentos (com versões e execuções), notas e anexos (fotos, desenhos e áudios vão dentro do arquivo). A página lembra quando foi o último backup neste navegador.
+- **Fazer backup:** em **Backup → Baixar backup**, o app baixa `memoria-backup-AAAA-MM-DD.json` com tudo: tarefas, subtarefas, grupos, categorias, procedimentos (com versões e execuções), notas e anexos (fotos, desenhos e áudios vão dentro do arquivo). A página lembra quando foi o último backup neste navegador.
 - **Restaurar:** em **Backup → Escolher arquivo de backup**, o app confere o arquivo e mostra o que tem nele ao lado do que você tem agora. Ao confirmar **Substituir meus dados**, todos os dados deste navegador são trocados pelos do arquivo.
 - Arquivo que não é backup do MemorIA, que foi alterado ou que veio de uma versão mais nova do app é recusado, com a explicação, e nada muda.
 - A troca é feita de uma vez: se algo falhar no meio, os dados atuais ficam como estavam.
@@ -135,17 +154,17 @@ Recomendação: faça backup com frequência e guarde o arquivo fora do computad
 
 ## Roadmap
 
-| Fase | Entrega | Status |
-| --- | --- | --- |
-| 1 | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação | ✅ |
-| 2 | Subtarefas com progresso | ✅ |
-| 3 | Categorias e subcategorias com cores e filtro | ✅ |
-| 4 | Visão de semana, arrastar entre dias e ações de mover pendências | ✅ |
-| 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | ✅ |
-| 6 | Visões de mês e ano | ✅ |
-| 7 | Backup: exportar e importar (JSON com anexos) | ✅ |
-| 8 | Notas, fotos, desenhos à mão livre e áudio | ✅ |
-| 9 | Compartilhamento (ver ou editar), com servidor | Fora do escopo |
+| Fase | Entrega                                                                                        | Status         |
+| ---- | ---------------------------------------------------------------------------------------------- | -------------- |
+| 1    | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação         | ✅             |
+| 2    | Subtarefas com progresso                                                                       | ✅             |
+| 3    | Categorias e subcategorias com cores e filtro                                                  | ✅             |
+| 4    | Visão de semana, arrastar entre dias e ações de mover pendências                               | ✅             |
+| 5    | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | ✅             |
+| 6    | Visões de mês e ano                                                                            | ✅             |
+| 7    | Backup: exportar e importar (JSON com anexos)                                                  | ✅             |
+| 8    | Notas, fotos, desenhos à mão livre e áudio                                                     | ✅             |
+| 9    | Compartilhamento (ver ou editar), com servidor                                                 | Fora do escopo |
 
 ## Fora do escopo
 

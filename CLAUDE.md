@@ -1,7 +1,9 @@
 # Projeto: MemorIA
+
 App pessoal de organização em formato de calendário: tarefas, subtarefas, categorias coloridas e procedimentos reutilizáveis.
 
 ## Stack
+
 - React 19.3 · TypeScript 7.0 (strict) · Vite 8.3 · Node 24
 - Tailwind CSS 4.3 (plugin Vite, sem tailwind.config) · shadcn/ui preset nova (Radix, ícones lucide)
 - React Router 8.5 · Formulários: React Hook Form 7.91 + Zod 4.6
@@ -11,6 +13,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - IMPORTANTE: só computador, uso pessoal, sem servidor nem banco externo (decidido em 30/10/2026). Celular, sync e compartilhamento estão FORA do escopo — não proponha sem o usuário pedir
 
 ## Comandos
+
 - `npm run dev` — app em `http://localhost:5173` (porta FIXA, `strictPort`: os dados ficam presos à origem)
 - `npm run build` — build de produção (`tsc -b` + Vite)
 - `npm test` — todos os testes · `npx vitest run <arquivo>` — um arquivo
@@ -18,6 +21,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `npx shadcn@latest add <componente>` — adicionar componente shadcn
 
 ## Arquitetura
+
 - `src/app/` shell, rotas e providers
 - `src/features/<feature>/` página (`<feature>-page.tsx`), `components/` e `hooks/` de cada área
 - `src/hooks/` hooks compartilhados entre features (ex.: `use-hoje`)
@@ -34,7 +38,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Grade de mês/ano e resumo por dia em `src/lib/calendario.ts`; período via `useTarefasDoPeriodo`
 - Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
 - Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
-- Banco Dexie na versão 2 (índice `tasks.procedureId`); mudar índice = nova `version()`
+- Banco Dexie na versão 3 (v2: `tasks.procedureId`; v3: grupos e `tasks.groupInstanceId`); mudar índice = nova `version()`
 - IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
 - Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
 - Anexo pertence ao `dono` {tipo, id} (tarefa, nota, procedimento, passo); `Step.anexos` não é usado — a fonte é `attachments`
@@ -44,14 +48,22 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Texto editado com gravação atrasada: use `useSalvarComAtraso` (grava o pendente ao sair da tela)
 - Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
+- Grupos: `db/repositories/group-repository.ts` (criar, itens, mover cards, arquivar, excluir) e regras puras em `src/lib/grupos.ts`
+- IMPORTANTE: `moverTarefas` entende itens de grupo: item vai para a instância da MESMA série no destino (acha ou cria, numa transação); NUNCA deixe item com `data` diferente da instância
+- `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupInstance.ordem`); `ordem` de item é a posição dentro do card. Reordenar misto usa `gravarNovaPosicao` com a tabela combinada do dia
+- Item herda `categoryId`/`subcategoryId` da série (cópia mantida pelo repositório): filtro, cores e mês funcionam sem saber de grupos
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
 - Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`)
 
 ## Modelo de dados (resumo)
+
 - Toda entidade: `id` (`crypto.randomUUID()`), `criadoEm`, `atualizadoEm`; NUNCA ids autoincrementais (deixam aberta uma sync futura)
 - Alterar índices = nova `version()` no Dexie, NUNCA editar a versão existente
 - Category { id, nome, cor } · Subcategory { id, categoryId, nome, cor? } (sem cor = variação da cor da categoria)
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
+- Task.groupInstanceId? → item de grupo (sem = tarefa solta)
+- GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — título e categoria valem para todas as instâncias
+- GroupInstance { id, seriesId, data, ordem, arquivado } — no máximo uma por série e dia; card concluído é calculado (tem itens e nenhum pendente)
 - Subtask { id, taskId, titulo, concluida, ordem }
 - Procedure { id, titulo, categoryId?, descricao, secoes[] (cada uma com passos[] embutidos), camposVariaveis[], versao }
 - Step { id, texto, codigo?, alerta?, anexos[], subpassos[] } — dentro de Procedure, sem tabela; subpasso tem 1 nível; ordem = posição no array
@@ -61,11 +73,16 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Note, Attachment (foto, desenho, áudio, link) ligados a tarefa, nota ou procedimento
 
 ## Regras de negócio
+
 - Mover tarefa entre dias é a função central: alterar `data`, NUNCA copiar + apagar
 - Concluída: riscada, vai para grupo "Concluídas" recolhível no fim do dia
 - Dias pendentes = hoje − `dataOriginal`, exibido em toda pendente com `dataOriginal` < hoje; mover/adiar NÃO zera
 - Ações: trazer pendências de ontem para hoje, adiar para amanhã, mover para outro dia, mover várias selecionadas
 - Arquivar = tirar do calendário sem concluir
+- Grupo (card) vive num dia; mover/adiar/trazer leva só os itens PENDENTES para a instância da série no destino (mescla se existir); os concluídos ficam como registro no dia original
+- Card sem item concluído move inteiro (mesmo id); card todo concluído não move; tarefa solta com subtarefas continua movendo inteira
+- Arquivar card = arquivar os pendentes (some do dia se não houver concluídos); excluir card apaga itens, anexos e anotações deles e a série que ficar sem instância
+- "+ Novo grupo" com nome de série existente reusa a série; já existindo no dia, `ErroDeValidacao`
 - IMPORTANTE: modo execução NUNCA altera o procedimento original — `execution-repository` só escreve em `executions` (e na tarefa ligada)
 - Editar procedimento SEMPRE grava a versão anterior em ProcedureVersion (`salvarProcedimento`; uma versão por "Salvar")
 - Execução segue a versão em que começou (`obterVersao`); em andamento = sem `concluidaEm`, retomável
@@ -76,21 +93,24 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Interface toda em português do Brasil
 
 ## Estilo de código
+
 - NUNCA use `any`; prefira `unknown` + Zod
 - Arquivos em kebab-case; componentes em PascalCase
 - Imports absolutos com `@/`
 - Handlers `handle*`, booleanos `is*/has*/can*`, hooks `use*`
 
 ## Workflow
+
 - Uma fase por vez; ao terminar, PARE e mostre ao usuário antes de seguir
 - Antes de cada fase, liste em poucas linhas o que será feito
 - Ao concluir fase: testes + build, atualizar status no README (e este arquivo se a estrutura mudar), commit
 - Commits: Conventional Commits (`feat:`, `fix:`, `chore:`)
-- Testes obrigatórios: mover tarefas, contagem de dias pendentes, modo execução
+- Testes obrigatórios: mover tarefas, contagem de dias pendentes, modo execução, mover/mesclar grupos
 - Ambiguidade na proposta: pergunte, não suponha
 - Trabalho de interface: use a skill `frontend-design`
 
 ## Fases
+
 1. Visão do dia (tarefas, seleção, concluídas agrupadas, reordenação)
 2. Subtarefas com progresso ("2 de 5")
 3. Categorias e subcategorias com cores e filtro
@@ -103,7 +123,10 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 
 Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são ajustes pedidos pelo usuário.
 
+- Ajuste 30/10/2026: grupos de tarefas (séries, cards por dia, mover só pendentes) — detalhes em `docs/proposta-inicial.md`
+
 ## Armadilhas
+
 - IMPORTANTE: datas são data local `YYYY-MM-DD` (America/Sao_Paulo); NUNCA use `new Date("YYYY-MM-DD")` nem `toISOString()` para dia — geram UTC e deslocam um dia. Use `src/lib/datas.ts`
 - Testes rodam com `TZ=America/Sao_Paulo` (definido em `vite.config.ts`); sem `globals`, importe `describe/it/expect` de `vitest`
 - Teste de tela: `renderizarApp(caminho)` (`src/test/`) monta rotas + layout reais (avisos incluídos)

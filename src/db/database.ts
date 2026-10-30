@@ -3,6 +3,8 @@ import type {
   Attachment,
   Category,
   Execution,
+  GroupInstance,
+  GroupSeries,
   Note,
   Procedure,
   ProcedureVersion,
@@ -25,6 +27,8 @@ export class MemoriaDatabase extends Dexie {
   executions!: EntityTable<Execution, 'id'>
   notes!: EntityTable<Note, 'id'>
   attachments!: EntityTable<Attachment, 'id'>
+  groupSeries!: EntityTable<GroupSeries, 'id'>
+  groupInstances!: EntityTable<GroupInstance, 'id'>
 
   constructor(nome = 'memoria') {
     super(nome)
@@ -42,6 +46,13 @@ export class MemoriaDatabase extends Dexie {
     // v2: tarefas ligadas a procedimentos. Só acrescenta índice; dados existentes ficam como estão.
     this.version(2).stores({
       tasks: 'id, data, [data+ordem], status, categoryId, dataOriginal, procedureId',
+    })
+    // v3: grupos de tarefas (séries e cards por dia) e o item ligado ao card.
+    this.version(3).stores({
+      tasks:
+        'id, data, [data+ordem], status, categoryId, dataOriginal, procedureId, groupInstanceId',
+      groupSeries: 'id, titulo, categoryId',
+      groupInstances: 'id, seriesId, data, [seriesId+data]',
     })
   }
 }

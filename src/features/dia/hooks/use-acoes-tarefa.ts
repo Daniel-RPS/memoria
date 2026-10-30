@@ -1,3 +1,4 @@
+import { colocarNoGrupo, tirarDoGrupo } from '@/db/repositories/group-repository'
 import {
   arquivarTarefa,
   criarTarefa,
@@ -18,5 +19,7 @@ export function useAcoesTarefa() {
     arquivarTarefa,
     excluirTarefa,
     reordenarTarefa,
+    colocarNoGrupo,
+    tirarDoGrupo,
   }
 }

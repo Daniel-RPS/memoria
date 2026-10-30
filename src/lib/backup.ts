@@ -4,7 +4,7 @@ import type { Attachment, DataLocal } from '@/db/types'
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 1
+export const FORMATO_ATUAL = 2
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -25,6 +25,22 @@ const tarefa = z.object({
   dataOriginal: dataLocal,
   concluidaEm: texto.optional(),
   procedureId: texto.optional(),
+  groupInstanceId: texto.optional(),
+})
+
+const serieDeGrupo = z.object({
+  ...base,
+  titulo: texto,
+  categoryId: texto.optional(),
+  subcategoryId: texto.optional(),
+})
+
+const instanciaDeGrupo = z.object({
+  ...base,
+  seriesId: id,
+  data: dataLocal,
+  ordem: z.number(),
+  arquivado: z.boolean(),
 })
 
 const subtarefa = z.object({
@@ -112,6 +128,9 @@ export const esquemaBackup = z.object({
     executions: z.array(execucao),
     notes: z.array(nota),
     attachments: z.array(anexoNoArquivo),
+    // Formato 1 não tinha grupos.
+    groupSeries: z.array(serieDeGrupo).default([]),
+    groupInstances: z.array(instanciaDeGrupo).default([]),
   }),
 })
 
@@ -130,6 +149,8 @@ export const NOMES_DAS_TABELAS: Record<NomeTabela, [string, string]> = {
   executions: ['execução', 'execuções'],
   notes: ['nota', 'notas'],
   attachments: ['anexo', 'anexos'],
+  groupSeries: ['grupo', 'grupos'],
+  groupInstances: ['card de grupo', 'cards de grupo'],
 }
 
 export type Quantidades = Record<NomeTabela, number>

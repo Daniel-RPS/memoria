@@ -8,6 +8,8 @@ import { CampoNovoItem } from '@/components/campo-novo-item'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import type { DataLocal, Subtask, Task } from '@/db/types'
 import { deDataLocal } from '@/lib/datas'
+import type { GrupoDoDia } from '@/lib/grupos'
+import { ItemGrupoSemana } from '@/features/semana/components/item-grupo-semana'
 import { ItemTarefaSemana } from '@/features/semana/components/item-tarefa-semana'
 
 /** Prefixo do id da área de soltar de cada dia (o resto do id é a data). */
@@ -18,17 +20,22 @@ const SEM_SUBTAREFAS: Subtask[] = []
 interface ColunaDiaProps {
   data: DataLocal
   hoje: DataLocal
-  pendentes: Task[]
-  concluidas: Task[]
+  /** Ids das tarefas soltas pendentes e dos cards, na ordem mostrada. */
+  ids: string[]
+  tarefaPorId: Map<string, Task>
+  grupoPorId: Map<string, GrupoDoDia>
+  quantidadeConcluidas: number
   subtarefasPorTarefa: Map<string, Subtask[]>
 }
 
-/** Um dia da semana: cabeçalho que abre o dia, pendentes arrastáveis e linha de nova tarefa. */
+/** Um dia da semana: cabeçalho que abre o dia, pendentes e cards arrastáveis e nova tarefa. */
 export function ColunaDia({
   data,
   hoje,
-  pendentes,
-  concluidas,
+  ids,
+  tarefaPorId,
+  grupoPorId,
+  quantidadeConcluidas,
   subtarefasPorTarefa,
 }: ColunaDiaProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `${PREFIXO_COLUNA}${data}` })
@@ -67,7 +74,7 @@ export function ColunaDia({
 
       <SortableContext
         id={`${PREFIXO_COLUNA}${data}`}
-        items={pendentes.map((tarefa) => tarefa.id)}
+        items={ids}
         strategy={verticalListSortingStrategy}
       >
         <ul
@@ -78,14 +85,19 @@ export function ColunaDia({
             isOver && 'bg-accent',
           )}
         >
-          {pendentes.map((tarefa) => (
-            <ItemTarefaSemana
-              key={tarefa.id}
-              tarefa={tarefa}
-              subtarefas={subtarefasPorTarefa.get(tarefa.id) ?? SEM_SUBTAREFAS}
-              hoje={hoje}
-            />
-          ))}
+          {ids.map((id) => {
+            const grupo = grupoPorId.get(id)
+            if (grupo) return <ItemGrupoSemana key={id} grupo={grupo} hoje={hoje} />
+            const tarefa = tarefaPorId.get(id)
+            return tarefa ? (
+              <ItemTarefaSemana
+                key={id}
+                tarefa={tarefa}
+                subtarefas={subtarefasPorTarefa.get(id) ?? SEM_SUBTAREFAS}
+                hoje={hoje}
+              />
+            ) : null
+          })}
         </ul>
       </SortableContext>
 
@@ -97,12 +109,12 @@ export function ColunaDia({
           onCriar={(titulo) => criarTarefa({ titulo, data })}
         />
       </div>
-      {concluidas.length > 0 && (
+      {quantidadeConcluidas > 0 && (
         <Link
           to={`/dia/${data}`}
           className="px-3 pb-3 text-sm text-grafite hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta"
         >
-          {concluidas.length === 1 ? '1 concluída' : `${concluidas.length} concluídas`}
+          {quantidadeConcluidas === 1 ? '1 concluída' : `${quantidadeConcluidas} concluídas`}
         </Link>
       )}
     </section>

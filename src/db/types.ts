@@ -35,6 +35,26 @@ export interface Task extends EntidadeBase {
   concluidaEm?: string
   /** Tarefa agendada para executar este procedimento. */
   procedureId?: string
+  /** Item de um grupo (card); sem ele, é tarefa solta. A categoria é cópia da série. */
+  groupInstanceId?: string
+}
+
+/** O que os cards de um grupo têm em comum entre os dias (ex.: "Casa"). */
+export interface GroupSeries extends EntidadeBase {
+  /** Único entre as séries, sem diferenciar acento e maiúscula. */
+  titulo: string
+  categoryId?: string
+  subcategoryId?: string
+}
+
+/** O card de uma série num dia. No máximo uma instância por série e dia. */
+export interface GroupInstance extends EntidadeBase {
+  seriesId: string
+  data: DataLocal
+  /** Mesma escala da `ordem` das tarefas soltas do dia. */
+  ordem: number
+  /** Fora do calendário (arquivado sem itens concluídos). */
+  arquivado: boolean
 }
 
 export interface Subtask extends EntidadeBase {

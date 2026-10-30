@@ -8,12 +8,14 @@ import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 interface BarraSelecaoProps {
   data: DataLocal
   hoje: DataLocal
-  /** Pendentes visíveis, na ordem da folha (para "Selecionar todas"). */
+  /** Pendentes visíveis (tarefas, cards e itens), na ordem da folha (para "Todas"). */
   idsPendentes: string[]
+  /** Quais desses ids são cards de grupo (movê-los leva só os itens pendentes). */
+  idsGrupos: string[]
 }
 
 /** Barra fixa no rodapé com as ações sobre as tarefas selecionadas. */
-export function BarraSelecao({ data, hoje, idsPendentes }: BarraSelecaoProps) {
+export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos }: BarraSelecaoProps) {
   const { selecionados, encerrar, selecionarTodos } = useSelecaoDaFolha()
   const { mover, adiar } = useMoverTarefas()
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
@@ -21,14 +23,16 @@ export function BarraSelecao({ data, hoje, idsPendentes }: BarraSelecaoProps) {
   const ids = idsPendentes.filter((id) => selecionados.has(id))
   const quantidade = ids.length
   const isFutura = data > hoje
+  const grupos = ids.filter((id) => idsGrupos.includes(id))
+  const tarefas = ids.filter((id) => !idsGrupos.includes(id))
 
   async function handleAdiar() {
-    await adiar(ids)
+    await adiar(tarefas, grupos)
     encerrar()
   }
 
   async function handleMover(destino: DataLocal) {
-    await mover(ids, destino)
+    await mover(tarefas, destino, grupos)
     encerrar()
   }
 

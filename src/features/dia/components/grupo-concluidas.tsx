@@ -1,22 +1,32 @@
 import { ChevronRight } from 'lucide-react'
 import { cn } from 'cn'
 import type { DataLocal, Subtask, Task } from '@/db/types'
+import type { GrupoDoDia } from '@/lib/grupos'
 import { useConcluidasRecolhidas } from '@/features/dia/hooks/use-concluidas-recolhidas'
+import { CardGrupo } from '@/features/dia/components/card-grupo'
 import { LinhaTarefa } from '@/features/dia/components/linha-tarefa'
 
 interface GrupoConcluidasProps {
   concluidas: Task[]
+  /** Cards com todos os itens feitos: ficam aqui, discretos, como registro do dia. */
+  gruposConcluidos: GrupoDoDia[]
   subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
 }
 
 const SEM_SUBTAREFAS: Subtask[] = []
 
-/** Concluídas do dia, riscadas, num grupo recolhível abaixo da folha. */
-export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: GrupoConcluidasProps) {
+/** Concluídas do dia (tarefas e cards), riscadas, num grupo recolhível abaixo da folha. */
+export function GrupoConcluidas({
+  concluidas,
+  gruposConcluidos,
+  subtarefasPorTarefa,
+  hoje,
+}: GrupoConcluidasProps) {
   const { isRecolhido, alternar } = useConcluidasRecolhidas()
+  const quantidade = concluidas.length + gruposConcluidos.length
 
-  if (concluidas.length === 0) return null
+  if (quantidade === 0) return null
 
   return (
     <div className="mt-6">
@@ -34,7 +44,7 @@ export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: Grupo
             !isRecolhido && 'rotate-90',
           )}
         />
-        Concluídas ({concluidas.length})
+        Concluídas ({quantidade})
       </button>
       {!isRecolhido && (
         <ul
@@ -49,6 +59,11 @@ export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: Grupo
                 subtarefas={subtarefasPorTarefa.get(tarefa.id) ?? SEM_SUBTAREFAS}
                 hoje={hoje}
               />
+            </li>
+          ))}
+          {gruposConcluidos.map((grupo) => (
+            <li key={grupo.instancia.id}>
+              <CardGrupo grupo={grupo} hoje={hoje} subtarefasPorTarefa={subtarefasPorTarefa} />
             </li>
           ))}
         </ul>
