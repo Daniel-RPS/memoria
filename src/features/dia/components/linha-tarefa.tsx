@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react'
+import { ListChecks } from 'lucide-react'
+import { Link } from 'react-router'
 import { cn } from 'cn'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, Subtask, Task } from '@/db/types'
@@ -112,6 +114,15 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
           )}
           {classificacao && !isEditando && (
             <span className="text-sm whitespace-nowrap text-grafite">{classificacao.rotulo}</span>
+          )}
+          {tarefa.procedureId && !isEditando && !isSelecionavel && (
+            <Link
+              to={`/procedimentos/${tarefa.procedureId}/executar?tarefa=${tarefa.id}`}
+              className="flex items-center gap-1 rounded-sm text-sm whitespace-nowrap text-caneta hover:underline focus-visible:outline-2 focus-visible:outline-caneta"
+            >
+              <ListChecks aria-hidden className="size-4" />
+              {isConcluida ? 'Ver procedimento' : 'Executar procedimento'}
+            </Link>
           )}
           {progresso && !isEditando && (
             <BotaoProgresso

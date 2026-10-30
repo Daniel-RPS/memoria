@@ -39,6 +39,10 @@ export class MemoriaDatabase extends Dexie {
       notes: 'id, [dono.tipo+dono.id]',
       attachments: 'id, [dono.tipo+dono.id]',
     })
+    // v2: tarefas ligadas a procedimentos. Só acrescenta índice; dados existentes ficam como estão.
+    this.version(2).stores({
+      tasks: 'id, data, [data+ordem], status, categoryId, dataOriginal, procedureId',
+    })
   }
 }
 

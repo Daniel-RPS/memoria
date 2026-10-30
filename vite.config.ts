@@ -17,5 +17,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     env: { TZ: 'America/Sao_Paulo' },
+    // Telas inteiras com digitação passam de 5 s quando a suíte roda em paralelo.
+    testTimeout: 15_000,
   },
 })

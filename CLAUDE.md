@@ -31,6 +31,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - IMPORTANTE: mover tarefa = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
 - Ações de mover na UI passam por `useMoverTarefas` (aviso com "Desfazer" via `restaurarPosicoes`)
 - Semana começa na segunda (`PRIMEIRO_DIA_DA_SEMANA` em `src/lib/semana.ts`); colunas do quadro em `src/lib/quadro.ts`
+- Banco Dexie na versão 2 (índice `tasks.procedureId`); mudar índice = nova `version()`
 - Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
@@ -43,7 +44,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
 - Subtask { id, taskId, titulo, concluida, ordem }
 - Procedure { id, titulo, categoryId?, descricao, secoes[] (cada uma com passos[] embutidos), camposVariaveis[], versao }
-- Step { id, ordem, texto, codigo?, alerta?, anexos[], subpassos[] } — vive dentro de Procedure, sem tabela própria
+- Step { id, texto, codigo?, alerta?, anexos[], subpassos[] } — dentro de Procedure, sem tabela; subpasso tem 1 nível; ordem = posição no array
 - CampoVariavel tipo `credencial` guarda só `localCredencial`
 - ProcedureVersion { procedureId, versao, snapshot, alteradoEm }
 - Execution { id, procedureId, versao, data, valoresCampos, passosMarcados, passosPulados, observacoes, taskId? }
@@ -55,8 +56,12 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Dias pendentes = hoje − `dataOriginal`, exibido em toda pendente com `dataOriginal` < hoje; mover/adiar NÃO zera
 - Ações: trazer pendências de ontem para hoje, adiar para amanhã, mover para outro dia, mover várias selecionadas
 - Arquivar = tirar do calendário sem concluir
-- IMPORTANTE: modo execução NUNCA altera o procedimento original
-- Editar procedimento SEMPRE grava a versão anterior em ProcedureVersion
+- IMPORTANTE: modo execução NUNCA altera o procedimento original — `execution-repository` só escreve em `executions` (e na tarefa ligada)
+- Editar procedimento SEMPRE grava a versão anterior em ProcedureVersion (`salvarProcedimento`; uma versão por "Salvar")
+- Execução segue a versão em que começou (`obterVersao`); em andamento = sem `concluidaEm`, retomável
+- Campos variáveis: `{{nome}}` casa pelo nome sem acento/maiúscula; credencial mostra só `localCredencial`
+- Marcar passo: use `mudarEstadoDoPasso` (atômico); nunca grave a partir de uma execução lida antes
+- Tarefa com `procedureId` = execução agendada; concluir a execução conclui a tarefa
 - NUNCA crie campo de senha: credencial guarda só ONDE está (ex.: "cofre X, item Y")
 - Interface toda em português do Brasil
 
@@ -92,6 +97,8 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Teste de tela: `renderizarApp(caminho)` (`src/test/`) monta rotas + layout reais (avisos incluídos)
 - date-fns 4 pt-BR: `EEE` = "quarta" e `MMM` = "out", sem ponto — confira antes de testar textos de data
 - Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro` e no repositório
+- Teste que navega: espere um elemento da página nova (o endereço muda antes da tela desenhar)
+- `userEvent.type`: `{` é tecla especial; para digitar `{{campo}}` escreva `'{{{{campo}}'`
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
 - Campo de criar item: use `CampoNovoItem`; ele limpa ANTES do `await` para não apagar o que o usuário já digitou
@@ -99,4 +106,3 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Prévia no app: `.claude/launch.json` usa a porta 5180 fixa
 - Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta`, `grafite`, `pauta`, `caneta`, `marca-texto`)
 - Submenu Radix em teste: use teclado (`ArrowRight`, `Enter`); no jsdom o ponteiro fecha o submenu
-- `db.procedures.modify({...})` não tipa (Step recursivo): use a forma de callback

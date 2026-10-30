@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
 
-> **Status:** fases 1 a 4 concluídas (dia, subtarefas, categorias, semana e mover tarefas). Próxima: fase 5, procedimentos.
+> **Status:** fases 1 a 5 concluídas (dia, subtarefas, categorias, semana, mover tarefas e procedimentos). Próxima: fase 6, visões de mês e ano.
 
 ## Funcionalidades
 
@@ -33,13 +33,15 @@ Legenda: ✅ pronto · 🔜 planejado
 - 🔜 Ver e restaurar tarefas arquivadas
 
 ### Procedimentos
-- 🔜 Criar e editar procedimentos com seções, passos, subpassos, trechos de código, alertas e anexos
-- 🔜 Campos variáveis preenchidos a cada execução
-- 🔜 Modo execução: marcar e pular passos sem alterar o modelo original
-- 🔜 Ligação com o calendário (agendar uma execução como tarefa)
-- 🔜 Histórico de execuções
-- 🔜 Versões: cada edição guarda a versão anterior
-- 🔜 Busca
+- ✅ Criar e editar procedimentos com seções, passos, subpassos, trechos de código e alertas
+- 🔜 Anexos nos passos (fase 8)
+- ✅ Campos variáveis preenchidos a cada execução (`{{nome}}` nos passos)
+- ✅ Modo execução: marcar e pular passos, copiar comandos, observações, sem alterar o modelo original
+- ✅ Execução pela metade fica salva e pode ser retomada
+- ✅ Ligação com o calendário: agendar cria uma tarefa; executar por ela conclui a tarefa
+- ✅ Histórico de execuções com valores usados, passos feitos e pulados
+- ✅ Versões: cada edição salva guarda a versão anterior, que pode ser vista e restaurada
+- ✅ Busca em títulos, descrições e passos, sem diferenciar acentos
 
 > **Sobre senhas:** o MemorIA não guarda senhas. Ele guarda só **onde** a senha está, por exemplo "cofre X, item Y".
 
@@ -91,6 +93,11 @@ Depois, abra no navegador o endereço que aparecer no terminal (normalmente `htt
 - No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
 - Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje**.
 - Em **Semana**, arraste as tarefas entre os dias. Pelo teclado: foque a tarefa, tecle espaço, use as setas e espaço de novo. Clique no dia para abrir a visão dele.
+- Em **Procedimentos**, crie o passo a passo. Valores que mudam (servidor, data, número do chamado) viram **campos variáveis**: escreva `{{Servidor}}` no passo e, ao executar, o valor digitado aparece no lugar, inclusive no comando copiado.
+- Para senhas, use um campo do tipo **credencial**: ele guarda só onde a senha está (ex.: "cofre X, item Y"). O MemorIA não tem campo de senha.
+- **Executar** abre o checklist. O modelo nunca muda; o que você marca e preenche vai para o histórico daquela execução.
+- **Agendar** cria uma tarefa no dia escolhido. Na tarefa, **Executar procedimento** abre a execução, e concluí-la conclui a tarefa.
+- Cada **Salvar nova versão** guarda a anterior em **Versões anteriores**, onde dá para ver e restaurar.
 
 Outros comandos:
 
@@ -120,7 +127,7 @@ Recomendação: exporte o backup com frequência e guarde o arquivo fora do comp
 | 2 | Subtarefas com progresso | ✅ |
 | 3 | Categorias e subcategorias com cores e filtro | ✅ |
 | 4 | Visão de semana, arrastar entre dias e ações de mover pendências | ✅ |
-| 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | 🔜 |
+| 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | ✅ |
 | 6 | Visões de mês e ano | 🔜 |
 | 7 | Backup: exportar e importar (JSON com anexos) | 🔜 |
 | 8 | Notas, fotos, desenhos à mão livre e áudio | 🔜 |

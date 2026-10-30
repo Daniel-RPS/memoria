@@ -33,6 +33,8 @@ export interface Task extends EntidadeBase {
   /** Definida só na criação; base da contagem de dias pendentes. */
   dataOriginal: DataLocal
   concluidaEm?: string
+  /** Tarefa agendada para executar este procedimento. */
+  procedureId?: string
 }
 
 export interface Subtask extends EntidadeBase {
@@ -52,20 +54,26 @@ export interface CampoVariavel {
   localCredencial?: string
 }
 
+/** Subpasso: um nível só, sem subpassos próprios. */
+export interface Subpasso {
+  id: string
+  texto: string
+}
+
+/** Passo de um procedimento. A ordem é a posição no array `passos` da seção. */
 export interface Step {
   id: string
-  ordem: number
   texto: string
   codigo?: string
   alerta?: string
   anexos: string[]
-  subpassos: Step[]
+  subpassos: Subpasso[]
 }
 
+/** Seção de um procedimento. A ordem é a posição no array `secoes`. */
 export interface Secao {
   id: string
   titulo: string
-  ordem: number
   passos: Step[]
 }
 
@@ -88,13 +96,17 @@ export interface ProcedureVersion {
 
 export interface Execution extends EntidadeBase {
   procedureId: string
+  /** Versão do procedimento usada; a execução segue essa versão até o fim. */
   versao: number
   data: DataLocal
+  /** Valor digitado por id do campo. Campos `credencial` não têm valor aqui. */
   valoresCampos: Record<string, string>
   passosMarcados: string[]
   passosPulados: string[]
   observacoes: string
   taskId?: string
+  /** Ausente enquanto a execução está em andamento. */
+  concluidaEm?: string
 }
 
 export type TipoDono = 'task' | 'note' | 'procedure' | 'step'
