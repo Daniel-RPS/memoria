@@ -2,12 +2,14 @@ import { useState, type ReactNode } from 'react'
 import { cn } from 'cn'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, Subtask, Task } from '@/db/types'
+import { classificarTarefa } from '@/lib/categorias'
 import { diasPendente, progressoSubtarefas, textoDiasPendente } from '@/lib/tarefas'
+import { useCategoriasDaFolha } from '@/features/dia/hooks/contexto-categorias'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
 import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
 import { MenuTarefa } from '@/features/dia/components/menu-tarefa'
-import { TituloEditavel } from '@/features/dia/components/titulo-editavel'
+import { TituloEditavel } from '@/components/titulo-editavel'
 
 interface LinhaTarefaProps {
   tarefa: Task
@@ -29,6 +31,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const isConcluida = tarefa.status === 'concluida'
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
+  const classificacao = classificarTarefa(tarefa, useCategoriasDaFolha())
   const idPainel = `subtarefas-${tarefa.id}`
 
   function handleSalvarTitulo(titulo: string) {
@@ -47,7 +50,14 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   }
 
   return (
-    <div className="border-b border-pauta">
+    <div className="relative border-b border-pauta">
+      {classificacao && (
+        <span
+          aria-hidden
+          className="absolute inset-y-1 left-0 w-1 rounded-r-sm"
+          style={{ backgroundColor: classificacao.cor }}
+        />
+      )}
       <div className="group/linha flex min-h-12 items-center gap-2 pr-2 pl-1">
         <span className="flex w-5 shrink-0 justify-center">{alca}</span>
         <Checkbox
@@ -69,6 +79,9 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
             <span className="bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)] px-1 text-sm whitespace-nowrap">
               {textoDiasPendente(dias)}
             </span>
+          )}
+          {classificacao && !isEditando && (
+            <span className="text-sm whitespace-nowrap text-grafite">{classificacao.rotulo}</span>
           )}
           {progresso && !isEditando && (
             <BotaoProgresso

@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
 import { deDataLocal, diasEntre, somarDias } from '@/lib/datas'
@@ -24,6 +24,9 @@ export function CabecalhoDia({ data, hoje }: CabecalhoDiaProps) {
   const mesEAno = format(dia, "MMMM 'de' yyyy", { locale: ptBR })
   const nomeRelativo = NOMES_RELATIVOS[diasEntre(hoje, data)]
   const isHoje = data === hoje
+  // Mantém o filtro (`?categoria=...`) ao trocar de dia.
+  const { search } = useLocation()
+  const paraDia = (destino: DataLocal) => ({ pathname: `/dia/${destino}`, search })
 
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
@@ -48,7 +51,7 @@ export function CabecalhoDia({ data, hoje }: CabecalhoDiaProps) {
 
       <nav aria-label="Navegar entre dias" className="flex items-center gap-1">
         <Button asChild variant="ghost" size="icon">
-          <Link to={`/dia/${somarDias(data, -1)}`} aria-label="Dia anterior">
+          <Link to={paraDia(somarDias(data, -1))} aria-label="Dia anterior">
             <ChevronLeft />
           </Link>
         </Button>
@@ -57,12 +60,12 @@ export function CabecalhoDia({ data, hoje }: CabecalhoDiaProps) {
           variant="outline"
           className={isHoje ? 'pointer-events-none opacity-50' : undefined}
         >
-          <Link to={`/dia/${hoje}`} aria-disabled={isHoje} tabIndex={isHoje ? -1 : undefined}>
+          <Link to={paraDia(hoje)} aria-disabled={isHoje} tabIndex={isHoje ? -1 : undefined}>
             Hoje
           </Link>
         </Button>
         <Button asChild variant="ghost" size="icon">
-          <Link to={`/dia/${somarDias(data, 1)}`} aria-label="Próximo dia">
+          <Link to={paraDia(somarDias(data, 1))} aria-label="Próximo dia">
             <ChevronRight />
           </Link>
         </Button>

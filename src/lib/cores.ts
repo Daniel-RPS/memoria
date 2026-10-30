@@ -1,0 +1,50 @@
+/** Cores disponíveis para categorias; escolhidas para ler bem sobre o papel claro. */
+export const PALETA_CATEGORIAS = [
+  { nome: 'Tomate', hex: '#c8402f' },
+  { nome: 'Laranja', hex: '#d0702a' },
+  { nome: 'Mostarda', hex: '#b88d14' },
+  { nome: 'Oliva', hex: '#71842a' },
+  { nome: 'Verde', hex: '#2f8a57' },
+  { nome: 'Petróleo', hex: '#1f7a80' },
+  { nome: 'Azul', hex: '#3366c2' },
+  { nome: 'Índigo', hex: '#5b4fbf' },
+  { nome: 'Ameixa', hex: '#8e4a9e' },
+  { nome: 'Rosa', hex: '#c2477a' },
+  { nome: 'Terra', hex: '#8a5a3c' },
+  { nome: 'Grafite', hex: '#5e6b7a' },
+] as const
+
+export const COR_PADRAO_CATEGORIA = PALETA_CATEGORIAS[6].hex
+
+const PADRAO_HEX = /^#[0-9a-f]{6}$/i
+
+export function isCorValida(cor: string) {
+  return PADRAO_HEX.test(cor)
+}
+
+/**
+ * Passos alternando entre mais claro (mistura com branco) e mais escuro (mistura com preto),
+ * para subcategorias vizinhas ficarem distinguíveis entre si e da categoria.
+ */
+const PASSOS_VARIACAO = [
+  { alvo: 255, quanto: 0.3 },
+  { alvo: 0, quanto: 0.22 },
+  { alvo: 255, quanto: 0.5 },
+  { alvo: 0, quanto: 0.38 },
+] as const
+
+function misturar(canal: number, alvo: number, quanto: number) {
+  return Math.round(canal + (alvo - canal) * quanto)
+}
+
+/** Variação da cor da categoria para a subcategoria de posição `indice` (0, 1, 2...). */
+export function variacaoCor(hex: string, indice: number) {
+  const passo = PASSOS_VARIACAO[indice % PASSOS_VARIACAO.length]
+  const canais = [1, 3, 5].map((inicio) => parseInt(hex.slice(inicio, inicio + 2), 16))
+  return (
+    '#' +
+    canais
+      .map((canal) => misturar(canal, passo.alvo, passo.quanto).toString(16).padStart(2, '0'))
+      .join('')
+  )
+}

@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { db } from '@/db/database'
+import { criarCategoria } from '@/db/repositories/category-repository'
 import { criarSubtarefa } from '@/db/repositories/subtask-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { DiaPage } from '@/features/dia/dia-page'
@@ -120,6 +121,50 @@ describe('Visão do dia', () => {
       await screen.findByRole('button', { name: 'Subtarefas de Viajar: 2 de 2 concluídas' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Concluir Viajar' })).not.toBeChecked()
+  })
+
+  it('filtra por categoria, guarda o filtro na URL e cria a tarefa já na categoria', async () => {
+    const usuario = userEvent.setup()
+    const casa = await criarCategoria({ nome: 'Casa' })
+    const trabalho = await criarCategoria({ nome: 'Trabalho' })
+    await criarTarefa({ titulo: 'Podar', data: hoje(), categoryId: casa.id })
+    await criarTarefa({ titulo: 'Relatório', data: hoje(), categoryId: trabalho.id })
+    const router = renderizarDia(hoje())
+
+    const filtros = await screen.findByRole('group', { name: 'Filtrar por categoria' })
+    await usuario.click(within(filtros).getByRole('button', { name: 'Casa' }))
+
+    const pendentes = await screen.findByRole('list', { name: 'Pendentes' })
+    await waitFor(() => expect(within(pendentes).queryByText('Relatório')).not.toBeInTheDocument())
+    expect(within(pendentes).getByText('Podar')).toBeInTheDocument()
+    expect(router.state.location.search).toBe(`?categoria=${casa.id}`)
+
+    await usuario.type(screen.getByRole('textbox', { name: 'Nova tarefa' }), 'Regar{Enter}')
+    await waitFor(async () => {
+      const regar = (await db.tasks.toArray()).find((tarefa) => tarefa.titulo === 'Regar')
+      expect(regar?.categoryId).toBe(casa.id)
+    })
+
+    await usuario.click(screen.getByRole('link', { name: 'Próximo dia' }))
+    expect(router.state.location.search).toBe(`?categoria=${casa.id}`)
+  })
+
+  it('define a categoria pelo menu e mostra o rótulo na linha', async () => {
+    const usuario = userEvent.setup()
+    const casa = await criarCategoria({ nome: 'Casa' })
+    await criarTarefa({ titulo: 'Lavar louça', data: hoje() })
+    renderizarDia(hoje())
+
+    await usuario.click(await screen.findByRole('button', { name: 'Mais ações para Lavar louça' }))
+    // Pelo teclado: no jsdom o ponteiro simulado fecha o submenu ao sair do item.
+    ;(await screen.findByRole('menuitem', { name: 'Categoria' })).focus()
+    await usuario.keyboard('{ArrowRight}')
+    ;(await screen.findByRole('menuitemradio', { name: 'Casa' })).focus()
+    await usuario.keyboard('{Enter}')
+
+    const pendentes = await screen.findByRole('list', { name: 'Pendentes' })
+    expect(await within(pendentes).findByText('Casa')).toBeInTheDocument()
+    expect((await db.tasks.toArray())[0].categoryId).toBe(casa.id)
   })
 
   it('fecha o painel aberto pelo menu se nada for digitado', async () => {

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus } from 'lucide-react'
 import { cn } from 'cn'
+import { ErroDeValidacao } from '@/lib/erros'
 import { esquemaNovoItem, TAMANHO_MAXIMO_TITULO, type NovoItemInput } from '@/lib/esquemas'
 
 interface CampoNovoItemProps {
@@ -45,9 +46,14 @@ export function CampoNovoItem({
     reset()
     try {
       await onCriar(titulo)
-    } catch {
+    } catch (erro) {
       setValue('titulo', titulo)
-      setError('titulo', { message: 'Não foi possível salvar. Tente de novo.' })
+      setError('titulo', {
+        message:
+          erro instanceof ErroDeValidacao
+            ? erro.message
+            : 'Não foi possível salvar. Tente de novo.',
+      })
     }
   }
 

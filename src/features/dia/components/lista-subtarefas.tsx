@@ -1,6 +1,6 @@
 import type { Subtask, Task } from '@/db/types'
 import { useAcoesSubtarefa } from '@/features/dia/hooks/use-acoes-subtarefa'
-import { CampoNovoItem } from '@/features/dia/components/campo-novo-item'
+import { CampoNovoItem } from '@/components/campo-novo-item'
 import { ItemSubtarefa } from '@/features/dia/components/item-subtarefa'
 import { ListaOrdenavel } from '@/features/dia/components/lista-ordenavel'
 

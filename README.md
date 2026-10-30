@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
 
-> **Status:** fases 1 e 2 concluídas (visão do dia e subtarefas). Próxima: fase 3, categorias.
+> **Status:** fases 1 a 3 concluídas (visão do dia, subtarefas e categorias). Próxima: fase 4, visão de semana e mover tarefas.
 
 ## Funcionalidades
 
@@ -17,7 +17,8 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Reordenar tarefas arrastando (com mouse ou teclado)
 - ✅ Indicação de há quantos dias uma tarefa está pendente
 - ✅ Subtarefas com progresso (ex.: "2 de 5"), reordenáveis e abertas logo abaixo da tarefa
-- 🔜 Categorias e subcategorias com cores, e filtro por categoria
+- ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
+- ✅ Filtro por categoria e subcategoria na visão do dia
 - 🔜 Visões de semana, mês e ano
 
 ### Mover tarefas
@@ -80,8 +81,10 @@ Depois, abra no navegador o endereço que aparecer no terminal (normalmente `htt
 - Escreva na linha **Nova tarefa** e tecle Enter; o campo continua pronto para a próxima.
 - Clique no título para renomear (Enter salva, Esc cancela).
 - Arraste pela alça à esquerda para reordenar. Pelo teclado: foque a alça, tecle espaço, use as setas e espaço de novo.
-- O menu **⋯** de cada tarefa tem Renomear, Adicionar subtarefa, Arquivar e Excluir.
+- O menu **⋯** de cada tarefa tem Renomear, Adicionar subtarefa, Categoria, Arquivar e Excluir.
 - Clique no progresso ("2 de 5") para abrir ou fechar as subtarefas. Concluir todas as subtarefas não conclui a tarefa: você decide.
+- Em **Categorias**, crie categorias e subcategorias e clique na bolinha de cor para trocar a cor. Excluir uma categoria não apaga as tarefas: elas só ficam sem categoria.
+- Na visão do dia, os botões de categoria filtram as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
 
 Outros comandos:
 
@@ -109,7 +112,7 @@ Recomendação: exporte o backup com frequência e guarde o arquivo fora do comp
 | --- | --- | --- |
 | 1 | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação | ✅ |
 | 2 | Subtarefas com progresso | ✅ |
-| 3 | Categorias e subcategorias com cores e filtro | 🔜 |
+| 3 | Categorias e subcategorias com cores e filtro | ✅ |
 | 4 | Visão de semana, arrastar entre dias e ações de mover pendências | 🔜 |
 | 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | 🔜 |
 | 6 | Visões de mês e ano | 🔜 |

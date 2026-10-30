@@ -21,14 +21,17 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `src/app/` shell, rotas e providers
 - `src/features/<feature>/` página (`<feature>-page.tsx`), `components/` e `hooks/` de cada área
 - `src/hooks/` hooks compartilhados entre features (ex.: `use-hoje`)
-- `src/components/ui/` componentes shadcn compartilhados
+- `src/components/ui/` componentes shadcn · `src/components/` componentes próprios usados por 2+ features
 - `src/db/` schema Dexie (`database.ts`), tipos (`types.ts`) e repositórios — IMPORTANTE: componentes NUNCA acessam o Dexie direto, só via repositórios/hooks
 - `src/lib/` regras puras (`datas`, `tarefas`, `esquemas` Zod) — testáveis sem UI
 - Toda escrita passa por repositório, para trocar por sync com backend sem mexer na UI
 - Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` na UI; reuse, não duplique
 - Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
+- Excluir categoria NUNCA apaga tarefas: só limpa `categoryId`/`subcategoryId`
+- Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
+- Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
-- Rotas em `src/app/router.tsx`; a data da visão fica na URL (`/dia/YYYY-MM-DD`)
+- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`)
 
 ## Modelo de dados (resumo)
 - Toda entidade: `id` (`crypto.randomUUID()`), `criadoEm`, `atualizadoEm` — preparam sync; NUNCA ids autoincrementais
@@ -89,3 +92,5 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Hover de linha usa grupo nomeado `group/linha` (linhas aninhadas); não use `group` simples
 - Prévia no app: `.claude/launch.json` usa a porta 5180 fixa
 - Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta`, `grafite`, `pauta`, `caneta`, `marca-texto`)
+- Submenu Radix em teste: use teclado (`ArrowRight`, `Enter`); no jsdom o ponteiro fecha o submenu
+- `db.procedures.modify({...})` não tipa (Step recursivo): use a forma de callback

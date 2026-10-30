@@ -11,7 +11,14 @@ export function listarTarefasDoDia(data: DataLocal) {
     .toArray()
 }
 
-export async function criarTarefa(dados: { titulo: string; data: DataLocal }): Promise<Task> {
+export interface NovaTarefa {
+  titulo: string
+  data: DataLocal
+  categoryId?: string
+  subcategoryId?: string
+}
+
+export async function criarTarefa(dados: NovaTarefa): Promise<Task> {
   return db.transaction('rw', db.tasks, async () => {
     const doDia = await db.tasks.where('data').equals(dados.data).toArray()
     const maiorOrdem = Math.max(0, ...doDia.map((tarefa) => tarefa.ordem))
@@ -21,6 +28,8 @@ export async function criarTarefa(dados: { titulo: string; data: DataLocal }): P
       titulo: dados.titulo.trim(),
       data: dados.data,
       dataOriginal: dados.data,
+      categoryId: dados.categoryId,
+      subcategoryId: dados.categoryId ? dados.subcategoryId : undefined,
       ordem: maiorOrdem + 1,
       status: 'pendente',
       criadoEm: momento,
@@ -43,6 +52,18 @@ export async function definirConclusao(id: string, concluida: boolean) {
       ? { status: 'concluida', concluidaEm: momento, atualizadoEm: momento }
       : { status: 'pendente', concluidaEm: undefined, atualizadoEm: momento },
   )
+}
+
+/** Define a categoria (e opcionalmente a subcategoria); sem `categoryId`, tira a categoria. */
+export async function definirCategoria(
+  id: string,
+  categoria: { categoryId?: string; subcategoryId?: string },
+) {
+  await db.tasks.update(id, {
+    categoryId: categoria.categoryId,
+    subcategoryId: categoria.categoryId ? categoria.subcategoryId : undefined,
+    atualizadoEm: agora(),
+  })
 }
 
 /** Tira do calendário sem concluir. */

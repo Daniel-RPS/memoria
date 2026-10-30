@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { Task } from '@/db/types'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
+import { SubmenuCategoria } from '@/features/dia/components/submenu-categoria'
 
 interface MenuTarefaProps {
   tarefa: Task
@@ -27,7 +28,7 @@ interface MenuTarefaProps {
   onAdicionarSubtarefa: () => void
 }
 
-/** Ações secundárias da tarefa: renomear, subtarefa, arquivar e excluir (com confirmação). */
+/** Ações secundárias da tarefa: renomear, subtarefa, categoria, arquivar e excluir. */
 export function MenuTarefa({ tarefa, onRenomear, onAdicionarSubtarefa }: MenuTarefaProps) {
   const { arquivarTarefa, excluirTarefa } = useAcoesTarefa()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
@@ -67,6 +68,7 @@ export function MenuTarefa({ tarefa, onRenomear, onAdicionarSubtarefa }: MenuTar
           <DropdownMenuItem onSelect={() => abrirCampo(onAdicionarSubtarefa)}>
             <ListPlus /> Adicionar subtarefa
           </DropdownMenuItem>
+          <SubmenuCategoria tarefa={tarefa} />
           <DropdownMenuItem onSelect={() => void arquivarTarefa(tarefa.id)}>
             <Archive /> Arquivar
           </DropdownMenuItem>

@@ -1,6 +1,7 @@
 import {
   arquivarTarefa,
   criarTarefa,
+  definirCategoria,
   definirConclusao,
   excluirTarefa,
   renomearTarefa,
@@ -13,6 +14,7 @@ export function useAcoesTarefa() {
     criarTarefa,
     renomearTarefa,
     definirConclusao,
+    definirCategoria,
     arquivarTarefa,
     excluirTarefa,
     reordenarTarefa,
