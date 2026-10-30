@@ -8,10 +8,10 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Dados: Dexie 4.4 + dexie-react-hooks (`useLiveQuery`) — IndexedDB, blobs para foto, desenho, áudio
 - Arrastar e soltar: @dnd-kit/core 6.3 + sortable 10 · Datas: date-fns 4.4 + locale `pt-BR`
 - Testes: Vitest 5 + Testing Library + fake-indexeddb · Lint: oxlint · Formatação: Prettier
-- Desktop primeiro, sem servidor; estrutura pronta para PWA e sync com backend (fase 9)
+- IMPORTANTE: só computador, uso pessoal, sem servidor nem banco externo (decidido em 30/10/2026). Celular, sync e compartilhamento estão FORA do escopo — não proponha sem o usuário pedir
 
 ## Comandos
-- `npm run dev` — servidor local
+- `npm run dev` — app em `http://localhost:5173` (porta FIXA, `strictPort`: os dados ficam presos à origem)
 - `npm run build` — build de produção (`tsc -b` + Vite)
 - `npm test` — todos os testes · `npx vitest run <arquivo>` — um arquivo
 - `npm run lint` — oxlint · `npm run format` — Prettier
@@ -24,7 +24,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `src/components/ui/` componentes shadcn · `src/components/` componentes próprios usados por 2+ features
 - `src/db/` schema Dexie (`database.ts`), tipos (`types.ts`) e repositórios — IMPORTANTE: componentes NUNCA acessam o Dexie direto, só via repositórios/hooks
 - `src/lib/` regras puras (`datas`, `tarefas`, `esquemas` Zod) — testáveis sem UI
-- Toda escrita passa por repositório, para trocar por sync com backend sem mexer na UI
+- Toda escrita passa por repositório (isola o Dexie da UI)
 - Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` na UI; reuse, não duplique
 - Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
 - Excluir categoria NUNCA apaga tarefas: só limpa `categoryId`/`subcategoryId`
@@ -48,7 +48,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`)
 
 ## Modelo de dados (resumo)
-- Toda entidade: `id` (`crypto.randomUUID()`), `criadoEm`, `atualizadoEm` — preparam sync; NUNCA ids autoincrementais
+- Toda entidade: `id` (`crypto.randomUUID()`), `criadoEm`, `atualizadoEm`; NUNCA ids autoincrementais (deixam aberta uma sync futura)
 - Alterar índices = nova `version()` no Dexie, NUNCA editar a versão existente
 - Category { id, nome, cor } · Subcategory { id, categoryId, nome, cor? } (sem cor = variação da cor da categoria)
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
@@ -99,7 +99,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 6. Visões de mês e ano
 7. Backup: exportar/importar JSON com anexos
 8. Notas, fotos, desenho à mão livre, áudio
-9. Compartilhamento (ver/editar) — exige backend; discutir arquitetura antes
+9. Compartilhamento (ver/editar) — FORA DO ESCOPO
+
+Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são ajustes pedidos pelo usuário.
 
 ## Armadilhas
 - IMPORTANTE: datas são data local `YYYY-MM-DD` (America/Sao_Paulo); NUNCA use `new Date("YYYY-MM-DD")` nem `toISOString()` para dia — geram UTC e deslocam um dia. Use `src/lib/datas.ts`
@@ -117,6 +119,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
 - Campo de criar item: use `CampoNovoItem`; ele limpa ANTES do `await` para não apagar o que o usuário já digitou
 - Hover de linha usa grupo nomeado `group/linha` (linhas aninhadas); não use `group` simples
-- Prévia no app: `.claude/launch.json` usa a porta 5180 fixa
+- Prévia no app: `.claude/launch.json` usa a porta 5180 — outra origem, então os dados de teste da prévia NÃO são os do usuário (5173)
+- `crypto.randomUUID`, gravação de áudio e PWA exigem contexto seguro: `localhost` ou `https` (no Laragon, só com SSL ativo)
 - Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta`, `grafite`, `pauta`, `caneta`, `marca-texto`)
 - Submenu Radix em teste: use teclado (`ArrowRight`, `Enter`); no jsdom o ponteiro fecha o submenu

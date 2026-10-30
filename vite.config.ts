@@ -12,6 +12,12 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // Os dados ficam presos ao endereço (origem) do app. Porta fixa: se estiver ocupada,
+    // o Vite avisa em vez de abrir em outra porta, onde o app pareceria vazio.
+    port: 5173,
+    strictPort: true,
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

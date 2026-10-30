@@ -2,9 +2,9 @@
 
 App pessoal de organização em formato de calendário. Reúne tarefas do dia, subtarefas, categorias coloridas e **procedimentos reutilizáveis**: passo a passo que você executa várias vezes, como uma configuração de servidor ou uma rotina mensal.
 
-A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
+Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos). Próxima: fase 9, compartilhamento (precisa de servidor; arquitetura a combinar).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
@@ -51,7 +51,6 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Anexos em tarefas, notas e procedimentos: fotos, desenhos à mão livre, gravações de áudio e links
 - ✅ Anotação de texto em cada tarefa
 - ✅ Backup: exportar e importar todos os dados, incluindo anexos
-- 🔜 Compartilhamento com outras pessoas, só para ver ou para editar (exige servidor)
 
 ## Stack
 
@@ -67,7 +66,7 @@ Legenda: ✅ pronto · 🔜 planejado
 | Testes | Vitest + Testing Library |
 | Qualidade | oxlint + Prettier |
 
-O projeto vai ser estruturado para virar PWA (instalável, funcionando offline) e, no futuro, sincronizar com um servidor.
+Não há servidor nem banco externo: o app roda inteiro no navegador.
 
 ## Como instalar e rodar
 
@@ -81,7 +80,9 @@ npm install
 npm run dev
 ```
 
-Depois, abra no navegador o endereço que aparecer no terminal (normalmente `http://localhost:5173`).
+Depois, abra no navegador **`http://localhost:5173`**.
+
+> **Sempre pelo mesmo endereço e no mesmo navegador.** Os dados ficam guardados para o endereço em que o app abre. Por isso a porta é fixa: se a 5173 estiver ocupada, o `npm run dev` mostra um erro em vez de abrir em outra porta, onde o app pareceria vazio. Feche o que estiver usando a porta e rode de novo.
 
 ### Usando
 
@@ -144,4 +145,12 @@ Recomendação: faça backup com frequência e guarde o arquivo fora do computad
 | 6 | Visões de mês e ano | ✅ |
 | 7 | Backup: exportar e importar (JSON com anexos) | ✅ |
 | 8 | Notas, fotos, desenhos à mão livre e áudio | ✅ |
-| 9 | Compartilhamento (ver ou editar), com servidor | 🔜 |
+| 9 | Compartilhamento (ver ou editar), com servidor | Fora do escopo |
+
+## Fora do escopo
+
+Decidido em 30/10/2026: o MemorIA é só para um computador, para organizar os seus compromissos.
+
+- **Compartilhamento (fase 9)** e **sincronização entre aparelhos**: exigiriam um servidor. A estrutura dos dados já está preparada (identificadores universais e data de alteração em cada registro), caso um dia isso mude.
+- **Versão para celular**: a interface foi feita para tela de computador.
+- **Abrir sem terminal (opcional):** o app pode ser servido pelo Laragon em `https://memoria.test`. Isso exige ativar o SSL no Laragon (sem `https` o navegador bloqueia funções que o app usa) e levar os dados para o novo endereço com o backup.
