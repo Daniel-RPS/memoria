@@ -4,17 +4,18 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
 
-> **Status:** projeto criado e configurado (stack, banco local e testes). Nenhuma funcionalidade implementada ainda; a próxima é a fase 1.
+> **Status:** fase 1 concluída (visão do dia). Próxima: fase 2, subtarefas.
 
 ## Funcionalidades
 
 Legenda: ✅ pronto · 🔜 planejado
 
 ### Calendário e tarefas
-- 🔜 Visão do dia com caixas de seleção
-- 🔜 Tarefas concluídas riscadas, agrupadas em "Concluídas" (recolhível) no fim do dia
-- 🔜 Reordenar tarefas arrastando
-- 🔜 Indicação de há quantos dias uma tarefa está pendente
+- ✅ Visão do dia com caixas de seleção, navegação entre dias e botão "Hoje"
+- ✅ Criar tarefa digitando na linha "Nova tarefa" e renomear clicando no título
+- ✅ Tarefas concluídas riscadas, agrupadas em "Concluídas" (recolhível) no fim do dia
+- ✅ Reordenar tarefas arrastando (com mouse ou teclado)
+- ✅ Indicação de há quantos dias uma tarefa está pendente
 - 🔜 Subtarefas com progresso (ex.: "2 de 5")
 - 🔜 Categorias e subcategorias com cores, e filtro por categoria
 - 🔜 Visões de semana, mês e ano
@@ -25,7 +26,8 @@ Legenda: ✅ pronto · 🔜 planejado
 - 🔜 Adiar para amanhã
 - 🔜 Mover para outro dia escolhido
 - 🔜 Mover várias tarefas selecionadas de uma vez
-- 🔜 Arquivar (tirar do calendário sem concluir)
+- ✅ Arquivar (tirar do calendário sem concluir)
+- 🔜 Ver e restaurar tarefas arquivadas
 
 ### Procedimentos
 - 🔜 Criar e editar procedimentos com seções, passos, subpassos, trechos de código, alertas e anexos
@@ -73,6 +75,13 @@ npm run dev
 
 Depois, abra no navegador o endereço que aparecer no terminal (normalmente `http://localhost:5173`).
 
+### Usando
+
+- Escreva na linha **Nova tarefa** e tecle Enter; o campo continua pronto para a próxima.
+- Clique no título para renomear (Enter salva, Esc cancela).
+- Arraste pela alça à esquerda para reordenar. Pelo teclado: foque a alça, tecle espaço, use as setas e espaço de novo.
+- O menu **⋯** de cada tarefa tem Renomear, Arquivar e Excluir.
+
 Outros comandos:
 
 | Comando | O que faz |
@@ -86,7 +95,7 @@ Outros comandos:
 
 > Planejado para a fase 7.
 
-Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou trocar de navegador apaga tudo**. O backup vai funcionar assim:
+Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou trocar de navegador apaga tudo**. O app pede ao navegador armazenamento persistente, mas o navegador nem sempre concede. O backup vai funcionar assim:
 
 - **Exportar:** gera um arquivo `.json` com todas as tarefas, categorias, procedimentos, notas e anexos (fotos, desenhos e áudios incluídos).
 - **Importar:** carrega esse arquivo e restaura todos os dados.
@@ -97,7 +106,7 @@ Recomendação: exporte o backup com frequência e guarde o arquivo fora do comp
 
 | Fase | Entrega | Status |
 | --- | --- | --- |
-| 1 | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação | 🔜 |
+| 1 | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação | ✅ |
 | 2 | Subtarefas com progresso | 🔜 |
 | 3 | Categorias e subcategorias com cores e filtro | 🔜 |
 | 4 | Visão de semana, arrastar entre dias e ações de mover pendências | 🔜 |

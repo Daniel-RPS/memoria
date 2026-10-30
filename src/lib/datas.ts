@@ -25,3 +25,12 @@ export function somarDias(data: DataLocal, dias: number): DataLocal {
 export function diasEntre(inicio: DataLocal, fim: DataLocal): number {
   return differenceInCalendarDays(deDataLocal(fim), deDataLocal(inicio))
 }
+
+const PADRAO_DATA_LOCAL = /^\d{4}-\d{2}-\d{2}$/
+
+/** Valida texto vindo de fora (URL, importação) como data local existente. */
+export function isDataLocalValida(texto: string | undefined): texto is DataLocal {
+  if (!texto || !PADRAO_DATA_LOCAL.test(texto)) return false
+  const data = deDataLocal(texto)
+  return !Number.isNaN(data.getTime()) && paraDataLocal(data) === texto
+}

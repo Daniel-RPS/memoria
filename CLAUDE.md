@@ -19,11 +19,14 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 
 ## Arquitetura
 - `src/app/` shell, rotas e providers
-- `src/features/<feature>/` UI, hooks e serviços de cada área (dia, semana, procedimentos...)
+- `src/features/<feature>/` página (`<feature>-page.tsx`), `components/` e `hooks/` de cada área
+- `src/hooks/` hooks compartilhados entre features (ex.: `use-hoje`)
 - `src/components/ui/` componentes shadcn compartilhados
 - `src/db/` schema Dexie (`database.ts`), tipos (`types.ts`) e repositórios — IMPORTANTE: componentes NUNCA acessam o Dexie direto, só via repositórios/hooks
-- `src/lib/` regras puras (datas, mover tarefas, dias pendentes) — testáveis sem UI
+- `src/lib/` regras puras (`datas`, `tarefas`, `esquemas` Zod) — testáveis sem UI
 - Toda escrita passa por repositório, para trocar por sync com backend sem mexer na UI
+- Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
+- Rotas em `src/app/router.tsx`; a data da visão fica na URL (`/dia/YYYY-MM-DD`)
 
 ## Modelo de dados (resumo)
 - Toda entidade: `id` (`crypto.randomUUID()`), `criadoEm`, `atualizadoEm` — preparam sync; NUNCA ids autoincrementais
@@ -77,5 +80,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 
 ## Armadilhas
 - IMPORTANTE: datas são data local `YYYY-MM-DD` (America/Sao_Paulo); NUNCA use `new Date("YYYY-MM-DD")` nem `toISOString()` para dia — geram UTC e deslocam um dia. Use `src/lib/datas.ts`
-- Testes rodam com `TZ=America/Sao_Paulo` (definido em `vite.config.ts`)
-- `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint
+- Testes rodam com `TZ=America/Sao_Paulo` (definido em `vite.config.ts`); sem `globals`, importe `describe/it/expect` de `vitest`
+- `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
+- shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
+- Campo que limpa após salvar: limpe ANTES do `await`, senão apaga o que o usuário já digitou
+- Prévia no app: `.claude/launch.json` usa a porta 5180 fixa
+- Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta`, `grafite`, `pauta`, `caneta`, `marca-texto`)
