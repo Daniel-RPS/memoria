@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { db } from '@/db/database'
+import { criarSubtarefa } from '@/db/repositories/subtask-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { DiaPage } from '@/features/dia/dia-page'
 import { hoje, somarDias } from '@/lib/datas'
@@ -78,5 +79,62 @@ describe('Visão do dia', () => {
   it('volta para hoje quando a data da URL é inválida', async () => {
     const router = renderizarDia('2026-02-31')
     await waitFor(() => expect(router.state.location.pathname).toBe(`/dia/${hoje()}`))
+  })
+
+  it('adiciona subtarefas pelo menu e mostra o progresso', async () => {
+    const usuario = userEvent.setup()
+    await criarTarefa({ titulo: 'Mudar de casa', data: hoje() })
+    renderizarDia(hoje())
+
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Mais ações para Mudar de casa' }),
+    )
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar subtarefa' }))
+
+    const campo = await screen.findByRole('textbox', { name: 'Nova subtarefa' })
+    await waitFor(() => expect(campo).toHaveFocus())
+    await usuario.type(campo, 'Caixas{Enter}Fita{Enter}')
+
+    const progresso = await screen.findByRole('button', {
+      name: 'Subtarefas de Mudar de casa: 0 de 2 concluídas',
+    })
+    expect(progresso).toHaveTextContent('0 de 2')
+    expect(progresso).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('marcar subtarefas atualiza o progresso e não conclui a tarefa', async () => {
+    const usuario = userEvent.setup()
+    const tarefa = await criarTarefa({ titulo: 'Viajar', data: hoje() })
+    await criarSubtarefa({ taskId: tarefa.id, titulo: 'Passagem' })
+    await criarSubtarefa({ taskId: tarefa.id, titulo: 'Hotel' })
+    renderizarDia(hoje())
+
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Subtarefas de Viajar: 0 de 2 concluídas' }),
+    )
+    const subtarefas = screen.getByRole('list', { name: 'Subtarefas de Viajar' })
+    await usuario.click(within(subtarefas).getByRole('checkbox', { name: 'Concluir Passagem' }))
+    await usuario.click(within(subtarefas).getByRole('checkbox', { name: 'Concluir Hotel' }))
+
+    expect(
+      await screen.findByRole('button', { name: 'Subtarefas de Viajar: 2 de 2 concluídas' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Concluir Viajar' })).not.toBeChecked()
+  })
+
+  it('fecha o painel aberto pelo menu se nada for digitado', async () => {
+    const usuario = userEvent.setup()
+    await criarTarefa({ titulo: 'Ler livro', data: hoje() })
+    renderizarDia(hoje())
+
+    await usuario.click(await screen.findByRole('button', { name: 'Mais ações para Ler livro' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar subtarefa' }))
+    const campo = await screen.findByRole('textbox', { name: 'Nova subtarefa' })
+    await waitFor(() => expect(campo).toHaveFocus())
+
+    await usuario.click(screen.getByRole('textbox', { name: 'Nova tarefa' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: 'Nova subtarefa' })).not.toBeInTheDocument(),
+    )
   })
 })

@@ -1,12 +1,24 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { listarSubtarefas } from '@/db/repositories/subtask-repository'
 import { listarTarefasDoDia } from '@/db/repositories/task-repository'
 import type { DataLocal } from '@/db/types'
-import { separarDoDia } from '@/lib/tarefas'
+import { agruparSubtarefas, separarDoDia } from '@/lib/tarefas'
 
-/** Pendentes e concluídas do dia, atualizadas sozinhas quando o banco muda. */
+/** Tarefas do dia e suas subtarefas, atualizadas sozinhas quando o banco muda. */
 export function useTarefasDoDia(data: DataLocal) {
-  const tarefas = useLiveQuery(() => listarTarefasDoDia(data), [data])
-  const separadas = useMemo(() => separarDoDia(tarefas ?? []), [tarefas])
-  return { ...separadas, isCarregando: tarefas === undefined }
+  const resultado = useLiveQuery(async () => {
+    const tarefas = await listarTarefasDoDia(data)
+    const subtarefas = await listarSubtarefas(tarefas.map((tarefa) => tarefa.id))
+    return { tarefas, subtarefas }
+  }, [data])
+
+  return useMemo(
+    () => ({
+      ...separarDoDia(resultado?.tarefas ?? []),
+      subtarefasPorTarefa: agruparSubtarefas(resultado?.subtarefas ?? []),
+      isCarregando: resultado === undefined,
+    }),
+    [resultado],
+  )
 }

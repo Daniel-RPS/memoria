@@ -1,17 +1,18 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
 import { cn } from 'cn'
-import type { DataLocal, Task } from '@/db/types'
+import type { DataLocal, Subtask, Task } from '@/db/types'
+import { AlcaArrastar } from '@/features/dia/components/alca-arrastar'
 import { LinhaTarefa } from '@/features/dia/components/linha-tarefa'
 
 interface ItemPendenteProps {
   tarefa: Task
+  subtarefas: Subtask[]
   hoje: DataLocal
 }
 
 /** Linha de tarefa pendente que pode ser arrastada pela alça. */
-export function ItemPendente({ tarefa, hoje }: ItemPendenteProps) {
+export function ItemPendente({ tarefa, subtarefas, hoje }: ItemPendenteProps) {
   const {
     attributes,
     listeners,
@@ -30,18 +31,15 @@ export function ItemPendente({ tarefa, hoje }: ItemPendenteProps) {
     >
       <LinhaTarefa
         tarefa={tarefa}
+        subtarefas={subtarefas}
         hoje={hoje}
         alca={
-          <button
+          <AlcaArrastar
+            rotulo={`Mover ${tarefa.titulo}`}
             ref={setActivatorNodeRef}
-            type="button"
-            aria-label={`Mover ${tarefa.titulo}`}
-            className="flex h-8 w-5 cursor-grab touch-none items-center justify-center rounded-sm text-grafite opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-caneta active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="size-4" />
-          </button>
+            attributes={attributes}
+            listeners={listeners}
+          />
         }
       />
     </li>

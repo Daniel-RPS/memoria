@@ -1,16 +1,19 @@
 import { ChevronRight } from 'lucide-react'
 import { cn } from 'cn'
-import type { DataLocal, Task } from '@/db/types'
+import type { DataLocal, Subtask, Task } from '@/db/types'
 import { useConcluidasRecolhidas } from '@/features/dia/hooks/use-concluidas-recolhidas'
 import { LinhaTarefa } from '@/features/dia/components/linha-tarefa'
 
 interface GrupoConcluidasProps {
   concluidas: Task[]
+  subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
 }
 
+const SEM_SUBTAREFAS: Subtask[] = []
+
 /** Concluídas do dia, riscadas, num grupo recolhível abaixo da folha. */
-export function GrupoConcluidas({ concluidas, hoje }: GrupoConcluidasProps) {
+export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: GrupoConcluidasProps) {
   const { isRecolhido, alternar } = useConcluidasRecolhidas()
 
   if (concluidas.length === 0) return null
@@ -41,7 +44,11 @@ export function GrupoConcluidas({ concluidas, hoje }: GrupoConcluidasProps) {
         >
           {concluidas.map((tarefa) => (
             <li key={tarefa.id}>
-              <LinhaTarefa tarefa={tarefa} hoje={hoje} />
+              <LinhaTarefa
+                tarefa={tarefa}
+                subtarefas={subtarefasPorTarefa.get(tarefa.id) ?? SEM_SUBTAREFAS}
+                hoje={hoje}
+              />
             </li>
           ))}
         </ul>

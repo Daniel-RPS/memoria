@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Archive, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Archive, ListPlus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,14 +24,20 @@ import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 interface MenuTarefaProps {
   tarefa: Task
   onRenomear: () => void
+  onAdicionarSubtarefa: () => void
 }
 
-/** Ações secundárias da tarefa: renomear, arquivar e excluir (com confirmação). */
-export function MenuTarefa({ tarefa, onRenomear }: MenuTarefaProps) {
+/** Ações secundárias da tarefa: renomear, subtarefa, arquivar e excluir (com confirmação). */
+export function MenuTarefa({ tarefa, onRenomear, onAdicionarSubtarefa }: MenuTarefaProps) {
   const { arquivarTarefa, excluirTarefa } = useAcoesTarefa()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
-  // Ao renomear, o foco deve ficar no campo de título, não voltar para o botão do menu.
-  const isRenomeandoRef = useRef(false)
+  // Ações que abrem um campo: o foco deve ficar nele, não voltar para o botão do menu.
+  const isAbrindoCampoRef = useRef(false)
+
+  function abrirCampo(acao: () => void) {
+    isAbrindoCampoRef.current = true
+    acao()
+  }
 
   return (
     <>
@@ -42,7 +48,7 @@ export function MenuTarefa({ tarefa, onRenomear }: MenuTarefaProps) {
             variant="ghost"
             size="icon-sm"
             aria-label={`Mais ações para ${tarefa.titulo}`}
-            className="text-grafite opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+            className="text-grafite opacity-0 group-hover/linha:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
           >
             <MoreHorizontal />
           </Button>
@@ -50,18 +56,16 @@ export function MenuTarefa({ tarefa, onRenomear }: MenuTarefaProps) {
         <DropdownMenuContent
           align="end"
           onCloseAutoFocus={(evento) => {
-            if (!isRenomeandoRef.current) return
+            if (!isAbrindoCampoRef.current) return
             evento.preventDefault()
-            isRenomeandoRef.current = false
+            isAbrindoCampoRef.current = false
           }}
         >
-          <DropdownMenuItem
-            onSelect={() => {
-              isRenomeandoRef.current = true
-              onRenomear()
-            }}
-          >
+          <DropdownMenuItem onSelect={() => abrirCampo(onRenomear)}>
             <Pencil /> Renomear
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => abrirCampo(onAdicionarSubtarefa)}>
+            <ListPlus /> Adicionar subtarefa
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void arquivarTarefa(tarefa.id)}>
             <Archive /> Arquivar

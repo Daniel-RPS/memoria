@@ -1,10 +1,6 @@
 import { db } from '@/db/database'
 import type { DataLocal, Task } from '@/db/types'
-import { ordemEntre } from '@/lib/tarefas'
-
-function agora() {
-  return new Date().toISOString()
-}
+import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 
 /** Tarefas visíveis no dia (pendentes e concluídas; arquivadas ficam fora). */
 export function listarTarefasDoDia(data: DataLocal) {
@@ -62,29 +58,7 @@ export async function excluirTarefa(id: string) {
   })
 }
 
-/**
- * Grava a nova posição de `idMovido` dentro de `idsEmOrdem` (pendentes do dia, já reordenadas).
- * Só a tarefa movida é alterada; se não houver espaço entre os vizinhos, renumera o dia.
- */
+/** Grava a nova posição de `idMovido` entre as pendentes do dia (`idsEmOrdem` já reordenado). */
 export async function reordenarTarefa(idsEmOrdem: string[], idMovido: string) {
-  await db.transaction('rw', db.tasks, async () => {
-    const tarefas = await db.tasks.bulkGet(idsEmOrdem)
-    const ordemPorId = new Map(tarefas.map((tarefa) => [tarefa?.id, tarefa?.ordem]))
-    const posicao = idsEmOrdem.indexOf(idMovido)
-    const anterior = ordemPorId.get(idsEmOrdem[posicao - 1])
-    const posterior = ordemPorId.get(idsEmOrdem[posicao + 1])
-    const momento = agora()
-
-    const novaOrdem = ordemEntre(anterior, posterior)
-    if (novaOrdem !== null) {
-      await db.tasks.update(idMovido, { ordem: novaOrdem, atualizadoEm: momento })
-      return
-    }
-
-    await Promise.all(
-      idsEmOrdem.map((id, indice) =>
-        db.tasks.update(id, { ordem: indice + 1, atualizadoEm: momento }),
-      ),
-    )
-  })
+  await db.transaction('rw', db.tasks, () => gravarNovaPosicao(db.tasks, idsEmOrdem, idMovido))
 }

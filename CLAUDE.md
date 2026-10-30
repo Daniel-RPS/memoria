@@ -25,6 +25,8 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `src/db/` schema Dexie (`database.ts`), tipos (`types.ts`) e repositórios — IMPORTANTE: componentes NUNCA acessam o Dexie direto, só via repositórios/hooks
 - `src/lib/` regras puras (`datas`, `tarefas`, `esquemas` Zod) — testáveis sem UI
 - Toda escrita passa por repositório, para trocar por sync com backend sem mexer na UI
+- Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` na UI; reuse, não duplique
+- Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
 - Rotas em `src/app/router.tsx`; a data da visão fica na URL (`/dia/YYYY-MM-DD`)
 
@@ -83,6 +85,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Testes rodam com `TZ=America/Sao_Paulo` (definido em `vite.config.ts`); sem `globals`, importe `describe/it/expect` de `vitest`
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
-- Campo que limpa após salvar: limpe ANTES do `await`, senão apaga o que o usuário já digitou
+- Campo de criar item: use `CampoNovoItem`; ele limpa ANTES do `await` para não apagar o que o usuário já digitou
+- Hover de linha usa grupo nomeado `group/linha` (linhas aninhadas); não use `group` simples
 - Prévia no app: `.claude/launch.json` usa a porta 5180 fixa
 - Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta`, `grafite`, `pauta`, `caneta`, `marca-texto`)

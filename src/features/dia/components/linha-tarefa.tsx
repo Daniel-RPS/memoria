@@ -1,56 +1,102 @@
 import { useState, type ReactNode } from 'react'
 import { cn } from 'cn'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { DataLocal, Task } from '@/db/types'
-import { diasPendente, textoDiasPendente } from '@/lib/tarefas'
+import type { DataLocal, Subtask, Task } from '@/db/types'
+import { diasPendente, progressoSubtarefas, textoDiasPendente } from '@/lib/tarefas'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
+import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
+import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
 import { MenuTarefa } from '@/features/dia/components/menu-tarefa'
 import { TituloEditavel } from '@/features/dia/components/titulo-editavel'
 
 interface LinhaTarefaProps {
   tarefa: Task
+  subtarefas: Subtask[]
   hoje: DataLocal
   /** Alça de arrastar; ausente nas concluídas. */
   alca?: ReactNode
 }
 
-/** Uma linha pautada: caixa de seleção, título, selo de atraso e menu de ações. */
-export function LinhaTarefa({ tarefa, hoje, alca }: LinhaTarefaProps) {
+/**
+ * Uma linha pautada: caixa de seleção, título, selo de atraso, progresso e menu.
+ * As subtarefas abrem logo abaixo, recuadas.
+ */
+export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps) {
   const { definirConclusao, renomearTarefa } = useAcoesTarefa()
   const [isEditando, setIsEditando] = useState(false)
+  const [isSubtarefasAbertas, setIsSubtarefasAbertas] = useState(false)
+  const [isFocandoNovaSubtarefa, setIsFocandoNovaSubtarefa] = useState(false)
   const isConcluida = tarefa.status === 'concluida'
   const dias = diasPendente(tarefa, hoje)
+  const progresso = progressoSubtarefas(subtarefas)
+  const idPainel = `subtarefas-${tarefa.id}`
 
   function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
     if (titulo !== tarefa.titulo) void renomearTarefa(tarefa.id, titulo)
   }
 
+  function handleAdicionarSubtarefa() {
+    setIsSubtarefasAbertas(true)
+    setIsFocandoNovaSubtarefa(true)
+  }
+
+  function handleAlternarSubtarefas() {
+    setIsSubtarefasAbertas((atual) => !atual)
+    setIsFocandoNovaSubtarefa(false)
+  }
+
   return (
-    <div className="group flex min-h-12 items-center gap-2 border-b border-pauta pr-2 pl-1">
-      <span className="flex w-5 shrink-0 justify-center">{alca}</span>
-      <Checkbox
-        checked={isConcluida}
-        onCheckedChange={(marcada) => void definirConclusao(tarefa.id, marcada === true)}
-        aria-label={isConcluida ? `Desmarcar ${tarefa.titulo}` : `Concluir ${tarefa.titulo}`}
-        className="size-5 rounded-[4px] border-2 border-tinta/70 data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
-      />
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-1">
-        <TituloEditavel
-          titulo={tarefa.titulo}
-          isEditando={isEditando}
-          onIniciarEdicao={() => setIsEditando(true)}
-          onSalvar={handleSalvarTitulo}
-          onCancelar={() => setIsEditando(false)}
-          className={cn(isConcluida && 'text-grafite line-through decoration-tinta/50')}
+    <div className="border-b border-pauta">
+      <div className="group/linha flex min-h-12 items-center gap-2 pr-2 pl-1">
+        <span className="flex w-5 shrink-0 justify-center">{alca}</span>
+        <Checkbox
+          checked={isConcluida}
+          onCheckedChange={(marcada) => void definirConclusao(tarefa.id, marcada === true)}
+          aria-label={isConcluida ? `Desmarcar ${tarefa.titulo}` : `Concluir ${tarefa.titulo}`}
+          className="size-5 rounded-[4px] border-2 border-tinta/70 data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
         />
-        {dias !== null && !isEditando && (
-          <span className="bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)] px-1 text-sm whitespace-nowrap">
-            {textoDiasPendente(dias)}
-          </span>
-        )}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-1">
+          <TituloEditavel
+            titulo={tarefa.titulo}
+            isEditando={isEditando}
+            onIniciarEdicao={() => setIsEditando(true)}
+            onSalvar={handleSalvarTitulo}
+            onCancelar={() => setIsEditando(false)}
+            className={cn(isConcluida && 'text-grafite line-through decoration-tinta/50')}
+          />
+          {dias !== null && !isEditando && (
+            <span className="bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)] px-1 text-sm whitespace-nowrap">
+              {textoDiasPendente(dias)}
+            </span>
+          )}
+          {progresso && !isEditando && (
+            <BotaoProgresso
+              progresso={progresso}
+              tituloTarefa={tarefa.titulo}
+              isAberto={isSubtarefasAbertas}
+              idPainel={idPainel}
+              onAlternar={handleAlternarSubtarefas}
+            />
+          )}
+        </div>
+        <MenuTarefa
+          tarefa={tarefa}
+          onRenomear={() => setIsEditando(true)}
+          onAdicionarSubtarefa={handleAdicionarSubtarefa}
+        />
       </div>
-      <MenuTarefa tarefa={tarefa} onRenomear={() => setIsEditando(true)} />
+
+      {isSubtarefasAbertas && (
+        <div id={idPainel} className="pb-2 pl-[3.25rem]">
+          <ListaSubtarefas
+            tarefa={tarefa}
+            subtarefas={subtarefas}
+            isFocandoNovaSubtarefa={isFocandoNovaSubtarefa}
+            onFechar={() => setIsSubtarefasAbertas(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }

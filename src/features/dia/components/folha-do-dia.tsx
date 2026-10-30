@@ -11,7 +11,7 @@ interface FolhaDoDiaProps {
 
 /** A folha pautada do dia: pendentes, linha para nova tarefa e o grupo de concluídas. */
 export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
-  const { pendentes, concluidas, isCarregando } = useTarefasDoDia(data)
+  const { pendentes, concluidas, subtarefasPorTarefa, isCarregando } = useTarefasDoDia(data)
   const isVazio = !isCarregando && pendentes.length === 0
 
   return (
@@ -24,10 +24,18 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
               : 'Nada marcado para este dia. Escreva a primeira tarefa abaixo.'}
           </p>
         )}
-        <ListaPendentes pendentes={pendentes} hoje={hoje} />
+        <ListaPendentes
+          pendentes={pendentes}
+          subtarefasPorTarefa={subtarefasPorTarefa}
+          hoje={hoje}
+        />
         <NovaTarefa data={data} />
       </div>
-      <GrupoConcluidas concluidas={concluidas} hoje={hoje} />
+      <GrupoConcluidas
+        concluidas={concluidas}
+        subtarefasPorTarefa={subtarefasPorTarefa}
+        hoje={hoje}
+      />
     </section>
   )
 }

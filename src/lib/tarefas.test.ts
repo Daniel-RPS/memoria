@@ -1,6 +1,49 @@
 import { describe, expect, it } from 'vitest'
-import type { Task } from '@/db/types'
-import { diasPendente, ordemEntre, separarDoDia, textoDiasPendente } from '@/lib/tarefas'
+import type { Subtask, Task } from '@/db/types'
+import {
+  agruparSubtarefas,
+  diasPendente,
+  ordemEntre,
+  progressoSubtarefas,
+  separarDoDia,
+  textoDiasPendente,
+  textoProgresso,
+} from '@/lib/tarefas'
+
+describe('progressoSubtarefas', () => {
+  it('conta concluídas sobre o total', () => {
+    const progresso = progressoSubtarefas([
+      { concluida: true },
+      { concluida: false },
+      { concluida: true },
+      { concluida: false },
+      { concluida: false },
+    ])
+    expect(progresso).toEqual({ concluidas: 2, total: 5 })
+    expect(textoProgresso(progresso!)).toBe('2 de 5')
+  })
+
+  it('não mostra progresso para tarefa sem subtarefas', () => {
+    expect(progressoSubtarefas([])).toBeNull()
+  })
+})
+
+describe('agruparSubtarefas', () => {
+  it('agrupa por tarefa e ordena cada grupo', () => {
+    const sub = (id: string, taskId: string, ordem: number): Subtask => ({
+      id,
+      taskId,
+      ordem,
+      titulo: id,
+      concluida: false,
+      criadoEm: '',
+      atualizadoEm: '',
+    })
+    const grupos = agruparSubtarefas([sub('b', 't1', 2), sub('x', 't2', 1), sub('a', 't1', 1)])
+    expect(grupos.get('t1')?.map((item) => item.id)).toEqual(['a', 'b'])
+    expect(grupos.get('t2')?.map((item) => item.id)).toEqual(['x'])
+  })
+})
 
 function tarefa(campos: Partial<Task>): Task {
   return {

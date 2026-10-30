@@ -8,6 +8,6 @@ export const esquemaTituloTarefa = z
   .min(1, 'Escreva o nome da tarefa.')
   .max(TAMANHO_MAXIMO_TITULO, `Use no máximo ${TAMANHO_MAXIMO_TITULO} caracteres.`)
 
-export const esquemaNovaTarefa = z.object({ titulo: esquemaTituloTarefa })
+export const esquemaNovoItem = z.object({ titulo: esquemaTituloTarefa })
 
-export type NovaTarefaInput = z.infer<typeof esquemaNovaTarefa>
+export type NovoItemInput = z.infer<typeof esquemaNovoItem>
