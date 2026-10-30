@@ -20,13 +20,16 @@ import { iniciaisDosDias } from '@/lib/calendario'
 import { somarDias } from '@/lib/datas'
 import { nomeDoDia } from '@/lib/mover'
 import { separarDoDia } from '@/lib/tarefas'
+import { pendentesDo, podeCopiarGrupo, progressoDoGrupo, type GrupoDoDia } from '@/lib/grupos'
 import { CelulaDia, PREFIXO_CELULA } from '@/features/mes/components/celula-dia'
-import { ChipTarefa } from '@/features/mes/components/chip-tarefa'
+import { ChipGrupo, ChipTarefa } from '@/features/mes/components/chip-tarefa'
 
 interface GradeMesProps {
   inicioDoMes: DataLocal
   semanas: DataLocal[][]
   tarefas: Task[]
+  /** Cards do período: aparecem como um chip ("Casa · 2") e contam os itens no dia. */
+  grupos: GrupoDoDia[]
   hoje: DataLocal
 }
 
@@ -69,10 +72,14 @@ const instrucoesLeitorDeTela = {
     'Para mover para outro dia, pressione espaço. As setas andam um dia para os lados e uma semana para cima e para baixo. Espaço de novo solta. Esc cancela.',
 }
 
-/** Grade do mês; arrastar uma tarefa para outra célula muda o dia dela. */
-export function GradeMes({ inicioDoMes, semanas, tarefas, hoje }: GradeMesProps) {
+/**
+ * Grade do mês; arrastar uma tarefa para outra célula muda o dia dela. Arrastar o chip de um
+ * card copia os itens pendentes para o card da mesma série naquele dia.
+ */
+export function GradeMes({ inicioDoMes, semanas, tarefas, grupos, hoje }: GradeMesProps) {
   const { mover } = useMoverTarefas()
   const [ativa, setAtiva] = useState<Task | null>(null)
+  const [grupoAtivo, setGrupoAtivo] = useState<GrupoDoDia | null>(null)
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
     useSensor(KeyboardSensor, {
@@ -82,7 +89,9 @@ export function GradeMes({ inicioDoMes, semanas, tarefas, hoje }: GradeMesProps)
   )
   const dias = iniciaisDosDias()
   const tituloDe = (id: string | number) =>
-    tarefas.find((tarefa) => tarefa.id === String(id))?.titulo ?? 'tarefa'
+    tarefas.find((tarefa) => tarefa.id === String(id))?.titulo ??
+    grupos.find((grupo) => grupo.card.id === String(id))?.serie.titulo ??
+    'tarefa'
 
   const anuncios: Announcements = {
     onDragStart: ({ active }) => `Movendo ${tituloDe(active.id)}.`,
@@ -95,13 +104,18 @@ export function GradeMes({ inicioDoMes, semanas, tarefas, hoje }: GradeMesProps)
 
   function handleDragStart({ active }: DragStartEvent) {
     setAtiva(tarefas.find((tarefa) => tarefa.id === String(active.id)) ?? null)
+    setGrupoAtivo(grupos.find((grupo) => grupo.card.id === String(active.id)) ?? null)
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     setAtiva(null)
+    setGrupoAtivo(null)
     if (!over) return
     const destino = diaDaCelula(over.id)
-    if (destino !== active.data.current?.data) void mover([String(active.id)], destino)
+    if (destino === active.data.current?.data) return
+    const id = String(active.id)
+    if (active.data.current?.isGrupo) void mover([], destino, { grupos: [id] })
+    else void mover([id], destino)
   }
 
   return (
@@ -110,7 +124,10 @@ export function GradeMes({ inicioDoMes, semanas, tarefas, hoje }: GradeMesProps)
       collisionDetection={detectarCelula}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setAtiva(null)}
+      onDragCancel={() => {
+        setAtiva(null)
+        setGrupoAtivo(null)
+      }}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
       <div className="mt-8 overflow-hidden rounded-md border border-pauta bg-papel">
@@ -128,6 +145,8 @@ export function GradeMes({ inicioDoMes, semanas, tarefas, hoje }: GradeMesProps)
           {semanas.flat().map((data) => {
             const doDia = tarefas.filter((tarefa) => tarefa.data === data)
             const { pendentes, concluidas } = separarDoDia(doDia)
+            const gruposDoDia = grupos.filter((grupo) => grupo.card.data === data)
+            const progressos = gruposDoDia.map(progressoDoGrupo)
             return (
               <CelulaDia
                 key={data}
@@ -135,7 +154,15 @@ export function GradeMes({ inicioDoMes, semanas, tarefas, hoje }: GradeMesProps)
                 hoje={hoje}
                 inicioDoMes={inicioDoMes}
                 pendentes={pendentes}
-                quantidadeConcluidas={concluidas.length}
+                gruposComPendentes={gruposDoDia.filter(podeCopiarGrupo)}
+                quantidadePendentes={
+                  pendentes.length +
+                  progressos.reduce((total, progresso) => total + progresso.pendentes, 0)
+                }
+                quantidadeConcluidas={
+                  concluidas.length +
+                  progressos.reduce((total, progresso) => total + progresso.feitos, 0)
+                }
               />
             )
           })}
@@ -143,6 +170,14 @@ export function GradeMes({ inicioDoMes, semanas, tarefas, hoje }: GradeMesProps)
       </div>
       <DragOverlay dropAnimation={null}>
         {ativa && <ChipTarefa tarefa={ativa} hoje={hoje} isSobreposto />}
+        {grupoAtivo && (
+          <ChipGrupo
+            grupo={grupoAtivo}
+            quantidade={pendentesDo(grupoAtivo).length}
+            hoje={hoje}
+            isSobreposto
+          />
+        )}
       </DragOverlay>
     </DndContext>
   )

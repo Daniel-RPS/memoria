@@ -1,60 +1,69 @@
 import { toast } from 'sonner'
-import { adiarTarefasEGrupos, moverTarefasEGrupos } from '@/db/repositories/group-repository'
 import {
-  restaurarPosicoes,
+  adiarSelecao,
+  desfazerAcao,
+  moverSelecao,
   trazerPendenciasDeOntem,
-  type ResultadoMovimento,
-} from '@/db/repositories/task-repository'
+  type ResultadoAcao,
+} from '@/db/repositories/group-repository'
 import type { DataLocal } from '@/db/types'
 import { useHoje } from '@/hooks/use-hoje'
 import { somarDias } from '@/lib/datas'
-import { nomeDoDia, textoMovimento } from '@/lib/mover'
+import { textoAcao } from '@/lib/mover'
 
 /** Tempo do aviso com "Desfazer": o padrão (4 s) é curto para perceber um engano. */
 const DURACAO_AVISO_MS = 8000
 
+/** Cards inteiros e itens avulsos de grupo: são copiados, não movidos. */
+export interface DeGrupos {
+  grupos?: string[]
+  itens?: string[]
+}
+
 /**
- * Ações de mover tarefas e cards de grupo entre dias com aviso e "Desfazer".
- * O que é movido some da tela, então o aviso confirma para onde foi.
+ * Ações de mover com aviso e "Desfazer": tarefas soltas mudam de dia; itens pendentes de
+ * grupo são copiados para o card da mesma série no destino (o original fica como transferido).
  */
 export function useMoverTarefas() {
   const hoje = useHoje()
 
-  function avisar(resultado: ResultadoMovimento, mensagem: string) {
-    if (resultado.quantidade === 0 && resultado.gruposVaziosMovidos === 0) return resultado
+  function avisar(resultado: ResultadoAcao, mensagem: string) {
+    if (resultado.tarefasMovidas === 0 && resultado.itensCopiados === 0) return resultado
     toast(mensagem, {
       duration: DURACAO_AVISO_MS,
-      action: {
-        label: 'Desfazer',
-        onClick: () => void restaurarPosicoes(resultado.anteriores, resultado.grupos),
-      },
+      action: { label: 'Desfazer', onClick: () => void desfazerAcao(resultado) },
     })
     return resultado
   }
 
-  function mensagemDeMovimento(resultado: ResultadoMovimento, destino: DataLocal) {
-    // Card vazio não tem tarefa para contar.
-    if (resultado.quantidade === 0) return `Grupo movido para ${nomeDoDia(destino, hoje)}`
-    return textoMovimento(resultado.quantidade, destino, hoje)
+  async function mover(ids: string[], destino: DataLocal, deGrupos: DeGrupos = {}) {
+    const resultado = await moverSelecao({ tarefas: ids, ...deGrupos }, destino)
+    return avisar(
+      resultado,
+      textoAcao(resultado.tarefasMovidas, resultado.itensCopiados, destino, hoje),
+    )
   }
 
-  /** Move tarefas (soltas ou itens) e, opcionalmente, cards inteiros (só os pendentes vão). */
-  async function mover(ids: string[], destino: DataLocal, idsGrupos: string[] = []) {
-    const resultado = await moverTarefasEGrupos(ids, idsGrupos, destino)
-    return avisar(resultado, mensagemDeMovimento(resultado, destino))
-  }
-
-  async function adiar(ids: string[], idsGrupos: string[] = []) {
-    const resultado = await adiarTarefasEGrupos(ids, idsGrupos, hoje)
-    const quantidade = resultado.quantidade
-    if (quantidade === 0) return avisar(resultado, 'Grupo adiado um dia')
-    const mensagem = quantidade === 1 ? '1 tarefa adiada' : `${quantidade} tarefas adiadas`
-    return avisar(resultado, `${mensagem} um dia`)
+  async function adiar(ids: string[], deGrupos: DeGrupos = {}) {
+    const resultado = await adiarSelecao({ tarefas: ids, ...deGrupos }, hoje)
+    const { tarefasMovidas, itensCopiados } = resultado
+    const partes = []
+    if (tarefasMovidas > 0) {
+      partes.push(tarefasMovidas === 1 ? '1 tarefa adiada' : `${tarefasMovidas} tarefas adiadas`)
+    }
+    if (itensCopiados > 0) {
+      partes.push(itensCopiados === 1 ? '1 item copiado' : `${itensCopiados} itens copiados`)
+    }
+    const sufixo = itensCopiados > 0 ? 'para o dia seguinte' : 'um dia'
+    return avisar(resultado, `${partes.join(' e ')} ${sufixo}`)
   }
 
   async function trazerDeOntem() {
     const resultado = await trazerPendenciasDeOntem(hoje)
-    return avisar(resultado, textoMovimento(resultado.quantidade, hoje, hoje))
+    return avisar(
+      resultado,
+      textoAcao(resultado.tarefasMovidas, resultado.itensCopiados, hoje, hoje),
+    )
   }
 
   return { hoje, amanha: somarDias(hoje, 1), mover, adiar, trazerDeOntem }

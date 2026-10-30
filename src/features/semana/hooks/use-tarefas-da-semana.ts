@@ -4,19 +4,19 @@ import { listarGruposEntre } from '@/db/repositories/group-repository'
 import { listarSubtarefas } from '@/db/repositories/subtask-repository'
 import { listarTarefasEntre } from '@/db/repositories/task-repository'
 import type { DataLocal } from '@/db/types'
-import { intercalarNoDia, isGrupoConcluido, montarGrupos, type EntradaDoDia } from '@/lib/grupos'
+import { intercalarNoDia, montarGrupos, type EntradaDoDia } from '@/lib/grupos'
 import { diasDaSemana } from '@/lib/semana'
 import { agruparSubtarefas, separarDoDia } from '@/lib/tarefas'
 
 export interface DiaDaSemana {
   data: DataLocal
-  /** Tarefas soltas pendentes e cards não concluídos, na ordem do dia. */
+  /** Tarefas soltas pendentes e cards (encerrados também), na ordem do dia. */
   entradas: EntradaDoDia[]
-  /** Tarefas soltas e itens de grupo concluídos no dia. */
+  /** Tarefas soltas concluídas no dia. */
   quantidadeConcluidas: number
 }
 
-/** Os 7 dias da semana com tarefas, cards e subtarefas, atualizados sozinhos. */
+/** Os 7 dias da semana com tarefas soltas, cards e subtarefas, atualizados sozinhos. */
 export function useTarefasDaSemana(inicio: DataLocal) {
   const dias = useMemo(() => diasDaSemana(inicio), [inicio])
   const resultado = useLiveQuery(async () => {
@@ -32,22 +32,18 @@ export function useTarefasDaSemana(inicio: DataLocal) {
 
   return useMemo(() => {
     const tarefas = resultado?.tarefas ?? []
+    const grupos = resultado
+      ? montarGrupos(resultado.grupos.cards, resultado.grupos.series, resultado.grupos.itens)
+      : []
     const semana: DiaDaSemana[] = dias.map((data) => {
-      const doDia = tarefas.filter((tarefa) => tarefa.data === data)
-      const soltas = separarDoDia(doDia.filter((tarefa) => !tarefa.groupInstanceId))
-      const grupos = montarGrupos(
-        (resultado?.grupos.instancias ?? []).filter((instancia) => instancia.data === data),
-        resultado?.grupos.series ?? [],
-        doDia,
-      )
-      const itensFeitos = grupos.reduce((total, grupo) => total + grupo.concluidas.length, 0)
+      const soltas = separarDoDia(tarefas.filter((tarefa) => tarefa.data === data))
       return {
         data,
         entradas: intercalarNoDia(
           soltas.pendentes,
-          grupos.filter((grupo) => !isGrupoConcluido(grupo)),
+          grupos.filter((grupo) => grupo.card.data === data),
         ),
-        quantidadeConcluidas: soltas.concluidas.length + itensFeitos,
+        quantidadeConcluidas: soltas.concluidas.length,
       }
     })
     return {

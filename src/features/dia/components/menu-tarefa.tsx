@@ -4,7 +4,6 @@ import {
   CalendarArrowUp,
   CalendarDays,
   FolderInput,
-  FolderOutput,
   ListPlus,
   MoreHorizontal,
   Paperclip,
@@ -58,17 +57,13 @@ export function MenuTarefa({
   onAdicionarSubtarefa,
   onAbrirAnexos,
 }: MenuTarefaProps) {
-  const { arquivarTarefa, excluirTarefa, definirCategoria, colocarNoGrupo, tirarDoGrupo } =
-    useAcoesTarefa()
+  const { arquivarTarefa, excluirTarefa, definirCategoria, colocarNoGrupo } = useAcoesTarefa()
   const gruposDoDia = useGruposDoDia()
   const { mover, adiar } = useMoverTarefas()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   const isPendente = tarefa.status === 'pendente'
   const isFutura = tarefa.data > hoje
-  const isItem = tarefa.groupInstanceId !== undefined
-  // Item concluído é registro do dia: fica no card em que foi feito.
-  const isMovivel = !isItem || isPendente
   // Ações que abrem um campo: o foco deve ficar nele, não voltar para o botão do menu.
   const isAbrindoCampoRef = useRef(false)
 
@@ -104,11 +99,9 @@ export function MenuTarefa({
               <CalendarArrowUp /> {isFutura ? 'Adiar um dia' : 'Adiar para amanhã'}
             </DropdownMenuItem>
           )}
-          {isMovivel && (
-            <DropdownMenuItem onSelect={() => setIsEscolhendoDia(true)}>
-              <CalendarDays /> Mover para outro dia…
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onSelect={() => setIsEscolhendoDia(true)}>
+            <CalendarDays /> Mover para outro dia…
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => abrirCampo(onRenomear)}>
             <Pencil /> Renomear
@@ -119,13 +112,11 @@ export function MenuTarefa({
           <DropdownMenuItem onSelect={() => abrirCampo(onAbrirAnexos)}>
             <Paperclip /> Anotação e anexos
           </DropdownMenuItem>
-          {!isItem && (
-            <SubmenuCategoria
-              atual={tarefa}
-              onEscolher={(categoria) => void definirCategoria(tarefa.id, categoria)}
-            />
-          )}
-          {!isItem && isPendente && gruposDoDia.length > 0 && (
+          <SubmenuCategoria
+            atual={tarefa}
+            onEscolher={(categoria) => void definirCategoria(tarefa.id, categoria)}
+          />
+          {isPendente && gruposDoDia.length > 0 && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <FolderInput /> Colocar no grupo
@@ -141,11 +132,6 @@ export function MenuTarefa({
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-          )}
-          {isItem && (
-            <DropdownMenuItem onSelect={() => void tirarDoGrupo(tarefa.id)}>
-              <FolderOutput /> Tirar do grupo
-            </DropdownMenuItem>
           )}
           <DropdownMenuItem onSelect={() => void arquivarTarefa(tarefa.id)}>
             <Archive /> Arquivar

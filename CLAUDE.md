@@ -32,13 +32,13 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` na UI; reuse, não duplique
 - Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
 - Excluir categoria NUNCA apaga tarefas: só limpa `categoryId`/`subcategoryId`
-- IMPORTANTE: mover tarefa = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
-- Ações de mover na UI passam por `useMoverTarefas` (aviso com "Desfazer" via `restaurarPosicoes`)
+- IMPORTANTE: mover tarefa SOLTA = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
+- Ações de mover na UI passam por `useMoverTarefas` → `moverSelecao`/`adiarSelecao`/`trazerPendenciasDeOntem` (`group-repository`); aviso com "Desfazer" via `desfazerAcao`
 - Semana começa na segunda (`PRIMEIRO_DIA_DA_SEMANA` em `src/lib/semana.ts`); colunas do quadro em `src/lib/quadro.ts`
 - Grade de mês/ano e resumo por dia em `src/lib/calendario.ts`; período via `useTarefasDoPeriodo`
 - Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
 - Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
-- Banco Dexie na versão 3 (v2: `tasks.procedureId`; v3: grupos e `tasks.groupInstanceId`); mudar índice = nova `version()`
+- Banco Dexie na versão 5 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`); mudar índice = nova `version()`
 - IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
 - Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
 - Anexo pertence ao `dono` {tipo, id} (tarefa, nota, procedimento, passo); `Step.anexos` não é usado — a fonte é `attachments`
@@ -48,10 +48,11 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Texto editado com gravação atrasada: use `useSalvarComAtraso` (grava o pendente ao sair da tela)
 - Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
-- Grupos: `db/repositories/group-repository.ts` (criar, itens, mover cards, arquivar, excluir) e regras puras em `src/lib/grupos.ts`
-- IMPORTANTE: `moverTarefas` entende itens de grupo: item vai para a instância da MESMA série no destino (acha ou cria, numa transação); NUNCA deixe item com `data` diferente da instância
-- `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupInstance.ordem`); `ordem` de item é a posição dentro do card. Reordenar misto usa `gravarNovaPosicao` com a tabela combinada do dia
-- Item herda `categoryId`/`subcategoryId` da série (cópia mantida pelo repositório): filtro, cores e mês funcionam sem saber de grupos
+- Grupos: `db/repositories/group-repository.ts` (cards, itens, copiar, desfazer, converter) e regras puras em `src/lib/grupos.ts`
+- IMPORTANTE: grupo NÃO é tarefa nem categoria. Itens são `GroupItem` (tabela própria); tarefas são só as soltas
+- IMPORTANTE: levar card/item a outro dia = COPIAR (`copiarItens`, uma transação): acha ou cria o card da MESMA série no destino, cria cópias pendentes (`origemItemId`, mesma `dataOriginal`) e marca os originais `transferido` (`transferidoParaCardId`). O card original NUNCA sai do lugar
+- `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupCard.ordem`, `tabelaDoDia`); `ordem` de item é a posição dentro do card
+- Colocar tarefa no grupo / tirar item = conversão com o MESMO id (`colocarNoGrupo`/`tirarDoGrupo`); subtarefas, anotação e anexos da tarefa não passam para o item
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
 - Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`)
 
@@ -61,9 +62,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Alterar índices = nova `version()` no Dexie, NUNCA editar a versão existente
 - Category { id, nome, cor } · Subcategory { id, categoryId, nome, cor? } (sem cor = variação da cor da categoria)
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
-- Task.groupInstanceId? → item de grupo (sem = tarefa solta)
-- GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — título e categoria valem para todas as instâncias
-- GroupInstance { id, seriesId, data, ordem, arquivado } — no máximo uma por série e dia; card concluído é calculado (tem itens e nenhum pendente)
+- GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — liga os cards de dias diferentes; categoria só dá cor e filtro
+- GroupCard { id, seriesId, data, ordem, arquivado } — no máximo um por série e dia; encerrado é calculado (tem itens e nenhum pendente)
+- GroupItem { id, cardId, titulo, ordem, status: pendente|concluido|transferido|arquivado, concluidoEm?, transferidoParaCardId?, origemItemId?, dataOriginal }
 - Subtask { id, taskId, titulo, concluida, ordem }
 - Procedure { id, titulo, categoryId?, descricao, secoes[] (cada uma com passos[] embutidos), camposVariaveis[], versao }
 - Step { id, texto, codigo?, alerta?, anexos[], subpassos[] } — dentro de Procedure, sem tabela; subpasso tem 1 nível; ordem = posição no array
@@ -79,10 +80,14 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Dias pendentes = hoje − `dataOriginal`, exibido em toda pendente com `dataOriginal` < hoje; mover/adiar NÃO zera
 - Ações: trazer pendências de ontem para hoje, adiar para amanhã, mover para outro dia, mover várias selecionadas
 - Arquivar = tirar do calendário sem concluir
-- Grupo (card) vive num dia; mover/adiar/trazer leva só os itens PENDENTES para a instância da série no destino (mescla se existir); os concluídos ficam como registro no dia original
-- Card sem item concluído move inteiro (mesmo id); card todo concluído não move; tarefa solta com subtarefas continua movendo inteira
-- Arquivar card = arquivar os pendentes (some do dia se não houver concluídos); excluir card apaga itens, anexos e anotações deles e a série que ficar sem instância
-- "+ Novo grupo" com nome de série existente reusa a série; já existindo no dia, `ErroDeValidacao`
+- Card vive num dia. Arrastar/adiar/mover/trazer de ontem DUPLICA: o original fica (registro do dia) e só os PENDENTES vão para o card da série no destino (mescla se existir)
+- Sempre igual, para ser previsível: nada marcado = tudo vira transferido e a cópia leva tudo; tudo marcado (ou card vazio) = nada a copiar, ação bloqueada
+- Transferido: cinza, sem riscar, sem caixa, não conta como pendente nem feito; etiqueta "transferido para dd/MM" leva ao card de destino. Desmarcar no original não mexe na cópia
+- Progresso: ativo "3/4"; encerrado "3 feitos · 1 transferido". Mês/ano contam itens pendentes e feitos (transferidos não)
+- Cópia mostra "pendente desde dd/MM" (dataOriginal anterior ao dia do card ou a hoje)
+- Tarefa solta continua sendo MOVIDA (não duplica), inclusive com subtarefas
+- Arquivar card = arquivar os pendentes (sai do calendário se não sobrar feito/transferido); excluir card apaga os itens e a série que ficar sem card
+- "+ Novo grupo" (ao lado de "+ Nova tarefa", no Dia e na Semana) com nome de série existente reusa a série; já existindo no dia, `ErroDeValidacao`
 - IMPORTANTE: modo execução NUNCA altera o procedimento original — `execution-repository` só escreve em `executions` (e na tarefa ligada)
 - Editar procedimento SEMPRE grava a versão anterior em ProcedureVersion (`salvarProcedimento`; uma versão por "Salvar")
 - Execução segue a versão em que começou (`obterVersao`); em andamento = sem `concluidaEm`, retomável
@@ -105,7 +110,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Antes de cada fase, liste em poucas linhas o que será feito
 - Ao concluir fase: testes + build, atualizar status no README (e este arquivo se a estrutura mudar), commit
 - Commits: Conventional Commits (`feat:`, `fix:`, `chore:`)
-- Testes obrigatórios: mover tarefas, contagem de dias pendentes, modo execução, mover/mesclar grupos
+- Testes obrigatórios: mover tarefas, contagem de dias pendentes, modo execução, copiar/mesclar grupos
 - Ambiguidade na proposta: pergunte, não suponha
 - Trabalho de interface: use a skill `frontend-design`
 
@@ -123,7 +128,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 
 Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são ajustes pedidos pelo usuário.
 
-- Ajuste 30/10/2026: grupos de tarefas (séries, cards por dia, mover só pendentes) — detalhes em `docs/proposta-inicial.md`
+- Ajuste 30/10/2026: grupos de tarefas (cards por dia em séries; levar a outro dia duplica o card com os pendentes) — detalhes em `docs/proposta-inicial.md`
 
 ## Armadilhas
 

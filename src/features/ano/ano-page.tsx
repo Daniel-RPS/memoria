@@ -2,8 +2,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link, Navigate, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useHoje } from '@/hooks/use-hoje'
+import { useGruposDoPeriodo } from '@/hooks/use-grupos-do-periodo'
 import { useTarefasDoPeriodo } from '@/hooks/use-tarefas-do-periodo'
 import { mesesDoAno, resumirPorDia } from '@/lib/calendario'
+import { itensParaResumo } from '@/lib/grupos'
 import { LegendaAno } from '@/features/ano/components/legenda-ano'
 import { MiniMes } from '@/features/ano/components/mini-mes'
 
@@ -27,7 +29,12 @@ export function AnoPage() {
 
 function Ano({ ano, hoje }: { ano: number; hoje: string }) {
   const { tarefas, isCarregando } = useTarefasDoPeriodo(`${ano}-01-01`, `${ano}-12-31`)
-  const resumo = resumirPorDia(tarefas, hoje)
+  const { grupos, isCarregando: isCarregandoGrupos } = useGruposDoPeriodo(
+    `${ano}-01-01`,
+    `${ano}-12-31`,
+  )
+  // Itens de grupo contam como tarefas do dia (transferidos não contam).
+  const resumo = resumirPorDia([...tarefas, ...itensParaResumo(grupos)], hoje)
   const isEsteAno = hoje.startsWith(String(ano))
 
   return (
@@ -65,7 +72,7 @@ function Ano({ ano, hoje }: { ano: number; hoje: string }) {
 
       <LegendaAno />
 
-      {!isCarregando && (
+      {!isCarregando && !isCarregandoGrupos && (
         <div className="mt-6 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {mesesDoAno(ano).map((inicio) => (
             <MiniMes key={inicio} inicio={inicio} hoje={hoje} resumo={resumo} />

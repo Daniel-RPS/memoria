@@ -7,7 +7,7 @@ import { listarSubtarefas } from '@/db/repositories/subtask-repository'
 import { listarTarefasDoDia } from '@/db/repositories/task-repository'
 import type { DataLocal } from '@/db/types'
 import { filtrarPorCategoria, type FiltroCategoria } from '@/lib/categorias'
-import { intercalarNoDia, isGrupoConcluido, montarGrupos } from '@/lib/grupos'
+import { intercalarNoDia, montarGrupos } from '@/lib/grupos'
 import { agruparSubtarefas, separarDoDia } from '@/lib/tarefas'
 import type { ExtrasDaFolha } from '@/features/dia/hooks/contexto-extras'
 
@@ -15,11 +15,12 @@ const SEM_EXTRAS: ExtrasDaFolha = {
   anexosPorTarefa: new Map(),
   tarefasComNota: new Set(),
   gruposDoDia: [],
+  dataDoDestino: new Map(),
 }
 
 /**
  * Tarefas soltas e cards de grupo do dia (com o filtro de categoria), subtarefas, anexos e
- * anotações, atualizados sozinhos. Cards concluídos vão para junto das concluídas.
+ * anotações, atualizados sozinhos. Cards ficam no lugar mesmo encerrados (são o registro).
  */
 export function useTarefasDoDia(data: DataLocal, filtro: FiltroCategoria = {}) {
   const resultado = useLiveQuery(async () => {
@@ -38,36 +39,30 @@ export function useTarefasDoDia(data: DataLocal, filtro: FiltroCategoria = {}) {
   const { categoriaId, subcategoriaId } = filtro
 
   return useMemo(() => {
-    const tarefas = resultado?.tarefas ?? []
     const filtroAtivo = { categoriaId, subcategoriaId }
-    const soltas = filtrarPorCategoria(
-      tarefas.filter((tarefa) => !tarefa.groupInstanceId),
-      filtroAtivo,
-    )
-    const todosOsGrupos = montarGrupos(
-      resultado?.grupos.instancias ?? [],
-      resultado?.grupos.series ?? [],
-      tarefas,
-    )
-    // O card segue a categoria da série (os itens têm a mesma).
+    const soltas = filtrarPorCategoria(resultado?.tarefas ?? [], filtroAtivo)
+    const todosOsGrupos = resultado
+      ? montarGrupos(resultado.grupos.cards, resultado.grupos.series, resultado.grupos.itens)
+      : []
+    // O card segue a categoria da série (independente do título do grupo).
     const grupos = todosOsGrupos.filter(
       (grupo) => filtrarPorCategoria([grupo.serie], filtroAtivo).length > 0,
     )
     const { pendentes, concluidas } = separarDoDia(soltas)
-    const gruposPendentes = grupos.filter((grupo) => !isGrupoConcluido(grupo))
     return {
-      /** Tarefas soltas pendentes e cards não concluídos, na ordem do dia. */
-      entradas: intercalarNoDia(pendentes, gruposPendentes),
+      /** Tarefas soltas pendentes e cards, na ordem do dia. */
+      entradas: intercalarNoDia(pendentes, grupos),
       concluidas,
-      gruposConcluidos: grupos.filter(isGrupoConcluido),
       subtarefasPorTarefa: agruparSubtarefas(resultado?.subtarefas ?? []),
       extras: resultado
         ? {
             anexosPorTarefa: resultado.anexosPorTarefa,
             tarefasComNota: resultado.tarefasComNota,
-            gruposDoDia: todosOsGrupos
-              .filter((grupo) => !isGrupoConcluido(grupo))
-              .map((grupo) => ({ id: grupo.instancia.id, titulo: grupo.serie.titulo })),
+            gruposDoDia: todosOsGrupos.map((grupo) => ({
+              id: grupo.card.id,
+              titulo: grupo.serie.titulo,
+            })),
+            dataDoDestino: resultado.grupos.dataDoDestino,
           }
         : SEM_EXTRAS,
       isCarregando: resultado === undefined,

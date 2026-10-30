@@ -61,3 +61,14 @@ export function textoMovimento(quantidade: number, destino: DataLocal, hoje: Dat
   const tarefas = quantidade === 1 ? '1 tarefa movida' : `${quantidade} tarefas movidas`
   return `${tarefas} para ${nomeDoDia(destino, hoje)}`
 }
+
+/**
+ * Aviso de uma ação que move tarefas soltas e copia itens de grupo, ex.:
+ * "1 tarefa movida e 2 itens copiados para amanhã".
+ */
+export function textoAcao(tarefas: number, itens: number, destino: DataLocal, hoje: DataLocal) {
+  const partes = []
+  if (tarefas > 0) partes.push(tarefas === 1 ? '1 tarefa movida' : `${tarefas} tarefas movidas`)
+  if (itens > 0) partes.push(itens === 1 ? '1 item copiado' : `${itens} itens copiados`)
+  return `${partes.join(' e ')} para ${nomeDoDia(destino, hoje)}`
+}

@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { DataLocal } from '@/db/types'
 
 /** Card do dia que pode receber uma tarefa solta ("Colocar no grupo"). */
 export interface GrupoParaEscolher {
@@ -11,12 +12,15 @@ export interface ExtrasDaFolha {
   anexosPorTarefa: Map<string, number>
   tarefasComNota: Set<string>
   gruposDoDia: GrupoParaEscolher[]
+  /** Dia do card que recebeu cada item transferido (por id do card). */
+  dataDoDestino: Map<string, DataLocal>
 }
 
 export const ContextoExtras = createContext<ExtrasDaFolha>({
   anexosPorTarefa: new Map(),
   tarefasComNota: new Set(),
   gruposDoDia: [],
+  dataDoDestino: new Map(),
 })
 
 export function useExtrasDaTarefa(taskId: string) {
@@ -27,7 +31,13 @@ export function useExtrasDaTarefa(taskId: string) {
   }
 }
 
-/** Cards não concluídos do dia, para "Colocar no grupo". */
+/** Cards do dia, para "Colocar no grupo". */
 export function useGruposDoDia() {
   return useContext(ContextoExtras).gruposDoDia
+}
+
+/** Dia para onde o item transferido foi (pelo card de destino). */
+export function useDataDoDestino(cardId: string | undefined) {
+  const { dataDoDestino } = useContext(ContextoExtras)
+  return cardId ? dataDoDestino.get(cardId) : undefined
 }

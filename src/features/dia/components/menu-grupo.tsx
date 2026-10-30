@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { DataLocal } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
-import { podeMoverGrupo, type GrupoDoDia } from '@/lib/grupos'
+import { pendentesDo, type GrupoDoDia } from '@/lib/grupos'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { SubmenuCategoria } from '@/features/dia/components/submenu-categoria'
 
@@ -38,17 +38,20 @@ interface MenuGrupoProps {
   onRenomear: () => void
 }
 
-/** Ações do card: adiar, mover (só os pendentes vão), renomear, categoria, arquivar, excluir. */
+/**
+ * Ações do card. Adiar e mover COPIAM: o card fica aqui e os itens pendentes vão para o card
+ * da mesma série no outro dia. Sem pendentes, não há o que copiar.
+ */
 export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
-  const { instancia, serie } = grupo
+  const { card, serie } = grupo
   const { arquivarGrupo, excluirGrupo, definirCategoriaDoGrupo } = useAcoesGrupo()
   const { mover, adiar } = useMoverTarefas()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
-  const isMovivel = podeMoverGrupo(grupo)
-  const isFutura = instancia.data > hoje
+  const quantidadePendentes = pendentesDo(grupo).length
+  const isCopiavel = quantidadePendentes > 0
   const isAbrindoCampoRef = useRef(false)
-  const quantidadeItens = grupo.pendentes.length + grupo.concluidas.length
+  const quantidadeItens = grupo.itens.length
 
   return (
     <>
@@ -71,17 +74,19 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
             isAbrindoCampoRef.current = false
           }}
         >
-          {isMovivel && (
-            <>
-              <DropdownMenuItem onSelect={() => void adiar([], [instancia.id])}>
-                <CalendarArrowUp /> {isFutura ? 'Adiar um dia' : 'Adiar para amanhã'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setIsEscolhendoDia(true)}>
-                <CalendarDays /> Mover para outro dia…
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
+          <DropdownMenuItem
+            disabled={!isCopiavel}
+            onSelect={() => void adiar([], { grupos: [card.id] })}
+          >
+            <CalendarArrowUp /> {card.data > hoje ? 'Adiar um dia' : 'Adiar para amanhã'}
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={!isCopiavel} onSelect={() => setIsEscolhendoDia(true)}>
+            <CalendarDays /> Mover para outro dia…
+          </DropdownMenuItem>
+          {!isCopiavel && (
+            <p className="px-2 py-1 text-xs text-grafite">Nenhum item pendente para levar.</p>
           )}
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => {
               isAbrindoCampoRef.current = true
@@ -94,11 +99,9 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
             atual={serie}
             onEscolher={(categoria) => void definirCategoriaDoGrupo(serie.id, categoria)}
           />
-          {isMovivel && (
-            <DropdownMenuItem onSelect={() => void arquivarGrupo(instancia.id)}>
-              <Archive /> Arquivar
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onSelect={() => void arquivarGrupo(card.id)}>
+            <Archive /> Arquivar
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => setIsConfirmandoExclusao(true)}>
             <Trash2 /> Excluir…
@@ -109,15 +112,11 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
       <DialogoEscolherDia
         isAberto={isEscolhendoDia}
         onMudarAberto={setIsEscolhendoDia}
-        titulo="Mover grupo para outro dia"
-        descricao={
-          grupo.concluidas.length > 0
-            ? `Só os itens pendentes de “${serie.titulo}” vão; os concluídos ficam neste dia.`
-            : serie.titulo
-        }
-        dataInicial={instancia.data}
+        titulo={`Mover “${serie.titulo}” para outro dia`}
+        descricao={`${quantidadePendentes === 1 ? 'O item pendente vai' : `Os ${quantidadePendentes} itens pendentes vão`} para o card “${serie.titulo}” do dia escolhido. Este card fica aqui como registro.`}
+        dataInicial={card.data}
         hoje={hoje}
-        onEscolher={(destino) => void mover([], destino, [instancia.id])}
+        onEscolher={(destino) => void mover([], destino, { grupos: [card.id] })}
       />
 
       <AlertDialog open={isConfirmandoExclusao} onOpenChange={setIsConfirmandoExclusao}>
@@ -127,15 +126,12 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
             <AlertDialogDescription>
               {quantidadeItens === 0
                 ? 'O card vazio será apagado.'
-                : `O card e ${quantidadeItens === 1 ? 'o item' : `os ${quantidadeItens} itens`} dele serão apagados de vez, com anotações e anexos. Os cards de outros dias continuam. Para só tirar do calendário, use Arquivar.`}
+                : `O card e ${quantidadeItens === 1 ? 'o item' : `os ${quantidadeItens} itens`} dele serão apagados de vez. Os cards de outros dias continuam. Para só tirar do calendário, use Arquivar.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => void excluirGrupo(instancia.id)}
-            >
+            <AlertDialogAction variant="destructive" onClick={() => void excluirGrupo(card.id)}>
               Excluir grupo
             </AlertDialogAction>
           </AlertDialogFooter>

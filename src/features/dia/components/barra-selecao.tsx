@@ -10,12 +10,13 @@ interface BarraSelecaoProps {
   hoje: DataLocal
   /** Pendentes visíveis (tarefas, cards e itens), na ordem da folha (para "Todas"). */
   idsPendentes: string[]
-  /** Quais desses ids são cards de grupo (movê-los leva só os itens pendentes). */
+  /** Quais desses ids são cards de grupo e itens: são copiados, não movidos. */
   idsGrupos: string[]
+  idsItens: string[]
 }
 
 /** Barra fixa no rodapé com as ações sobre as tarefas selecionadas. */
-export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos }: BarraSelecaoProps) {
+export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: BarraSelecaoProps) {
   const { selecionados, encerrar, selecionarTodos } = useSelecaoDaFolha()
   const { mover, adiar } = useMoverTarefas()
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
@@ -23,16 +24,19 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos }: BarraSelec
   const ids = idsPendentes.filter((id) => selecionados.has(id))
   const quantidade = ids.length
   const isFutura = data > hoje
-  const grupos = ids.filter((id) => idsGrupos.includes(id))
-  const tarefas = ids.filter((id) => !idsGrupos.includes(id))
+  const deGrupos = {
+    grupos: ids.filter((id) => idsGrupos.includes(id)),
+    itens: ids.filter((id) => idsItens.includes(id)),
+  }
+  const tarefas = ids.filter((id) => !idsGrupos.includes(id) && !idsItens.includes(id))
 
   async function handleAdiar() {
-    await adiar(tarefas, grupos)
+    await adiar(tarefas, deGrupos)
     encerrar()
   }
 
   async function handleMover(destino: DataLocal) {
-    await mover(tarefas, destino, grupos)
+    await mover(tarefas, destino, deGrupos)
     encerrar()
   }
 

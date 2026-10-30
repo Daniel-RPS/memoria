@@ -35,11 +35,12 @@ export interface Task extends EntidadeBase {
   concluidaEm?: string
   /** Tarefa agendada para executar este procedimento. */
   procedureId?: string
-  /** Item de um grupo (card); sem ele, é tarefa solta. A categoria é cópia da série. */
-  groupInstanceId?: string
 }
 
-/** O que os cards de um grupo têm em comum entre os dias (ex.: "Casa"). */
+/**
+ * O que liga os cards de um grupo em dias diferentes (ex.: "Casa").
+ * Independente das categorias: a categoria aqui só dá cor e filtro.
+ */
 export interface GroupSeries extends EntidadeBase {
   /** Único entre as séries, sem diferenciar acento e maiúscula. */
   titulo: string
@@ -47,14 +48,33 @@ export interface GroupSeries extends EntidadeBase {
   subcategoryId?: string
 }
 
-/** O card de uma série num dia. No máximo uma instância por série e dia. */
-export interface GroupInstance extends EntidadeBase {
+/** O card de uma série num dia. No máximo um card por série e dia. */
+export interface GroupCard extends EntidadeBase {
   seriesId: string
   data: DataLocal
   /** Mesma escala da `ordem` das tarefas soltas do dia. */
   ordem: number
-  /** Fora do calendário (arquivado sem itens concluídos). */
+  /** Fora do calendário. */
   arquivado: boolean
+}
+
+/** `transferido`: copiado para o card de outro dia; fica no original como registro. */
+export type GroupItemStatus = 'pendente' | 'concluido' | 'transferido' | 'arquivado'
+
+/** Item de um card, com caixa de seleção. */
+export interface GroupItem extends EntidadeBase {
+  cardId: string
+  titulo: string
+  /** Posição dentro do card. */
+  ordem: number
+  status: GroupItemStatus
+  concluidoEm?: string
+  /** Card que recebeu a cópia (quando `transferido`). */
+  transferidoParaCardId?: string
+  /** Item do qual este é cópia. */
+  origemItemId?: string
+  /** Preservada nas cópias; base do "pendente desde". */
+  dataOriginal: DataLocal
 }
 
 export interface Subtask extends EntidadeBase {

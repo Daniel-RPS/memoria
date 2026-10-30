@@ -39,9 +39,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const isConcluida = tarefa.status === 'concluida'
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
-  const categorias = useCategoriasDoContexto()
-  // Item de grupo: a cor e o rótulo já estão no card.
-  const classificacao = tarefa.groupInstanceId ? null : classificarTarefa(tarefa, categorias)
+  const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
   const idPainel = `subtarefas-${tarefa.id}`
   const idPainelAnexos = `anexos-${tarefa.id}`
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()

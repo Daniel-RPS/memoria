@@ -9,13 +9,12 @@ interface NovoGrupoProps {
   filtro: FiltroCategoria
 }
 
-/** Linha para criar um card de grupo no fim do dia. Nome já usado reusa o grupo. */
+/** Campo ao lado de "Nova tarefa": cria um card de grupo no fim do dia. Nome já usado reusa o grupo. */
 export function NovoGrupo({ data, filtro }: NovoGrupoProps) {
   const { criarGrupo } = useAcoesGrupo()
 
   return (
-    <div className="flex items-center border-t border-pauta pl-1">
-      <span className="w-5 shrink-0" />
+    <div className="flex items-center pl-1">
       <div className="min-w-0 flex-1 pl-2">
         <CampoNovoItem
           rotulo="Novo grupo"

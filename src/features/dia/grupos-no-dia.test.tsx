@@ -2,14 +2,35 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
-import { criarGrupo, criarItem } from '@/db/repositories/group-repository'
-import { criarTarefa, definirConclusao } from '@/db/repositories/task-repository'
+import {
+  copiarGrupos,
+  criarGrupo,
+  criarItem,
+  definirConclusaoItem,
+} from '@/db/repositories/group-repository'
+import { criarTarefa } from '@/db/repositories/task-repository'
 import { hoje, somarDias } from '@/lib/datas'
+import { diaCurto } from '@/lib/grupos'
 import { renderizarApp } from '@/test/renderizar-app'
 
 const HOJE = hoje()
 const ONTEM = somarDias(HOJE, -1)
 const AMANHA = somarDias(HOJE, 1)
+
+async function criarCasaDoExemplo(data = HOJE) {
+  const card = await criarGrupo({ titulo: 'Casa', data })
+  const itens = []
+  for (const titulo of [
+    'Arrumar o quarto',
+    'Arrumar o banheiro',
+    'Fazer comida',
+    'Lavar garagem',
+  ]) {
+    itens.push(await criarItem(card.id, titulo))
+  }
+  for (const indice of [0, 1, 3]) await definirConclusaoItem(itens[indice].id, true)
+  return card
+}
 
 describe('Grupos na visão do dia', () => {
   beforeEach(async () => {
@@ -17,72 +38,114 @@ describe('Grupos na visão do dia', () => {
     window.localStorage.clear()
   })
 
-  it('cria o grupo, adiciona itens e mostra o progresso', async () => {
+  it('cria o grupo ao lado de "Nova tarefa", adiciona itens e mostra o progresso', async () => {
     const usuario = userEvent.setup()
     renderizarApp(`/dia/${HOJE}`)
 
     await usuario.type(await screen.findByRole('textbox', { name: 'Novo grupo' }), 'Casa{Enter}')
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
     const campo = within(card).getByRole('textbox', { name: 'Adicionar item em Casa' })
-    await usuario.type(campo, 'Limpar o quarto{Enter}')
-    await usuario.type(campo, 'Fazer almoço{Enter}')
+    await usuario.type(campo, 'Arrumar o quarto{Enter}')
+    await usuario.type(campo, 'Fazer comida{Enter}')
 
     await usuario.click(
-      await within(card).findByRole('checkbox', { name: 'Concluir Limpar o quarto' }),
+      await within(card).findByRole('checkbox', { name: 'Concluir Arrumar o quarto' }),
     )
-    expect(await within(card).findByLabelText('1 de 2 itens feitos')).toBeInTheDocument()
-    // Concluídos vão para o fim do card, riscados.
-    const feitos = within(card).getByRole('list', { name: 'Itens feitos de Casa' })
-    expect(within(feitos).getByText('Limpar o quarto')).toBeInTheDocument()
+    expect(await within(card).findByText('1/2')).toBeInTheDocument()
+    // O grupo não é categoria: nenhuma categoria "Casa" foi criada.
+    expect(await db.categories.count()).toBe(0)
   })
 
-  it('mover o card leva só os pendentes; o card de origem fica concluído', async () => {
+  it('exemplo: mover o card copia o pendente e o original fica com ele transferido', async () => {
     const usuario = userEvent.setup()
-    const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
-    const quarto = await criarItem(card.id, 'Limpar o quarto')
-    const almoco = await criarItem(card.id, 'Fazer almoço')
-    await definirConclusao(quarto.id, true)
+    await criarCasaDoExemplo()
     renderizarApp(`/dia/${HOJE}`)
 
     await usuario.click(await screen.findByRole('button', { name: 'Mais ações para o grupo Casa' }))
-    await usuario.click(await screen.findByRole('menuitem', { name: 'Adiar para amanhã' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Mover para outro dia…' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Mover “Casa” para outro dia' })
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Amanhã' }))
 
-    await waitFor(async () => expect((await db.tasks.get(almoco.id))?.data).toBe(AMANHA))
-    expect(await screen.findByText('1 tarefa adiada um dia')).toBeInTheDocument()
-    // O card de hoje passa para "Concluídas".
-    await usuario.click(await screen.findByRole('button', { name: 'Concluídas (1)' }))
-    const concluidas = screen.getByRole('list', { name: 'Concluídas' })
-    expect(within(concluidas).getByRole('region', { name: 'Grupo Casa' })).toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'Pendentes' })).not.toBeInTheDocument()
+    await waitFor(async () => expect(await db.groupCards.count()).toBe(2))
+    expect(await screen.findByText('1 item copiado para amanhã')).toBeInTheDocument()
+    const card = screen.getByRole('region', { name: 'Grupo Casa' })
+    const transferido = await within(card).findByRole('link', {
+      name: `transferido para ${diaCurto(AMANHA)}`,
+    })
+    expect(transferido).toHaveAttribute('href', `/dia/${AMANHA}`)
+    // Sem caixa de seleção no transferido; os feitos continuam marcados.
+    expect(within(card).queryByRole('checkbox', { name: /Fazer comida/ })).not.toBeInTheDocument()
+    expect(within(card).getByText('3 feitos · 1 transferido')).toBeInTheDocument()
+    expect(within(card).getByText('encerrado')).toBeInTheDocument()
+
+    await usuario.click(transferido)
+    const cardAmanha = await screen.findByRole('region', { name: 'Grupo Casa' })
+    expect(
+      await within(cardAmanha).findByRole('checkbox', { name: 'Concluir Fazer comida' }),
+    ).toBeInTheDocument()
+    expect(within(cardAmanha).queryByText('Arrumar o quarto')).not.toBeInTheDocument()
   })
 
-  it('card todo concluído não oferece mover', async () => {
+  it('card com tudo marcado: mover e adiar ficam desabilitados', async () => {
     const usuario = userEvent.setup()
     const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
-    await definirConclusao((await criarItem(card.id, 'Varrer')).id, true)
+    await definirConclusaoItem((await criarItem(card.id, 'Varrer')).id, true)
     renderizarApp(`/dia/${HOJE}`)
 
-    await usuario.click(await screen.findByRole('button', { name: 'Concluídas (1)' }))
     await usuario.click(await screen.findByRole('button', { name: 'Mais ações para o grupo Casa' }))
-    expect(await screen.findByRole('menuitem', { name: 'Renomear' })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'Adiar para amanhã' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: /Mover para outro dia/ })).not.toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: 'Adiar para amanhã' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('menuitem', { name: 'Mover para outro dia…' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByText('Nenhum item pendente para levar.')).toBeInTheDocument()
   })
 
-  it('item mostra há quantos dias está pendente pela data dele', async () => {
-    const cardOntem = await criarGrupo({ titulo: 'Casa', data: ONTEM })
-    await criarItem(cardOntem.id, 'Fazer almoço')
-    const cardHoje = await criarGrupo({ titulo: 'Casa', data: HOJE })
-    await criarItem(cardHoje.id, 'Lavar a roupa')
-    const usuario = userEvent.setup()
+  it('a cópia mostra "pendente desde" com a data original', async () => {
+    const card = await criarCasaDoExemplo(ONTEM)
+    await copiarGrupos([card.id], HOJE)
     renderizarApp(`/dia/${HOJE}`)
 
-    await usuario.click(await screen.findByRole('button', { name: 'Trazer para hoje' }))
+    const cardHoje = await screen.findByRole('region', { name: 'Grupo Casa' })
+    expect(
+      await within(cardHoje).findByText(`pendente desde ${diaCurto(ONTEM)}`),
+    ).toBeInTheDocument()
+  })
 
+  it('a cópia num dia futuro também mostra "pendente desde"; itens novos dela, não', async () => {
+    const card = await criarCasaDoExemplo(HOJE)
+    await copiarGrupos([card.id], AMANHA)
+    const cardAmanha = (await db.groupCards.where('data').equals(AMANHA).first())!
+    await criarItem(cardAmanha.id, 'Lavar roupa')
+    renderizarApp(`/dia/${AMANHA}`)
+
+    const cardNaTela = await screen.findByRole('region', { name: 'Grupo Casa' })
+    expect(
+      await within(cardNaTela).findByText(`pendente desde ${diaCurto(HOJE)}`),
+    ).toBeInTheDocument()
+    expect(within(cardNaTela).getAllByText(/^pendente desde/)).toHaveLength(1)
+  })
+
+  it('"Trazer para hoje" copia os pendentes dos cards de ontem', async () => {
+    const usuario = userEvent.setup()
+    await criarCasaDoExemplo(ONTEM)
+    await criarTarefa({ titulo: 'Pagar conta', data: ONTEM })
+    renderizarApp(`/dia/${HOJE}`)
+
+    expect(await screen.findByText('Ficaram 2 tarefas pendentes ontem.')).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Trazer para hoje' }))
+
+    expect(
+      await screen.findByText('1 tarefa movida e 1 item copiado para hoje'),
+    ).toBeInTheDocument()
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
-    await within(card).findByText('Fazer almoço')
-    expect(within(card).getByText('pendente há 1 dia')).toBeInTheDocument()
-    expect(screen.getAllByRole('region', { name: 'Grupo Casa' })).toHaveLength(1)
+    expect(
+      within(card).getByRole('checkbox', { name: 'Concluir Fazer comida' }),
+    ).toBeInTheDocument()
+    expect(await db.groupCards.count()).toBe(2)
   })
 
   it('coloca uma tarefa solta no grupo e tira de volta pelo menu', async () => {
@@ -100,28 +163,28 @@ describe('Grupos na visão do dia', () => {
 
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
     await within(card).findByText('Varrer')
-    expect((await db.tasks.get(tarefa.id))?.groupInstanceId).toBeDefined()
+    expect(await db.groupItems.get(tarefa.id)).toBeDefined()
+    expect(await db.tasks.count()).toBe(0)
 
     await usuario.click(within(card).getByRole('button', { name: 'Mais ações para Varrer' }))
     await usuario.click(await screen.findByRole('menuitem', { name: 'Tirar do grupo' }))
-    await waitFor(async () =>
-      expect((await db.tasks.get(tarefa.id))?.groupInstanceId).toBeUndefined(),
-    )
+    await waitFor(async () => expect(await db.tasks.get(tarefa.id)).toBeDefined())
+    expect(await db.groupItems.count()).toBe(0)
   })
 
   it('o filtro de categoria vale para os cards', async () => {
-    const casa = await db.categories.add({
+    await db.categories.add({
       id: 'casa',
-      nome: 'Casa',
+      nome: 'Limpeza',
       cor: '#2f8f5b',
       criadoEm: '',
       atualizadoEm: '',
     })
-    await criarGrupo({ titulo: 'Limpeza', data: HOJE, categoryId: casa })
+    await criarGrupo({ titulo: 'Casa', data: HOJE, categoryId: 'casa' })
     await criarGrupo({ titulo: 'Trabalho', data: HOJE })
     renderizarApp(`/dia/${HOJE}?categoria=casa`)
 
-    expect(await screen.findByRole('region', { name: 'Grupo Limpeza' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Grupo Casa' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Grupo Trabalho' })).not.toBeInTheDocument()
   })
 })

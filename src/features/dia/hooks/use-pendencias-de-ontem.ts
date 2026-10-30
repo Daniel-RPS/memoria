@@ -1,8 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listarPendenciasDeOntem } from '@/db/repositories/task-repository'
+import { contarPendenciasDeOntem } from '@/db/repositories/group-repository'
 import type { DataLocal } from '@/db/types'
 
-/** Quantas pendentes ficaram em ontem (0 enquanto carrega). */
+/** Quantas pendências (tarefas soltas e itens de grupo) ficaram em ontem (0 enquanto carrega). */
 export function usePendenciasDeOntem(hoje: DataLocal) {
-  return useLiveQuery(async () => (await listarPendenciasDeOntem(hoje)).length, [hoje]) ?? 0
+  return useLiveQuery(() => contarPendenciasDeOntem(hoje), [hoje]) ?? 0
 }

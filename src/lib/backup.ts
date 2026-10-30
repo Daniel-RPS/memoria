@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import type { Attachment, DataLocal } from '@/db/types'
+import { converterGruposAntigos } from '@/lib/migracao-grupos'
 
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 2
+export const FORMATO_ATUAL = 3
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -25,6 +26,7 @@ const tarefa = z.object({
   dataOriginal: dataLocal,
   concluidaEm: texto.optional(),
   procedureId: texto.optional(),
+  // Formato 2: item de grupo era tarefa com card.
   groupInstanceId: texto.optional(),
 })
 
@@ -35,12 +37,24 @@ const serieDeGrupo = z.object({
   subcategoryId: texto.optional(),
 })
 
-const instanciaDeGrupo = z.object({
+const cardDeGrupo = z.object({
   ...base,
   seriesId: id,
   data: dataLocal,
   ordem: z.number(),
   arquivado: z.boolean(),
+})
+
+const itemDeGrupo = z.object({
+  ...base,
+  cardId: id,
+  titulo: texto,
+  ordem: z.number(),
+  status: z.enum(['pendente', 'concluido', 'transferido', 'arquivado']),
+  concluidoEm: texto.optional(),
+  transferidoParaCardId: texto.optional(),
+  origemItemId: texto.optional(),
+  dataOriginal: dataLocal,
 })
 
 const subtarefa = z.object({
@@ -118,23 +132,36 @@ export const esquemaBackup = z.object({
   formato: z.number().int(),
   versaoBanco: z.number().int(),
   exportadoEm: texto,
-  tabelas: z.object({
-    categories: z.array(categoria),
-    subcategories: z.array(subcategoria),
-    tasks: z.array(tarefa),
-    subtasks: z.array(subtarefa),
-    procedures: z.array(procedimento),
-    procedureVersions: z.array(versaoProcedimento),
-    executions: z.array(execucao),
-    notes: z.array(nota),
-    attachments: z.array(anexoNoArquivo),
-    // Formato 1 não tinha grupos.
-    groupSeries: z.array(serieDeGrupo).default([]),
-    groupInstances: z.array(instanciaDeGrupo).default([]),
-  }),
+  tabelas: z
+    .object({
+      categories: z.array(categoria),
+      subcategories: z.array(subcategoria),
+      tasks: z.array(tarefa),
+      subtasks: z.array(subtarefa),
+      procedures: z.array(procedimento),
+      procedureVersions: z.array(versaoProcedimento),
+      executions: z.array(execucao),
+      notes: z.array(nota),
+      attachments: z.array(anexoNoArquivo),
+      // Formato 1 não tinha grupos.
+      groupSeries: z.array(serieDeGrupo).default([]),
+      groupCards: z.array(cardDeGrupo).default([]),
+      groupItems: z.array(itemDeGrupo).default([]),
+      // Formato 2: cards se chamavam instâncias e os itens eram tarefas.
+      groupInstances: z.array(cardDeGrupo).optional(),
+    })
+    .transform(({ groupInstances, tasks, ...tabelas }) => {
+      const { cards, itens, soltas } = converterGruposAntigos(groupInstances ?? [], tasks)
+      return {
+        ...tabelas,
+        tasks: soltas,
+        groupCards: [...tabelas.groupCards, ...cards],
+        groupItems: [...tabelas.groupItems, ...itens],
+      }
+    }),
 })
 
-export type Backup = z.infer<typeof esquemaBackup>
+export type Backup = z.output<typeof esquemaBackup>
 export type AnexoNoArquivo = Backup['tabelas']['attachments'][number]
 export type NomeTabela = keyof Backup['tabelas']
 
@@ -150,7 +177,8 @@ export const NOMES_DAS_TABELAS: Record<NomeTabela, [string, string]> = {
   notes: ['nota', 'notas'],
   attachments: ['anexo', 'anexos'],
   groupSeries: ['grupo', 'grupos'],
-  groupInstances: ['card de grupo', 'cards de grupo'],
+  groupCards: ['card de grupo', 'cards de grupo'],
+  groupItems: ['item de grupo', 'itens de grupo'],
 }
 
 export type Quantidades = Record<NomeTabela, number>

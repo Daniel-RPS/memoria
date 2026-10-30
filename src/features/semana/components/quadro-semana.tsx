@@ -14,9 +14,9 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { reordenarTarefa, soltarTarefaNoDia } from '@/db/repositories/task-repository'
-import type { DataLocal, Subtask, Task } from '@/db/types'
+import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
-import { idDaEntrada, type GrupoDoDia } from '@/lib/grupos'
+import { idDaEntrada, pendentesDo, textoCopia, type GrupoDoDia } from '@/lib/grupos'
 import { nomeDoDia } from '@/lib/mover'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
 import { CartaoGrupo } from '@/features/semana/components/cartao-grupo'
@@ -35,7 +35,7 @@ const DISTANCIA_PARA_ARRASTAR = 4
 
 const instrucoesLeitorDeTela = {
   draggable:
-    'Para mover, pressione espaço. Use as setas para trocar de posição ou de dia e espaço de novo para soltar. Esc cancela.',
+    'Para mover, pressione espaço. Use as setas para trocar de posição ou de dia e espaço de novo para soltar. Esc cancela. Grupos são copiados: só os itens pendentes vão para o outro dia.',
 }
 
 function colunasDe(semana: DiaDaSemana[]): Colunas {
@@ -43,8 +43,9 @@ function colunasDe(semana: DiaDaSemana[]): Colunas {
 }
 
 /**
- * Sete colunas; arrastar move a tarefa ou o card entre dias ou reordena dentro do dia.
- * Um item de card arrastado sozinho cai no card da mesma série no dia de destino.
+ * Sete colunas. Tarefa solta arrastada para outro dia é MOVIDA. Card arrastado para outro dia
+ * é COPIADO: fica onde está e os itens pendentes vão para o card da mesma série no destino.
+ * Um item arrastado sozinho também é copiado.
  */
 export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemanaProps) {
   const { mover } = useMoverTarefas()
@@ -52,6 +53,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   const [semanaAnterior, setSemanaAnterior] = useState(semana)
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
   const [origem, setOrigem] = useState<DataLocal | null>(null)
+  const [diaSobre, setDiaSobre] = useState<DataLocal | null>(null)
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
     // Só espaço inicia o arrastar: Enter fica para abrir o link do dia no título.
@@ -70,19 +72,21 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   const tarefaPorId = new Map<string, Task>()
   const grupoPorId = new Map<string, GrupoDoDia>()
   /** Itens de card: arrastam sozinhos, mas não ocupam lugar nas colunas. */
-  const itemPorId = new Map<string, Task>()
+  const itemPorId = new Map<string, { item: GroupItem; data: DataLocal }>()
   for (const dia of semana) {
     for (const entrada of dia.entradas) {
       if (entrada.tipo === 'tarefa') tarefaPorId.set(entrada.tarefa.id, entrada.tarefa)
       else {
-        grupoPorId.set(entrada.grupo.instancia.id, entrada.grupo)
-        for (const item of entrada.grupo.pendentes) itemPorId.set(item.id, item)
+        grupoPorId.set(entrada.grupo.card.id, entrada.grupo)
+        for (const item of pendentesDo(entrada.grupo)) {
+          itemPorId.set(item.id, { item, data: dia.data })
+        }
       }
     }
   }
   const tituloDe = (id: string | number) =>
     tarefaPorId.get(String(id))?.titulo ??
-    itemPorId.get(String(id))?.titulo ??
+    itemPorId.get(String(id))?.item.titulo ??
     grupoPorId.get(String(id))?.serie.titulo ??
     'tarefa'
 
@@ -90,11 +94,21 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     return id.startsWith(PREFIXO_COLUNA) ? id.slice(PREFIXO_COLUNA.length) : colunaDe(colunas, id)
   }
 
+  /** Quantos itens iriam se o que está sendo arrastado fosse solto em outro dia. */
+  function itensACopiar(id: string) {
+    if (itemPorId.has(id)) return 1
+    const grupo = grupoPorId.get(id)
+    return grupo ? pendentesDo(grupo).length : 0
+  }
+
   const anuncios: Announcements = {
     onDragStart: ({ active }) => `Movendo ${tituloDe(active.id)}.`,
     onDragOver: ({ active, over }) => {
       const dia = over ? colunaDoAlvo(String(over.id)) : undefined
-      return dia ? `${tituloDe(active.id)} sobre ${nomeDoDia(dia, hoje)}.` : ''
+      if (!dia) return ''
+      const id = String(active.id)
+      if (itensACopiar(id) > 0 && dia !== origem) return `${textoCopia(itensACopiar(id), dia)}.`
+      return `${tituloDe(id)} sobre ${nomeDoDia(dia, hoje)}.`
     },
     onDragEnd: ({ active, over }) => {
       const dia = over ? colunaDoAlvo(String(over.id)) : undefined
@@ -105,16 +119,20 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
 
   function handleDragStart({ active }: DragStartEvent) {
     const id = String(active.id)
+    const dia = colunaDe(colunas, id) ?? itemPorId.get(id)?.data ?? null
     setIdAtivo(id)
-    setOrigem(colunaDe(colunas, id) ?? itemPorId.get(id)?.data ?? null)
+    setOrigem(dia)
+    setDiaSobre(dia)
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
     if (!over) return
     const id = String(active.id)
     const destino = colunaDoAlvo(String(over.id))
+    setDiaSobre(destino ?? null)
+    // Card e item não saem do lugar: o destino recebe a cópia só ao soltar.
+    if (!tarefaPorId.has(id)) return
     const atual = colunaDe(colunas, id)
-    // Item de card não ocupa lugar na coluna: o destino aparece só ao soltar.
     if (!destino || !atual || destino === atual) return
     const indice = String(over.id).startsWith(PREFIXO_COLUNA)
       ? undefined
@@ -127,12 +145,17 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     const diaDeOrigem = origem
     setIdAtivo(null)
     setOrigem(null)
+    setDiaSobre(null)
     if (!over || !diaDeOrigem) return
 
     const destino = colunaDoAlvo(String(over.id))
     if (!destino) return
     if (itemPorId.has(id)) {
-      if (destino !== diaDeOrigem) void mover([id], destino)
+      if (destino !== diaDeOrigem) void mover([], destino, { itens: [id] })
+      return
+    }
+    if (grupoPorId.has(id) && destino !== diaDeOrigem) {
+      void mover([], destino, { grupos: [id] })
       return
     }
     // Dentro do dia de destino, a posição final é a do item sob o ponteiro.
@@ -147,19 +170,20 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       if (isMudou) void reordenarTarefa(proximas[destino], id)
       return
     }
-    // Card: só os pendentes vão, para o card da série no destino (aviso com "Desfazer").
-    if (grupoPorId.has(id)) void mover([], destino, [id])
-    else void soltarTarefaNoDia(id, destino, proximas[destino])
+    void soltarTarefaNoDia(id, destino, proximas[destino])
   }
 
   function handleDragCancel() {
     setIdAtivo(null)
     setOrigem(null)
+    setDiaSobre(null)
     setColunas(colunasDe(semana))
   }
 
-  const tarefaAtiva = idAtivo ? (tarefaPorId.get(idAtivo) ?? itemPorId.get(idAtivo)) : undefined
+  const tarefaAtiva = idAtivo ? tarefaPorId.get(idAtivo) : undefined
   const grupoAtivo = idAtivo ? grupoPorId.get(idAtivo) : undefined
+  const itemAtivo = idAtivo ? itemPorId.get(idAtivo) : undefined
+  const isCopiando = idAtivo !== null && !tarefaAtiva && diaSobre !== null && diaSobre !== origem
 
   return (
     <DndContext
@@ -195,6 +219,16 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
           />
         )}
         {grupoAtivo && <CartaoGrupo grupo={grupoAtivo} hoje={hoje} isSobreposto />}
+        {itemAtivo && (
+          <div className="rotate-1 rounded-sm border border-pauta bg-papel px-2.5 py-1.5 text-[0.9375rem] shadow-lg ring-2 ring-caneta/40">
+            {itemAtivo.item.titulo}
+          </div>
+        )}
+        {isCopiando && idAtivo && (
+          <p className="mt-1.5 w-max max-w-64 rounded-sm bg-tinta px-2 py-1 text-xs font-semibold text-papel shadow-md">
+            {textoCopia(itensACopiar(idAtivo), diaSobre)}
+          </p>
+        )}
       </DragOverlay>
     </DndContext>
   )

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ContextoCategorias } from '@/hooks/contexto-categorias'
 import { useCategorias } from '@/hooks/use-categorias'
 import { useHoje } from '@/hooks/use-hoje'
+import { useGruposDoPeriodo } from '@/hooks/use-grupos-do-periodo'
 import { useTarefasDoPeriodo } from '@/hooks/use-tarefas-do-periodo'
 import { inicioDoMes, isMesmoMes, nomeDoMes, semanasDoMes, somarMeses } from '@/lib/calendario'
 import { isDataLocalValida } from '@/lib/datas'
@@ -20,7 +21,10 @@ export function MesPage() {
 
 function Mes({ inicio, hoje }: { inicio: string; hoje: string }) {
   const semanas = semanasDoMes(inicio)
-  const { tarefas, isCarregando } = useTarefasDoPeriodo(semanas[0][0], semanas.at(-1)!.at(-1)!)
+  const primeiro = semanas[0][0]
+  const ultimo = semanas.at(-1)!.at(-1)!
+  const { tarefas, isCarregando } = useTarefasDoPeriodo(primeiro, ultimo)
+  const { grupos, isCarregando: isCarregandoGrupos } = useGruposDoPeriodo(primeiro, ultimo)
   const { categorias } = useCategorias()
   const isEsteMes = isMesmoMes(inicio, hoje)
   const [nome, ano] = nomeDoMes(inicio).split(' de ')
@@ -66,8 +70,14 @@ function Mes({ inicio, hoje }: { inicio: string; hoje: string }) {
         </nav>
       </header>
 
-      {!isCarregando && (
-        <GradeMes inicioDoMes={inicio} semanas={semanas} tarefas={tarefas} hoje={hoje} />
+      {!isCarregando && !isCarregandoGrupos && (
+        <GradeMes
+          inicioDoMes={inicio}
+          semanas={semanas}
+          tarefas={tarefas}
+          grupos={grupos}
+          hoje={hoje}
+        />
       )}
     </ContextoCategorias.Provider>
   )

@@ -13,7 +13,7 @@ import {
   type Backup,
 } from '@/lib/backup'
 
-const VERSAO_BANCO = 3
+const VERSAO_BANCO = 5
 
 function backupVazio(): Backup {
   return {
@@ -32,7 +32,8 @@ function backupVazio(): Backup {
       notes: [],
       attachments: [],
       groupSeries: [],
-      groupInstances: [],
+      groupCards: [],
+      groupItems: [],
     },
   }
 }
@@ -57,13 +58,39 @@ describe('lerBackup', () => {
   })
 
   it('aceita backup do formato 1, sem grupos', () => {
-    const { groupSeries, groupInstances, ...semGrupos } = backupVazio().tabelas
+    const { groupSeries, groupCards, groupItems, ...semGrupos } = backupVazio().tabelas
     const antigo = { ...backupVazio(), formato: 1, versaoBanco: 2, tabelas: semGrupos }
     const resultado = lerBackup(JSON.stringify(antigo), VERSAO_BANCO)
     expect(resultado).toMatchObject({
       isValido: true,
-      backup: { tabelas: { groupSeries, groupInstances } },
+      backup: { tabelas: { groupSeries, groupCards, groupItems } },
     })
+  })
+
+  it('converte o backup do formato 2: cards eram instâncias e itens eram tarefas', () => {
+    const { groupCards, groupItems, ...resto } = backupVazio().tabelas
+    const card = { id: 'c', seriesId: 's', data: '2026-10-30', ordem: 1, arquivado: false }
+    const antigo = {
+      ...backupVazio(),
+      formato: 2,
+      versaoBanco: 3,
+      tabelas: {
+        ...resto,
+        groupSeries: [{ id: 's', titulo: 'Casa', criadoEm: '', atualizadoEm: '' }],
+        groupInstances: [{ ...card, criadoEm: '', atualizadoEm: '' }],
+        tasks: [tarefa, { ...tarefa, id: 'i', titulo: 'Varrer', groupInstanceId: 'c' }],
+      },
+    }
+    expect(groupCards.length + groupItems.length).toBe(0)
+    const resultado = lerBackup(JSON.stringify(antigo), VERSAO_BANCO)
+    expect(resultado.isValido).toBe(true)
+    if (!resultado.isValido) return
+    const { tabelas } = resultado.backup
+    expect(tabelas.tasks.map((item) => item.id)).toEqual(['t1'])
+    expect(tabelas.groupCards).toMatchObject([card])
+    expect(tabelas.groupItems).toMatchObject([
+      { id: 'i', cardId: 'c', titulo: 'Varrer', status: 'pendente', dataOriginal: '2026-10-28' },
+    ])
   })
 
   it('recusa o que não é JSON', () => {

@@ -1,14 +1,14 @@
-import type { GroupInstance, GroupSeries, Task } from '@/db/types'
+import { format } from 'date-fns'
+import type { DataLocal, GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
+import { deDataLocal } from '@/lib/datas'
 import { normalizar } from '@/lib/procedimentos'
-import { separarDoDia, type Progresso } from '@/lib/tarefas'
 
-/** Um card do dia já montado: instância, série e itens visíveis (sem arquivados). */
+/** Um card já montado: card, série e itens visíveis (sem arquivados). */
 export interface GrupoDoDia {
-  instancia: GroupInstance
+  card: GroupCard
   serie: GroupSeries
-  /** Pendentes por ordem, depois concluídos por ordem de conclusão. */
-  pendentes: Task[]
-  concluidas: Task[]
+  /** Pendentes primeiro (ordem do card); depois feitos e transferidos, na ordem do card. */
+  itens: GroupItem[]
 }
 
 /** Títulos de série iguais sem diferenciar acento e maiúscula. */
@@ -16,69 +16,108 @@ export function mesmoTituloDeSerie(a: string, b: string) {
   return normalizar(a) === normalizar(b)
 }
 
-/** Itens do card: pendentes na ordem do card, concluídos no fim; arquivados ficam fora. */
-export function separarItens(itens: Task[]) {
-  return separarDoDia(itens)
+const porOrdem = (a: GroupItem, b: GroupItem) => a.ordem - b.ordem
+
+/** Pendentes no alto; feitos e transferidos ficam embaixo, na posição que tinham. */
+export function ordenarItens(itens: GroupItem[]) {
+  const visiveis = itens.filter((item) => item.status !== 'arquivado')
+  return [
+    ...visiveis.filter((item) => item.status === 'pendente').sort(porOrdem),
+    ...visiveis.filter((item) => item.status !== 'pendente').sort(porOrdem),
+  ]
 }
 
-export function progressoDoGrupo(grupo: Pick<GrupoDoDia, 'pendentes' | 'concluidas'>): Progresso {
+export function pendentesDo(grupo: Pick<GrupoDoDia, 'itens'>) {
+  return grupo.itens.filter((item) => item.status === 'pendente')
+}
+
+export interface ProgressoDoGrupo {
+  pendentes: number
+  feitos: number
+  transferidos: number
+}
+
+export function progressoDoGrupo(grupo: Pick<GrupoDoDia, 'itens'>): ProgressoDoGrupo {
+  const contar = (status: GroupItem['status']) =>
+    grupo.itens.filter((item) => item.status === status).length
   return {
-    concluidas: grupo.concluidas.length,
-    total: grupo.pendentes.length + grupo.concluidas.length,
+    pendentes: contar('pendente'),
+    feitos: contar('concluido'),
+    transferidos: contar('transferido'),
   }
 }
 
-/** "3/4" */
-export function textoProgressoGrupo({ concluidas, total }: Progresso) {
-  return `${concluidas}/${total}`
-}
-
-/** Card concluído: tem itens e nenhum pendente. Card vazio continua pendente. */
-export function isGrupoConcluido(grupo: Pick<GrupoDoDia, 'pendentes' | 'concluidas'>) {
-  return grupo.pendentes.length === 0 && grupo.concluidas.length > 0
-}
-
-/** Card todo concluído não sai do dia: ele é o registro do que foi feito. */
-export function podeMoverGrupo(grupo: Pick<GrupoDoDia, 'pendentes' | 'concluidas'>) {
-  return !isGrupoConcluido(grupo)
+function plural(quantidade: number, singular: string, plural: string) {
+  return `${quantidade} ${quantidade === 1 ? singular : plural}`
 }
 
 /**
- * Monta os cards a partir das instâncias, séries e itens (tarefas com `groupInstanceId`).
- * Instâncias arquivadas ou sem série ficam fora.
+ * Card ativo: "3/4" (feitos de pendentes + feitos). Encerrado: "3 feitos · 1 transferido".
+ * Transferidos não contam como pendentes nem como feitos.
  */
+export function textoProgressoGrupo({ pendentes, feitos, transferidos }: ProgressoDoGrupo) {
+  const partes =
+    pendentes > 0
+      ? [`${feitos}/${feitos + pendentes}`]
+      : feitos > 0 || transferidos === 0
+        ? [plural(feitos, 'feito', 'feitos')]
+        : []
+  if (transferidos > 0) partes.push(plural(transferidos, 'transferido', 'transferidos'))
+  return partes.join(' · ')
+}
+
+/** Card encerrado: tem itens e nenhuma pendência real. */
+export function isGrupoEncerrado(grupo: Pick<GrupoDoDia, 'itens'>) {
+  return grupo.itens.length > 0 && pendentesDo(grupo).length === 0
+}
+
+/** Só há o que copiar para outro dia se houver item pendente. */
+export function podeCopiarGrupo(grupo: Pick<GrupoDoDia, 'itens'>) {
+  return pendentesDo(grupo).length > 0
+}
+
+/** "31/10" */
+export function diaCurto(data: DataLocal) {
+  return format(deDataLocal(data), 'dd/MM')
+}
+
+/** "Copiar 1 item pendente para 31/10" (prévia do arrastar). */
+export function textoCopia(quantidade: number, destino: DataLocal) {
+  return `Copiar ${plural(quantidade, 'item pendente', 'itens pendentes')} para ${diaCurto(destino)}`
+}
+
+/** Monta os cards (não arquivados, com série) com os itens ordenados. */
 export function montarGrupos(
-  instancias: GroupInstance[],
+  cards: GroupCard[],
   series: GroupSeries[],
-  itens: Task[],
+  itens: GroupItem[],
 ): GrupoDoDia[] {
   const seriePorId = new Map(series.map((serie) => [serie.id, serie]))
-  const itensPorInstancia = new Map<string, Task[]>()
+  const itensPorCard = new Map<string, GroupItem[]>()
   for (const item of itens) {
-    if (!item.groupInstanceId) continue
-    const lista = itensPorInstancia.get(item.groupInstanceId) ?? []
+    const lista = itensPorCard.get(item.cardId) ?? []
     lista.push(item)
-    itensPorInstancia.set(item.groupInstanceId, lista)
+    itensPorCard.set(item.cardId, lista)
   }
-  return instancias
-    .filter((instancia) => !instancia.arquivado && seriePorId.has(instancia.seriesId))
+  return cards
+    .filter((card) => !card.arquivado && seriePorId.has(card.seriesId))
     .sort((a, b) => a.ordem - b.ordem)
-    .map((instancia) => ({
-      instancia,
-      serie: seriePorId.get(instancia.seriesId)!,
-      ...separarItens(itensPorInstancia.get(instancia.id) ?? []),
+    .map((card) => ({
+      card,
+      serie: seriePorId.get(card.seriesId)!,
+      itens: ordenarItens(itensPorCard.get(card.id) ?? []),
     }))
 }
 
-/** Entrada da folha do dia: tarefa solta ou card de grupo, na ordem comum do dia. */
+/** Entrada da lista do dia: tarefa solta ou card, na ordem comum do dia. */
 export type EntradaDoDia = { tipo: 'tarefa'; tarefa: Task } | { tipo: 'grupo'; grupo: GrupoDoDia }
 
 export function idDaEntrada(entrada: EntradaDoDia) {
-  return entrada.tipo === 'tarefa' ? entrada.tarefa.id : entrada.grupo.instancia.id
+  return entrada.tipo === 'tarefa' ? entrada.tarefa.id : entrada.grupo.card.id
 }
 
 function ordemDaEntrada(entrada: EntradaDoDia) {
-  return entrada.tipo === 'tarefa' ? entrada.tarefa.ordem : entrada.grupo.instancia.ordem
+  return entrada.tipo === 'tarefa' ? entrada.tarefa.ordem : entrada.grupo.card.ordem
 }
 
 /** Junta tarefas soltas e cards numa lista só, pela `ordem` do dia. */
@@ -87,4 +126,31 @@ export function intercalarNoDia(tarefas: Task[], grupos: GrupoDoDia[]): EntradaD
     ...tarefas.map((tarefa) => ({ tipo: 'tarefa' as const, tarefa })),
     ...grupos.map((grupo) => ({ tipo: 'grupo' as const, grupo })),
   ].sort((a, b) => ordemDaEntrada(a) - ordemDaEntrada(b))
+}
+
+/**
+ * Itens pendentes e feitos no formato das tarefas, para os resumos de mês e ano
+ * (transferidos não contam).
+ */
+export function itensParaResumo(grupos: GrupoDoDia[]) {
+  return grupos.flatMap((grupo) =>
+    grupo.itens
+      .filter((item) => item.status === 'pendente' || item.status === 'concluido')
+      .map((item) => ({
+        data: grupo.card.data,
+        status: item.status === 'pendente' ? ('pendente' as const) : ('concluida' as const),
+      })),
+  )
+}
+
+/**
+ * Item pendente que vem de um dia anterior ao do card (cópia) ou a hoje (atrasado):
+ * mostra "pendente desde <dataOriginal>".
+ */
+export function isPendenteDeAntes(
+  item: Pick<GroupItem, 'status' | 'dataOriginal'>,
+  dataDoCard: DataLocal,
+  hoje: DataLocal,
+) {
+  return item.status === 'pendente' && (item.dataOriginal < dataDoCard || item.dataOriginal < hoje)
 }

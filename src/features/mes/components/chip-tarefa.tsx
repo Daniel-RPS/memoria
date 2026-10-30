@@ -4,6 +4,7 @@ import { cn } from 'cn'
 import type { DataLocal, Task } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
+import type { GrupoDoDia } from '@/lib/grupos'
 
 interface ChipTarefaProps {
   tarefa: Task
@@ -60,6 +61,66 @@ export function ChipTarefaArrastavel({ tarefa, hoje }: Omit<ChipTarefaProps, 'is
       )}
     >
       <ChipTarefa tarefa={tarefa} hoje={hoje} />
+    </div>
+  )
+}
+
+interface ChipGrupoProps {
+  grupo: GrupoDoDia
+  /** Itens pendentes do card. */
+  quantidade: number
+  hoje: DataLocal
+  isSobreposto?: boolean
+}
+
+/** Card de grupo em uma linha: "Casa · 2" (itens pendentes), na cor da categoria. */
+export function ChipGrupo({ grupo, quantidade, hoje, isSobreposto }: ChipGrupoProps) {
+  const classificacao = classificarTarefa(grupo.serie, useCategoriasDoContexto())
+  const isAtrasado = grupo.card.data < hoje
+
+  return (
+    <span
+      className={cn(
+        'flex min-w-0 items-center gap-1.5 rounded-sm border-l-[3px] bg-papel px-1.5 py-0.5 text-xs leading-snug font-semibold',
+        isAtrasado &&
+          'bg-[linear-gradient(transparent_15%,var(--marca-texto)_15%,var(--marca-texto)_85%,transparent_85%)]',
+        isSobreposto && 'rotate-1 shadow-lg ring-2 ring-caneta/40',
+      )}
+      style={{ borderLeftColor: classificacao?.cor ?? 'var(--grafite)' }}
+    >
+      <span className="truncate">{grupo.serie.titulo}</span>
+      <span className="font-normal text-grafite tabular-nums">· {quantidade}</span>
+    </span>
+  )
+}
+
+/** Chip do card: arrastar para outro dia copia os pendentes; um clique abre o dia. */
+export function ChipGrupoArrastavel(props: Omit<ChipGrupoProps, 'isSobreposto'>) {
+  const navigate = useNavigate()
+  const { card, serie } = props.grupo
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: card.id,
+    data: { data: card.data, isGrupo: true },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={() => navigate(`/dia/${card.data}`)}
+      aria-roledescription="grupo arrastável"
+      aria-label={`Grupo ${serie.titulo}, ${props.quantidade} pendentes. Espaço para levar os pendentes a outro dia; Enter abre o dia.`}
+      onKeyDown={(evento) => {
+        if (evento.key === 'Enter') navigate(`/dia/${card.data}`)
+        else listeners?.onKeyDown?.(evento)
+      }}
+      className={cn(
+        'block w-full min-w-0 cursor-grab touch-none rounded-sm text-left focus-visible:outline-2 focus-visible:outline-caneta active:cursor-grabbing',
+        isDragging && 'opacity-30',
+      )}
+    >
+      <ChipGrupo {...props} />
     </div>
   )
 }

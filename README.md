@@ -21,9 +21,9 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
 - ✅ Filtro por categoria e subcategoria na visão do dia
 - ✅ Visão de semana (segunda a domingo)
-- ✅ Grupos de tarefas: um card (ex.: "Casa") com itens; ao mover, só os pendentes vão e os concluídos ficam no dia como registro
+- ✅ Grupos de tarefas: um card (ex.: "Casa") com itens; levar a outro dia cria uma cópia só com os pendentes e o card original fica como registro
 - ✅ Visão de mês, com arrastar tarefas entre dias
-- ✅ Visão de ano, com a quantidade de tarefas e os atrasos de cada dia
+- ✅ Visão de ano, com a quantidade de tarefas (e de itens de grupo) e os atrasos de cada dia
 
 ### Mover tarefas
 
@@ -38,12 +38,15 @@ Legenda: ✅ pronto · 🔜 planejado
 
 ### Grupos de tarefas
 
-- ✅ "+ Novo grupo" cria um card com título, categoria opcional e itens com caixa de seleção
-- ✅ Progresso no card (ex.: 3/4), botão de recolher e "+ Adicionar item"
-- ✅ Mover, adiar ou trazer de ontem leva só os itens pendentes; os concluídos ficam no card do dia original
-- ✅ Cards do mesmo nome são a mesma **série**: no dia de destino, os itens se juntam ao card que já existe
-- ✅ Arrastar um item sozinho para outro dia, colocar uma tarefa solta no grupo e tirar um item do grupo
-- ✅ Cada item mostra há quantos dias está pendente
+- ✅ "+ Novo grupo" ao lado de "+ Nova tarefa" (Dia e Semana): um card com título, categoria opcional (só cor e filtro) e itens com caixa de seleção
+- ✅ Um grupo "Casa" e a categoria "Casa" são coisas independentes
+- ✅ Levar o card a outro dia **duplica**: o card fica no dia original e o destino recebe só os itens não marcados
+- ✅ No original, o item levado fica cinza, sem caixa, com "transferido para 31/10" (leva ao card de destino); o progresso vira "3 feitos · 1 transferido" e o card aparece encerrado
+- ✅ Na cópia, o item mostra "pendente desde 30/10"
+- ✅ Cards com o mesmo nome são a mesma **série**: se o destino já tem o card, os itens entram nele
+- ✅ Card com tudo marcado não pode ser levado; card sem nada marcado leva tudo (o original fica)
+- ✅ Arrastar um item sozinho, colocar uma tarefa solta no grupo e tirar um item do grupo
+- ✅ Adiar, mover para outro dia, seleção múltipla e trazer pendências de ontem também duplicam os cards
 - ✅ Arquivar um item ou o card inteiro
 
 ### Procedimentos
@@ -110,12 +113,12 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Na visão do dia, os botões de categoria filtram as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
 - Mover uma tarefa só muda o dia dela: nada é copiado ou apagado, e a contagem "pendente há N dias" continua contando desde o dia em que foi criada.
 - No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
-- Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje**.
-- **+ Novo grupo** (abaixo de Nova tarefa) cria um card. Escreva os itens em **Adicionar item**; os concluídos ficam riscados no fim do card.
-- Ao mover um grupo para outro dia (arrastando na semana ou pelo menu **⋯** do card), só os itens pendentes vão. Os concluídos ficam no dia original, e o card de lá vira concluído. Se nenhum item estava concluído, o card vai inteiro; se todos estavam, ele não pode ser movido.
+- Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje** (tarefas soltas vêm; itens de grupo são copiados).
+- **+ Novo grupo**, ao lado de **Nova tarefa**, cria um card. Escreva os itens em **Adicionar item**.
+- Arrastar um card para outro dia (na Semana ou no Mês), ou usar **Adiar** e **Mover para outro dia…** no menu **⋯** do card, **copia** os itens pendentes para o card desse grupo no outro dia. O card original fica onde estava, como registro: os itens levados aparecem como "transferido para 31/10". Enquanto arrasta, o aviso diz quantos itens vão ("Copiar 1 item pendente para 31/10").
+- Tarefas soltas continuam sendo **movidas** (não copiadas).
 - Grupos com o mesmo nome são o mesmo grupo em dias diferentes: se o destino já tem o card "Casa", os itens entram nele. Renomear ou trocar a categoria do card vale para todos os dias.
-- Arraste uma tarefa solta para dentro de um card, ou um item para fora, para virar tarefa solta. Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**.
-- Em **Semana**, arraste as tarefas entre os dias. Pelo teclado: foque a tarefa, tecle espaço, use as setas e espaço de novo. Clique no dia para abrir a visão dele.
+- Arraste uma tarefa solta para dentro de um card, ou um item para fora (vira tarefa solta). Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**. Subtarefas, anotação e anexos da tarefa não passam para o item.
 - Em **Procedimentos**, crie o passo a passo. Valores que mudam (servidor, data, número do chamado) viram **campos variáveis**: escreva `{{Servidor}}` no passo e, ao executar, o valor digitado aparece no lugar, inclusive no comando copiado.
 - Para senhas, use um campo do tipo **credencial**: ele guarda só onde a senha está (ex.: "cofre X, item Y"). O MemorIA não tem campo de senha.
 - **Executar** abre o checklist. O modelo nunca muda; o que você marca e preenche vai para o histórico daquela execução.

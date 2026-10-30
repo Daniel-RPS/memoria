@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router'
 import { cn } from 'cn'
 import { CampoNovoItem } from '@/components/campo-novo-item'
+import { criarGrupo } from '@/db/repositories/group-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import type { DataLocal, Subtask, Task } from '@/db/types'
 import { deDataLocal } from '@/lib/datas'
@@ -107,6 +108,12 @@ export function ColunaDia({
           nomeAcessivel={`Nova tarefa em ${nomeCurto}`}
           tamanho="compacto"
           onCriar={(titulo) => criarTarefa({ titulo, data })}
+        />
+        <CampoNovoItem
+          rotulo="Novo grupo"
+          nomeAcessivel={`Novo grupo em ${nomeCurto}`}
+          tamanho="compacto"
+          onCriar={(titulo) => criarGrupo({ titulo, data })}
         />
       </div>
       {quantidadeConcluidas > 0 && (

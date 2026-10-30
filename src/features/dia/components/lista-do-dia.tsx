@@ -23,21 +23,24 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
-import type { DataLocal, Subtask, Task } from '@/db/types'
-import { idDaEntrada, type EntradaDoDia, type GrupoDoDia } from '@/lib/grupos'
+import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
+import { idDaEntrada, pendentesDo, type EntradaDoDia, type GrupoDoDia } from '@/lib/grupos'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
+import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { AlcaArrastar } from '@/features/dia/components/alca-arrastar'
 import { CardGrupo } from '@/features/dia/components/card-grupo'
 import { ItemPendente } from '@/features/dia/components/item-pendente'
+import { LinhaItem } from '@/features/dia/components/linha-item'
 
 interface ListaDoDiaProps {
+  data: DataLocal
   entradas: EntradaDoDia[]
   subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
 }
 
-/** Coluna das tarefas soltas e cards; as outras colunas são os itens de cada card. */
+/** Coluna das tarefas soltas e cards; as outras colunas são os itens pendentes de cada card. */
 const RAIZ = 'raiz'
 /** Prefixo da área de soltar dos itens de um card (o resto é o id do card). */
 const PREFIXO_ITENS = 'itens:'
@@ -53,19 +56,20 @@ function colunasDe(entradas: EntradaDoDia[]): Colunas {
   const colunas: Colunas = { [RAIZ]: entradas.map(idDaEntrada) }
   for (const entrada of entradas) {
     if (entrada.tipo === 'grupo') {
-      colunas[entrada.grupo.instancia.id] = entrada.grupo.pendentes.map((item) => item.id)
+      colunas[entrada.grupo.card.id] = pendentesDo(entrada.grupo).map((item) => item.id)
     }
   }
   return colunas
 }
 
 /**
- * Pendentes do dia: tarefas soltas e cards, reordenáveis entre si; itens reordenáveis dentro
- * do card. Arrastar uma tarefa para dentro de um card a coloca no grupo; arrastar um item para
- * fora o torna tarefa solta.
+ * Pendentes do dia: tarefas soltas e cards, reordenáveis entre si; itens pendentes
+ * reordenáveis dentro do card. Arrastar uma tarefa para dentro de um card a torna item;
+ * arrastar um item para fora o torna tarefa solta.
  */
-export function ListaDoDia({ entradas, subtarefasPorTarefa, hoje }: ListaDoDiaProps) {
-  const { reordenarTarefa, colocarNoGrupo, tirarDoGrupo } = useAcoesTarefa()
+export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaDoDiaProps) {
+  const { reordenarTarefa, colocarNoGrupo } = useAcoesTarefa()
+  const { reordenarItem, tirarDoGrupo, passarItemParaCard } = useAcoesGrupo()
   const [colunas, setColunas] = useState(() => colunasDe(entradas))
   const [entradasAnteriores, setEntradasAnteriores] = useState(entradas)
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
@@ -83,15 +87,19 @@ export function ListaDoDia({ entradas, subtarefasPorTarefa, hoje }: ListaDoDiaPr
 
   const tarefaPorId = new Map<string, Task>()
   const grupoPorId = new Map<string, GrupoDoDia>()
+  const itemPorId = new Map<string, GroupItem>()
   for (const entrada of entradas) {
     if (entrada.tipo === 'tarefa') tarefaPorId.set(entrada.tarefa.id, entrada.tarefa)
     else {
-      grupoPorId.set(entrada.grupo.instancia.id, entrada.grupo)
-      for (const item of entrada.grupo.pendentes) tarefaPorId.set(item.id, item)
+      grupoPorId.set(entrada.grupo.card.id, entrada.grupo)
+      for (const item of pendentesDo(entrada.grupo)) itemPorId.set(item.id, item)
     }
   }
   const tituloDe = (id: string | number) =>
-    tarefaPorId.get(String(id))?.titulo ?? grupoPorId.get(String(id))?.serie.titulo ?? 'item'
+    tarefaPorId.get(String(id))?.titulo ??
+    itemPorId.get(String(id))?.titulo ??
+    grupoPorId.get(String(id))?.serie.titulo ??
+    'item'
 
   /** Coluna para onde vai quem está sobre `id` (um item, uma entrada ou a área de um card). */
   function colunaDoAlvo(id: string) {
@@ -178,11 +186,15 @@ export function ListaDoDia({ entradas, subtarefasPorTarefa, hoje }: ListaDoDiaPr
 
     if (destino === colunaDeOrigem) {
       const isMudou = proximas[destino].join() !== colunasDe(entradas)[destino]?.join()
-      if (isMudou) void reordenarTarefa(proximas[destino], id)
+      if (!isMudou) return
+      if (destino === RAIZ) void reordenarTarefa(proximas[destino], id)
+      else void reordenarItem(proximas[destino], id)
     } else if (destino === RAIZ) {
       void tirarDoGrupo(id, proximas[RAIZ])
-    } else {
+    } else if (colunaDeOrigem === RAIZ) {
       void colocarNoGrupo(id, destino, proximas[destino])
+    } else {
+      void passarItemParaCard(id, destino, proximas[destino])
     }
   }
 
@@ -213,22 +225,25 @@ export function ListaDoDia({ entradas, subtarefasPorTarefa, hoje }: ListaDoDiaPr
                 <CardOrdenavel
                   key={id}
                   grupo={grupo}
-                  idsItens={colunas[id] ?? []}
+                  idsPendentes={colunas[id] ?? []}
                   tarefaPorId={tarefaPorId}
+                  itemPorId={itemPorId}
                   subtarefasPorTarefa={subtarefasPorTarefa}
                   hoje={hoje}
                 />
               )
             }
-            const tarefa = tarefaPorId.get(id)
-            return tarefa ? (
-              <ItemPendente
+            return (
+              <EntradaSolta
                 key={id}
-                tarefa={tarefa}
-                subtarefas={subtarefasPorTarefa.get(id) ?? SEM_SUBTAREFAS}
+                id={id}
+                tarefaPorId={tarefaPorId}
+                itemPorId={itemPorId}
+                subtarefasPorTarefa={subtarefasPorTarefa}
                 hoje={hoje}
+                data={data}
               />
-            ) : null
+            )
           })}
         </ul>
       </SortableContext>
@@ -243,11 +258,91 @@ export function ListaDoDia({ entradas, subtarefasPorTarefa, hoje }: ListaDoDiaPr
   )
 }
 
+interface EntradaProps {
+  id: string
+  tarefaPorId: Map<string, Task>
+  itemPorId: Map<string, GroupItem>
+  subtarefasPorTarefa: Map<string, Subtask[]>
+  hoje: DataLocal
+  /** Dia da folha (para itens que estão de passagem fora do card). */
+  data: DataLocal
+}
+
+/**
+ * Tarefa solta ou, durante o arrastar, um item que está saindo do card (ainda é item até
+ * o banco gravar).
+ */
+function EntradaSolta({
+  id,
+  tarefaPorId,
+  itemPorId,
+  subtarefasPorTarefa,
+  hoje,
+  data,
+}: EntradaProps) {
+  const tarefa = tarefaPorId.get(id)
+  if (tarefa) {
+    return (
+      <ItemPendente
+        tarefa={tarefa}
+        subtarefas={subtarefasPorTarefa.get(id) ?? SEM_SUBTAREFAS}
+        hoje={hoje}
+      />
+    )
+  }
+  const item = itemPorId.get(id)
+  return item ? <ItemDeGrupoOrdenavel item={item} data={data} hoje={hoje} /> : null
+}
+
+/** Item pendente do card, arrastável pela alça (reordena, sai do card ou vai para outro). */
+function ItemDeGrupoOrdenavel({
+  item,
+  data,
+  hoje,
+}: {
+  item: GroupItem
+  data: DataLocal
+  hoje: DataLocal
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id })
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn('relative bg-papel', isDragging && 'z-10 opacity-40')}
+    >
+      <LinhaItem
+        item={item}
+        data={data}
+        hoje={hoje}
+        alca={
+          <AlcaArrastar
+            rotulo={`Mover ${item.titulo}`}
+            ref={setActivatorNodeRef}
+            attributes={attributes}
+            listeners={listeners}
+          />
+        }
+      />
+    </li>
+  )
+}
+
 interface CardOrdenavelProps {
   grupo: GrupoDoDia
   /** Itens pendentes na ordem mostrada (pode incluir uma tarefa sendo arrastada para dentro). */
-  idsItens: string[]
+  idsPendentes: string[]
   tarefaPorId: Map<string, Task>
+  itemPorId: Map<string, GroupItem>
   subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
 }
@@ -255,12 +350,13 @@ interface CardOrdenavelProps {
 /** Card que se arrasta pela alça do cabeçalho e recebe itens soltos na lista dele. */
 function CardOrdenavel({
   grupo,
-  idsItens,
+  idsPendentes,
   tarefaPorId,
+  itemPorId,
   subtarefasPorTarefa,
   hoje,
 }: CardOrdenavelProps) {
-  const { id } = grupo.instancia
+  const { id, data } = grupo.card
   const {
     attributes,
     listeners,
@@ -281,7 +377,6 @@ function CardOrdenavel({
       <CardGrupo
         grupo={grupo}
         hoje={hoje}
-        subtarefasPorTarefa={subtarefasPorTarefa}
         alca={
           <AlcaArrastar
             rotulo={`Mover grupo ${grupo.serie.titulo}`}
@@ -292,18 +387,23 @@ function CardOrdenavel({
           />
         }
         pendentes={
-          <SortableContext id={id} items={idsItens} strategy={verticalListSortingStrategy}>
+          <SortableContext id={id} items={idsPendentes} strategy={verticalListSortingStrategy}>
             <ul
               ref={setAreaRef}
               aria-label={`Itens de ${grupo.serie.titulo}`}
               className={cn('min-h-2 transition-colors', isOver && 'bg-accent')}
             >
-              {idsItens.map((idItem) => {
-                const item = tarefaPorId.get(idItem)
-                return item ? (
+              {idsPendentes.map((idItem) => {
+                const item = itemPorId.get(idItem)
+                if (item) {
+                  return <ItemDeGrupoOrdenavel key={idItem} item={item} data={data} hoje={hoje} />
+                }
+                // Tarefa solta passando por dentro do card durante o arrastar.
+                const tarefa = tarefaPorId.get(idItem)
+                return tarefa ? (
                   <ItemPendente
                     key={idItem}
-                    tarefa={item}
+                    tarefa={tarefa}
                     subtarefas={subtarefasPorTarefa.get(idItem) ?? SEM_SUBTAREFAS}
                     hoje={hoje}
                   />

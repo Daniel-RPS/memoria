@@ -7,12 +7,13 @@ import { cn } from 'cn'
 import type { DataLocal, Task } from '@/db/types'
 import { isMesmoMes } from '@/lib/calendario'
 import { deDataLocal } from '@/lib/datas'
-import { ChipTarefaArrastavel } from '@/features/mes/components/chip-tarefa'
+import { pendentesDo, type GrupoDoDia } from '@/lib/grupos'
+import { ChipGrupoArrastavel, ChipTarefaArrastavel } from '@/features/mes/components/chip-tarefa'
 
 /** Prefixo do id da área de soltar de cada célula (o resto é a data). */
 export const PREFIXO_CELULA = 'celula:'
 
-/** Quantas tarefas aparecem por dia antes do "+N". */
+/** Quantos chips (tarefas e cards) aparecem por dia antes do "+N". */
 const MAXIMO_VISIVEL = 3
 
 interface CelulaDiaProps {
@@ -20,6 +21,11 @@ interface CelulaDiaProps {
   hoje: DataLocal
   inicioDoMes: DataLocal
   pendentes: Task[]
+  /** Cards com itens pendentes: um chip cada. */
+  gruposComPendentes: GrupoDoDia[]
+  /** Tarefas soltas e itens de grupo pendentes. */
+  quantidadePendentes: number
+  /** Tarefas soltas e itens de grupo feitos (transferidos não contam). */
   quantidadeConcluidas: number
 }
 
@@ -30,25 +36,31 @@ function descrever(pendentes: number, concluidas: number) {
   return partes.length > 0 ? partes.join(', ') : 'nada marcado'
 }
 
-/** Um dia da grade: número (abre o dia), até 3 pendentes e o resumo do resto. */
+/** Um dia da grade: número (abre o dia), até 3 chips e o resumo do resto. */
 export function CelulaDia({
   data,
   hoje,
   inicioDoMes,
   pendentes,
+  gruposComPendentes,
+  quantidadePendentes,
   quantidadeConcluidas,
 }: CelulaDiaProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `${PREFIXO_CELULA}${data}` })
   const dia = deDataLocal(data)
   const isHoje = data === hoje
   const isForaDoMes = !isMesmoMes(data, inicioDoMes)
-  const escondidas = pendentes.length - MAXIMO_VISIVEL
+  const chips = [
+    ...pendentes.map((tarefa) => ({ tipo: 'tarefa' as const, tarefa })),
+    ...gruposComPendentes.map((grupo) => ({ tipo: 'grupo' as const, grupo })),
+  ]
+  const escondidas = chips.length - MAXIMO_VISIVEL
   const nomeCompleto = format(dia, "EEEE, d 'de' MMMM", { locale: ptBR })
 
   return (
     <li
       ref={setNodeRef}
-      aria-label={`${nomeCompleto}: ${descrever(pendentes.length, quantidadeConcluidas)}`}
+      aria-label={`${nomeCompleto}: ${descrever(quantidadePendentes, quantidadeConcluidas)}`}
       className={cn(
         'flex min-h-28 min-w-0 flex-col gap-1 border-r border-b border-pauta p-1.5 [&:nth-child(7n)]:border-r-0',
         isForaDoMes && 'bg-nevoa/60',
@@ -67,9 +79,20 @@ export function CelulaDia({
         {format(dia, 'd')}
       </Link>
       <div className="flex min-w-0 flex-col gap-0.5">
-        {pendentes.slice(0, MAXIMO_VISIVEL).map((tarefa) => (
-          <ChipTarefaArrastavel key={tarefa.id} tarefa={tarefa} hoje={hoje} />
-        ))}
+        {chips
+          .slice(0, MAXIMO_VISIVEL)
+          .map((chip) =>
+            chip.tipo === 'tarefa' ? (
+              <ChipTarefaArrastavel key={chip.tarefa.id} tarefa={chip.tarefa} hoje={hoje} />
+            ) : (
+              <ChipGrupoArrastavel
+                key={chip.grupo.card.id}
+                grupo={chip.grupo}
+                quantidade={pendentesDo(chip.grupo).length}
+                hoje={hoje}
+              />
+            ),
+          )}
       </div>
       {(escondidas > 0 || quantidadeConcluidas > 0) && (
         <Link
