@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
 
-> **Status:** fases 1 a 7 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano e backup). Próxima: fase 8, notas, fotos, desenhos e áudio.
+> **Status:** fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos). Próxima: fase 9, compartilhamento (precisa de servidor; arquitetura a combinar).
 
 ## Funcionalidades
 
@@ -35,7 +35,7 @@ Legenda: ✅ pronto · 🔜 planejado
 
 ### Procedimentos
 - ✅ Criar e editar procedimentos com seções, passos, subpassos, trechos de código e alertas
-- 🔜 Anexos nos passos (fase 8)
+- ✅ Anexos no procedimento e em cada passo (vistos também no modo execução)
 - ✅ Campos variáveis preenchidos a cada execução (`{{nome}}` nos passos)
 - ✅ Modo execução: marcar e pular passos, copiar comandos, observações, sem alterar o modelo original
 - ✅ Execução pela metade fica salva e pode ser retomada
@@ -47,7 +47,9 @@ Legenda: ✅ pronto · 🔜 planejado
 > **Sobre senhas:** o MemorIA não guarda senhas. Ele guarda só **onde** a senha está, por exemplo "cofre X, item Y".
 
 ### Conteúdo e dados
-- 🔜 Notas, fotos, desenhos à mão livre e gravação de áudio
+- ✅ Notas com texto livre que se salva sozinho, busca e anexos
+- ✅ Anexos em tarefas, notas e procedimentos: fotos, desenhos à mão livre, gravações de áudio e links
+- ✅ Anotação de texto em cada tarefa
 - ✅ Backup: exportar e importar todos os dados, incluindo anexos
 - 🔜 Compartilhamento com outras pessoas, só para ver ou para editar (exige servidor)
 
@@ -101,6 +103,13 @@ Depois, abra no navegador o endereço que aparecer no terminal (normalmente `htt
 - Cada **Salvar nova versão** guarda a anterior em **Versões anteriores**, onde dá para ver e restaurar.
 - Em **Mês**, cada dia mostra até 3 pendentes (atrasadas com marca-texto) e o resto como "+N". Arraste uma tarefa para outro dia; pelo teclado, foque a tarefa, tecle espaço, use as setas (lados = um dia, cima/baixo = uma semana) e espaço de novo.
 - Em **Ano**, o tom de cada dia indica quantas tarefas há, e um ponto amarelo marca pendência atrasada. Clique no mês ou no dia para abrir.
+- Em **Notas**, **Nova nota** abre uma página que se salva sozinha enquanto você escreve.
+- Anexos (em notas, no menu **⋯ → Anotação e anexos** de uma tarefa e na página de um procedimento):
+  - **Foto:** escolha uma ou várias imagens. Fotos com mais de 2048 px são reduzidas para não encher o armazenamento e o backup.
+  - **Desenho:** desenhe com mouse, caneta (sensível à pressão) ou dedo; cores, espessuras, borracha e desfazer. O lápis na miniatura reabre para continuar o desenho.
+  - **Áudio:** grave pelo microfone (o navegador pede permissão na primeira vez). Para sozinho em 10 minutos.
+  - **Link:** só endereços `http://` ou `https://`; abrem em outra aba.
+  - Excluir um anexo mostra **Desfazer** por alguns segundos.
 
 Outros comandos:
 
@@ -134,5 +143,5 @@ Recomendação: faça backup com frequência e guarde o arquivo fora do computad
 | 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | ✅ |
 | 6 | Visões de mês e ano | ✅ |
 | 7 | Backup: exportar e importar (JSON com anexos) | ✅ |
-| 8 | Notas, fotos, desenhos à mão livre e áudio | 🔜 |
+| 8 | Notas, fotos, desenhos à mão livre e áudio | ✅ |
 | 9 | Compartilhamento (ver ou editar), com servidor | 🔜 |

@@ -1,5 +1,7 @@
 import { db } from '@/db/database'
 import type { DataLocal, Procedure, Task } from '@/db/types'
+import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
+import { excluirNotasDe } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 import { somarDias } from '@/lib/datas'
 import { destinoDoAdiamento, pendenciasDeOntem, planejarMovimento } from '@/lib/mover'
@@ -97,9 +99,12 @@ export async function arquivarTarefa(id: string) {
   await db.tasks.update(id, { status: 'arquivada', atualizadoEm: agora() })
 }
 
-/** Exclusão definitiva, junto com as subtarefas. */
+/** Exclusão definitiva, junto com subtarefas, anotação e anexos. */
 export async function excluirTarefa(id: string) {
-  await db.transaction('rw', db.tasks, db.subtasks, async () => {
+  await db.transaction('rw', [db.tasks, db.subtasks, db.notes, db.attachments], async () => {
+    const dono = [{ tipo: 'task' as const, id }]
+    await excluirAnexosDe(dono)
+    await excluirNotasDe(dono)
     await db.subtasks.where('taskId').equals(id).delete()
     await db.tasks.delete(id)
   })

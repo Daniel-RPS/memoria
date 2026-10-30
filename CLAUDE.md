@@ -37,6 +37,11 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Banco Dexie na versão 2 (índice `tasks.procedureId`); mudar índice = nova `version()`
 - IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
 - Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
+- Anexo pertence ao `dono` {tipo, id} (tarefa, nota, procedimento, passo); `Step.anexos` não é usado — a fonte é `attachments`
+- Excluir tarefa/nota/procedimento SEMPRE apaga anexos e anotações dele (`excluirAnexosDe`, `excluirNotasDe`) na mesma transação
+- Anotação de tarefa = Note com `dono`; notas avulsas (página Notas) não têm dono
+- Painel de anexos reutilizável: `src/components/anexos/painel-anexos.tsx`; links SÓ http/https (`esquemaLink`)
+- Texto editado com gravação atrasada: use `useSalvarComAtraso` (grava o pendente ao sair da tela)
 - Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
@@ -104,7 +109,8 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro` e no repositório
 - Teste que navega: espere um elemento da página nova (o endereço muda antes da tela desenhar)
 - A área de avisos do Sonner é uma `region` ("Notifications"): filtre por nome ao contar regiões
-- Nos testes, `Blob` é o do Node (`src/test/setup.ts`): o do jsdom vira objeto vazio no fake-indexeddb
+- Nos testes, `Blob`/`File` são os do Node e `URL.createObjectURL` é fixo (`src/test/setup.ts`): o Blob do jsdom vira objeto vazio no fake-indexeddb
+- Canvas, câmera, microfone e `createImageBitmap` não existem no jsdom: verifique desenho, foto e áudio no navegador
 - Testes têm tsconfig próprio (`tsconfig.test.json`, com tipos do Node); o app não enxerga tipos do Node
 - `userEvent.type`: `{` é tecla especial; para digitar `{{campo}}` escreva `'{{{{campo}}'`
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier

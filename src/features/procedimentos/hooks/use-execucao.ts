@@ -1,17 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import {
-  atualizarExecucao,
-  iniciarOuRetomarExecucao,
-  obterExecucao,
-  type MudancasExecucao,
-} from '@/db/repositories/execution-repository'
+import { iniciarOuRetomarExecucao, obterExecucao } from '@/db/repositories/execution-repository'
 import { obterVersao } from '@/db/repositories/procedure-repository'
 import { db } from '@/db/database'
-import type { DataLocal, Execution } from '@/db/types'
-
-/** Espera depois da última tecla antes de gravar valores e observações. */
-const ATRASO_PARA_SALVAR_MS = 400
+import type { DataLocal } from '@/db/types'
 
 /**
  * Abre (ou retoma) a execução do procedimento e devolve a execução e a versão usada.
@@ -48,41 +40,4 @@ export function useExecucao(procedureId: string, hoje: DataLocal, taskIdPedido?:
   }, [execucaoId, procedureId])
 
   return { dados, erro }
-}
-
-/**
- * Texto editado localmente (sem esperar o banco a cada tecla) e gravado com atraso.
- * `salvarAgora` grava o que estiver pendente, para usar antes de concluir.
- */
-export function useCampoComAtraso<T>(
-  execucao: Execution,
-  ler: (execucao: Execution) => T,
-  paraMudanca: (valor: T) => MudancasExecucao,
-) {
-  const [valor, setValor] = useState(() => ler(execucao))
-  const pendenteRef = useRef<T | null>(null)
-
-  useEffect(() => {
-    if (pendenteRef.current === null) return
-    const temporizador = window.setTimeout(() => {
-      if (pendenteRef.current === null) return
-      void atualizarExecucao(execucao.id, paraMudanca(pendenteRef.current))
-      pendenteRef.current = null
-    }, ATRASO_PARA_SALVAR_MS)
-    return () => window.clearTimeout(temporizador)
-  }, [valor, execucao.id, paraMudanca])
-
-  function mudar(novo: T) {
-    pendenteRef.current = novo
-    setValor(novo)
-  }
-
-  async function salvarAgora() {
-    if (pendenteRef.current === null) return
-    const pendente = pendenteRef.current
-    pendenteRef.current = null
-    await atualizarExecucao(execucao.id, paraMudanca(pendente))
-  }
-
-  return { valor, mudar, salvarAgora }
 }

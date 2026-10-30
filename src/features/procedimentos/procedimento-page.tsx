@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarPlus, LockKeyhole, Pencil, Play, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { PainelAnexos } from '@/components/anexos/painel-anexos'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
 import {
   AlertDialog,
@@ -134,8 +135,18 @@ export function ProcedimentoPage() {
       )}
 
       <div className="mt-10 rounded-md border border-pauta bg-papel p-4 sm:p-6">
-        <ConteudoProcedimento procedimento={procedimento} />
+        <ConteudoProcedimento procedimento={procedimento} isAnexosEditaveis />
       </div>
+
+      <section aria-labelledby="titulo-anexos-procedimento" className="mt-10">
+        <h2 id="titulo-anexos-procedimento" className="mb-3 text-xl font-bold">
+          Anexos do procedimento
+        </h2>
+        <PainelAnexos
+          dono={{ tipo: 'procedure', id: procedimento.id }}
+          descricaoDono="do procedimento"
+        />
+      </section>
 
       <HistoricoProcedimento procedimento={procedimento} />
 

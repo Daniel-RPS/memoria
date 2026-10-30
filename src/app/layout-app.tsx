@@ -33,6 +33,7 @@ export function LayoutApp() {
   const rotaAno = useMatch('/ano/:ano')
   const isNasCategorias = useMatch('/categorias') !== null
   const isNoBackup = useMatch('/backup') !== null
+  const isNasNotas = useMatch({ path: '/notas', end: false }) !== null
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
   // "Semana", "Mês" e "Ano" abrem o período da data que está aberta; "Dia" abre hoje.
   const dataAberta =
@@ -66,6 +67,9 @@ export function LayoutApp() {
             </LinkTela>
             <LinkTela para="/procedimentos" isAtiva={isNosProcedimentos}>
               Procedimentos
+            </LinkTela>
+            <LinkTela para="/notas" isAtiva={isNasNotas}>
+              Notas
             </LinkTela>
             <LinkTela para="/categorias" isAtiva={isNasCategorias}>
               Categorias

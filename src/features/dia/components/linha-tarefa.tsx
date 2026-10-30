@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ListChecks } from 'lucide-react'
+import { ListChecks, Paperclip } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -8,6 +8,8 @@ import { classificarTarefa } from '@/lib/categorias'
 import { diasPendente, progressoSubtarefas, textoDiasPendente } from '@/lib/tarefas'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
+import { useExtrasDaTarefa } from '@/features/dia/hooks/contexto-extras'
+import { PainelAnotacaoAnexos } from '@/features/dia/components/painel-anotacao-anexos'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
 import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
@@ -31,11 +33,15 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const [isEditando, setIsEditando] = useState(false)
   const [isSubtarefasAbertas, setIsSubtarefasAbertas] = useState(false)
   const [isFocandoNovaSubtarefa, setIsFocandoNovaSubtarefa] = useState(false)
+  const [isAnexosAbertos, setIsAnexosAbertos] = useState(false)
+  const [isFocandoAnotacao, setIsFocandoAnotacao] = useState(false)
+  const { quantidadeAnexos, isComNota } = useExtrasDaTarefa(tarefa.id)
   const isConcluida = tarefa.status === 'concluida'
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
   const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
   const idPainel = `subtarefas-${tarefa.id}`
+  const idPainelAnexos = `anexos-${tarefa.id}`
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
   // No modo "Selecionar", pendentes viram itens de seleção (sem arrastar, editar nem menu).
   const isSelecionavel = isSelecionando && !isConcluida
@@ -49,6 +55,11 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   function handleAdicionarSubtarefa() {
     setIsSubtarefasAbertas(true)
     setIsFocandoNovaSubtarefa(true)
+  }
+
+  function handleAbrirAnexos() {
+    setIsAnexosAbertos(true)
+    setIsFocandoAnotacao(true)
   }
 
   function handleAlternarSubtarefas() {
@@ -133,6 +144,28 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               onAlternar={handleAlternarSubtarefas}
             />
           )}
+          {(quantidadeAnexos > 0 || isComNota) && !isEditando && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsAnexosAbertos((atual) => !atual)
+                setIsFocandoAnotacao(false)
+              }}
+              aria-expanded={isAnexosAbertos}
+              aria-controls={idPainelAnexos}
+              aria-label={`Anotação e anexos de ${tarefa.titulo}: ${[
+                isComNota && 'tem anotação',
+                quantidadeAnexos > 0 &&
+                  (quantidadeAnexos === 1 ? '1 anexo' : `${quantidadeAnexos} anexos`),
+              ]
+                .filter(Boolean)
+                .join(', ')}`}
+              className="flex items-center gap-1 rounded-sm text-sm text-grafite tabular-nums hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta"
+            >
+              <Paperclip aria-hidden className="size-3.5" />
+              {quantidadeAnexos > 0 ? quantidadeAnexos : 'nota'}
+            </button>
+          )}
         </div>
         {!isSelecionavel && (
           <MenuTarefa
@@ -140,10 +173,16 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
             hoje={hoje}
             onRenomear={() => setIsEditando(true)}
             onAdicionarSubtarefa={handleAdicionarSubtarefa}
+            onAbrirAnexos={handleAbrirAnexos}
           />
         )}
       </div>
 
+      {isAnexosAbertos && (
+        <div id={idPainelAnexos} className="pr-3 pb-3 pl-[3.25rem]">
+          <PainelAnotacaoAnexos tarefa={tarefa} isFocando={isFocandoAnotacao} />
+        </div>
+      )}
       {isSubtarefasAbertas && (
         <div id={idPainel} className="pb-2 pl-[3.25rem]">
           <ListaSubtarefas

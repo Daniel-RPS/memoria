@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { CampoVariavel, Step } from '@/db/types'
 import { Alerta } from '@/features/procedimentos/components/conteudo-procedimento'
+import { AnexosDoPasso } from '@/features/procedimentos/components/anexos-do-passo'
 import { BlocoCodigo } from '@/features/procedimentos/components/bloco-codigo'
 import { TextoComCampos } from '@/features/procedimentos/components/texto-com-campos'
 
@@ -71,6 +72,7 @@ export function PassoExecucao({
           />
         )}
         {passo.codigo && <BlocoCodigo codigo={passo.codigo} campos={campos} valores={valores} />}
+        <AnexosDoPasso passoId={passo.id} numero={numero} isSomenteLeitura />
       </div>
       <Button
         variant="ghost"

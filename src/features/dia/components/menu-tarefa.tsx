@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ListPlus,
   MoreHorizontal,
+  Paperclip,
   Pencil,
   Trash2,
 } from 'lucide-react'
@@ -37,10 +38,17 @@ interface MenuTarefaProps {
   hoje: DataLocal
   onRenomear: () => void
   onAdicionarSubtarefa: () => void
+  onAbrirAnexos: () => void
 }
 
 /** Ações secundárias da tarefa: adiar, mover, renomear, subtarefa, categoria, arquivar, excluir. */
-export function MenuTarefa({ tarefa, hoje, onRenomear, onAdicionarSubtarefa }: MenuTarefaProps) {
+export function MenuTarefa({
+  tarefa,
+  hoje,
+  onRenomear,
+  onAdicionarSubtarefa,
+  onAbrirAnexos,
+}: MenuTarefaProps) {
   const { arquivarTarefa, excluirTarefa } = useAcoesTarefa()
   const { mover, adiar } = useMoverTarefas()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
@@ -91,6 +99,9 @@ export function MenuTarefa({ tarefa, hoje, onRenomear, onAdicionarSubtarefa }: M
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => abrirCampo(onAdicionarSubtarefa)}>
             <ListPlus /> Adicionar subtarefa
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => abrirCampo(onAbrirAnexos)}>
+            <Paperclip /> Anotação e anexos
           </DropdownMenuItem>
           <SubmenuCategoria tarefa={tarefa} />
           <DropdownMenuItem onSelect={() => void arquivarTarefa(tarefa.id)}>

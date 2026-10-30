@@ -1,6 +1,9 @@
 import { db } from '@/db/database'
 import type { Procedure, ProcedureVersion } from '@/db/types'
+import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
+import { excluirNotasDe } from '@/db/repositories/note-repository'
 import { agora } from '@/db/repositories/ordenacao'
+import { idsDosPassos } from '@/lib/procedimentos'
 
 /** O que o editor salva; id, versão e datas são do repositório. */
 export type DadosProcedimento = Pick<
@@ -85,14 +88,27 @@ export async function restaurarVersao(procedureId: string, versao: number) {
 }
 
 /**
- * Exclui o procedimento com versões e histórico de execuções.
+ * Exclui o procedimento com versões, histórico de execuções, anotação e anexos
+ * (inclusive os dos passos de todas as versões).
  * Tarefas agendadas continuam no calendário, só perdem o vínculo.
  */
 export async function excluirProcedimento(id: string) {
   await db.transaction(
     'rw',
-    [db.procedures, db.procedureVersions, db.executions, db.tasks],
+    [db.procedures, db.procedureVersions, db.executions, db.tasks, db.notes, db.attachments],
     async () => {
+      const atual = await db.procedures.get(id)
+      const versoes = await db.procedureVersions.where('procedureId').equals(id).toArray()
+      const passos = new Set(
+        [atual, ...versoes.map((versao) => versao.snapshot)].flatMap((procedimento) =>
+          procedimento ? idsDosPassos(procedimento) : [],
+        ),
+      )
+      await excluirAnexosDe([
+        { tipo: 'procedure', id },
+        ...[...passos].map((passoId) => ({ tipo: 'step' as const, id: passoId })),
+      ])
+      await excluirNotasDe([{ tipo: 'procedure', id }])
       await db.tasks
         .where('procedureId')
         .equals(id)

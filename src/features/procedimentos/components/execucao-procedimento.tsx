@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Link, useNavigate } from 'react-router'
 import {
@@ -15,13 +15,14 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  atualizarExecucao,
   concluirExecucao,
   descartarExecucao,
   mudarEstadoDoPasso,
 } from '@/db/repositories/execution-repository'
 import type { Execution, Procedure } from '@/db/types'
 import { progressoExecucao } from '@/lib/procedimentos'
-import { useCampoComAtraso } from '@/features/procedimentos/hooks/use-execucao'
+import { useSalvarComAtraso } from '@/hooks/use-salvar-com-atraso'
 import { CamposExecucao } from '@/features/procedimentos/components/campos-execucao'
 import { PassoExecucao } from '@/features/procedimentos/components/passo-execucao'
 
@@ -40,15 +41,11 @@ type Confirmacao = 'concluir' | 'descartar' | null
 export function ExecucaoProcedimento({ execucao, procedimento }: ExecucaoProcedimentoProps) {
   const navigate = useNavigate()
   const [confirmacao, setConfirmacao] = useState<Confirmacao>(null)
-  const valores = useCampoComAtraso(
-    execucao,
-    useCallback((atual: Execution) => atual.valoresCampos, []),
-    useCallback((valoresCampos: Record<string, string>) => ({ valoresCampos }), []),
+  const valores = useSalvarComAtraso(execucao.valoresCampos, (valoresCampos) =>
+    atualizarExecucao(execucao.id, { valoresCampos }),
   )
-  const observacoes = useCampoComAtraso(
-    execucao,
-    useCallback((atual: Execution) => atual.observacoes, []),
-    useCallback((texto: string) => ({ observacoes: texto }), []),
+  const observacoes = useSalvarComAtraso(execucao.observacoes, (texto) =>
+    atualizarExecucao(execucao.id, { observacoes: texto }),
   )
   const progresso = progressoExecucao(procedimento, execucao)
   const restantes = progresso.total - progresso.feitos - progresso.pulados

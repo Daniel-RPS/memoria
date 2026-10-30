@@ -6,6 +6,8 @@ import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
 import { DiaPage } from '@/features/dia/dia-page'
 import { MesPage } from '@/features/mes/mes-page'
+import { NotaPage } from '@/features/notas/nota-page'
+import { NotasPage } from '@/features/notas/notas-page'
 import { EditarProcedimentoPage } from '@/features/procedimentos/editar-procedimento-page'
 import { ExecutarProcedimentoPage } from '@/features/procedimentos/executar-procedimento-page'
 import { NovoProcedimentoPage } from '@/features/procedimentos/novo-procedimento-page'
@@ -30,6 +32,8 @@ export const rotas: RouteObject[] = [
       { path: '/procedimentos/:id/editar', element: <EditarProcedimentoPage /> },
       { path: '/procedimentos/:id/executar', element: <ExecutarProcedimentoPage /> },
       { path: '/procedimentos/:id/versoes/:versao', element: <VersaoProcedimentoPage /> },
+      { path: '/notas', element: <NotasPage /> },
+      { path: '/notas/:id', element: <NotaPage /> },
       { path: '/categorias', element: <CategoriasPage /> },
       { path: '/backup', element: <BackupPage /> },
       { path: '*', element: <IrParaHoje /> },

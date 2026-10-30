@@ -1,4 +1,4 @@
-import { Blob as BlobDoNode } from 'node:buffer'
+import { Blob as BlobDoNode, File as FileDoNode } from 'node:buffer'
 import 'fake-indexeddb/auto'
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
@@ -20,3 +20,9 @@ if (!Element.prototype.scrollIntoView) {
 // O Blob do jsdom vira objeto vazio ao passar pelo fake-indexeddb (o IndexedDB real guarda Blob).
 // O Blob nativo do Node sobrevive à cópia, então os testes de anexos usam ele.
 globalThis.Blob = BlobDoNode as unknown as typeof Blob
+globalThis.File = FileDoNode as unknown as typeof File
+
+// URLs de blob (miniaturas, player de áudio): o jsdom não tem e a do Node só aceita o Blob do
+// Node, então os testes usam uma URL fixa.
+URL.createObjectURL = () => 'blob:teste'
+URL.revokeObjectURL = () => {}

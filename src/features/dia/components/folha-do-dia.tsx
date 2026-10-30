@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
 import { classificarTarefa, type FiltroCategoria } from '@/lib/categorias'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
+import { ContextoExtras } from '@/features/dia/hooks/contexto-extras'
 import { ContextoSelecao, useSelecao } from '@/features/dia/hooks/use-selecao'
 import { useTarefasDoDia } from '@/features/dia/hooks/use-tarefas-do-dia'
 import { AvisoPendenciasOntem } from '@/features/dia/components/aviso-pendencias-ontem'
@@ -20,7 +21,10 @@ interface FolhaDoDiaProps {
 /** A folha pautada do dia: pendentes, linha para nova tarefa e o grupo de concluídas. */
 export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
   const categorias = useCategoriasDoContexto()
-  const { pendentes, concluidas, subtarefasPorTarefa, isCarregando } = useTarefasDoDia(data, filtro)
+  const { pendentes, concluidas, subtarefasPorTarefa, extras, isCarregando } = useTarefasDoDia(
+    data,
+    filtro,
+  )
   const isVazio = !isCarregando && pendentes.length === 0
   const selecao = useSelecao()
   const nomeDoFiltro = filtro.categoriaId
@@ -38,39 +42,41 @@ export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
 
   return (
     <ContextoSelecao.Provider value={selecao}>
-      <section aria-label="Tarefas do dia">
-        {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
-        {pendentes.length > 0 && !selecao.isSelecionando && (
-          <div className="mt-6 -mb-3 flex justify-end">
-            <Button variant="ghost" size="sm" className="text-grafite" onClick={selecao.iniciar}>
-              <CheckSquare /> Selecionar
-            </Button>
-          </div>
-        )}
-        <div className="mt-6 rounded-md border border-pauta bg-papel">
-          {isVazio && (
-            <p className="border-b border-pauta px-4 py-3 text-grafite">{mensagemVazia()}</p>
+      <ContextoExtras.Provider value={extras}>
+        <section aria-label="Tarefas do dia">
+          {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
+          {pendentes.length > 0 && !selecao.isSelecionando && (
+            <div className="mt-6 -mb-3 flex justify-end">
+              <Button variant="ghost" size="sm" className="text-grafite" onClick={selecao.iniciar}>
+                <CheckSquare /> Selecionar
+              </Button>
+            </div>
           )}
-          <ListaPendentes
-            pendentes={pendentes}
+          <div className="mt-6 rounded-md border border-pauta bg-papel">
+            {isVazio && (
+              <p className="border-b border-pauta px-4 py-3 text-grafite">{mensagemVazia()}</p>
+            )}
+            <ListaPendentes
+              pendentes={pendentes}
+              subtarefasPorTarefa={subtarefasPorTarefa}
+              hoje={hoje}
+            />
+            {!selecao.isSelecionando && <NovaTarefa data={data} filtro={filtro} />}
+          </div>
+          {selecao.isSelecionando && (
+            <BarraSelecao
+              data={data}
+              hoje={hoje}
+              idsPendentes={pendentes.map((tarefa) => tarefa.id)}
+            />
+          )}
+          <GrupoConcluidas
+            concluidas={concluidas}
             subtarefasPorTarefa={subtarefasPorTarefa}
             hoje={hoje}
           />
-          {!selecao.isSelecionando && <NovaTarefa data={data} filtro={filtro} />}
-        </div>
-        {selecao.isSelecionando && (
-          <BarraSelecao
-            data={data}
-            hoje={hoje}
-            idsPendentes={pendentes.map((tarefa) => tarefa.id)}
-          />
-        )}
-        <GrupoConcluidas
-          concluidas={concluidas}
-          subtarefasPorTarefa={subtarefasPorTarefa}
-          hoje={hoje}
-        />
-      </section>
+        </section>
+      </ContextoExtras.Provider>
     </ContextoSelecao.Provider>
   )
 }
