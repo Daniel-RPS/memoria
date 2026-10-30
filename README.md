@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
 
-> **Status:** fases 1 a 5 concluídas (dia, subtarefas, categorias, semana, mover tarefas e procedimentos). Próxima: fase 6, visões de mês e ano.
+> **Status:** fases 1 a 6 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês e ano). Próxima: fase 7, backup.
 
 ## Funcionalidades
 
@@ -20,7 +20,8 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
 - ✅ Filtro por categoria e subcategoria na visão do dia
 - ✅ Visão de semana (segunda a domingo)
-- 🔜 Visões de mês e ano
+- ✅ Visão de mês, com arrastar tarefas entre dias
+- ✅ Visão de ano, com a quantidade de tarefas e os atrasos de cada dia
 
 ### Mover tarefas
 - ✅ Arrastar uma tarefa de um dia para outro na visão de semana (mouse ou teclado)
@@ -98,6 +99,8 @@ Depois, abra no navegador o endereço que aparecer no terminal (normalmente `htt
 - **Executar** abre o checklist. O modelo nunca muda; o que você marca e preenche vai para o histórico daquela execução.
 - **Agendar** cria uma tarefa no dia escolhido. Na tarefa, **Executar procedimento** abre a execução, e concluí-la conclui a tarefa.
 - Cada **Salvar nova versão** guarda a anterior em **Versões anteriores**, onde dá para ver e restaurar.
+- Em **Mês**, cada dia mostra até 3 pendentes (atrasadas com marca-texto) e o resto como "+N". Arraste uma tarefa para outro dia; pelo teclado, foque a tarefa, tecle espaço, use as setas (lados = um dia, cima/baixo = uma semana) e espaço de novo.
+- Em **Ano**, o tom de cada dia indica quantas tarefas há, e um ponto amarelo marca pendência atrasada. Clique no mês ou no dia para abrir.
 
 Outros comandos:
 
@@ -128,7 +131,7 @@ Recomendação: exporte o backup com frequência e guarde o arquivo fora do comp
 | 3 | Categorias e subcategorias com cores e filtro | ✅ |
 | 4 | Visão de semana, arrastar entre dias e ações de mover pendências | ✅ |
 | 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | ✅ |
-| 6 | Visões de mês e ano | 🔜 |
+| 6 | Visões de mês e ano | ✅ |
 | 7 | Backup: exportar e importar (JSON com anexos) | 🔜 |
 | 8 | Notas, fotos, desenhos à mão livre e áudio | 🔜 |
 | 9 | Compartilhamento (ver ou editar), com servidor | 🔜 |

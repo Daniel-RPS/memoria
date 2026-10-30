@@ -31,6 +31,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - IMPORTANTE: mover tarefa = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
 - Ações de mover na UI passam por `useMoverTarefas` (aviso com "Desfazer" via `restaurarPosicoes`)
 - Semana começa na segunda (`PRIMEIRO_DIA_DA_SEMANA` em `src/lib/semana.ts`); colunas do quadro em `src/lib/quadro.ts`
+- Grade de mês/ano e resumo por dia em `src/lib/calendario.ts`; período via `useTarefasDoPeriodo`
+- Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
+- Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
 - Banco Dexie na versão 2 (índice `tasks.procedureId`); mudar índice = nova `version()`
 - Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
@@ -98,6 +101,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - date-fns 4 pt-BR: `EEE` = "quarta" e `MMM` = "out", sem ponto — confira antes de testar textos de data
 - Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro` e no repositório
 - Teste que navega: espere um elemento da página nova (o endereço muda antes da tela desenhar)
+- A área de avisos do Sonner é uma `region` ("Notifications"): filtre por nome ao contar regiões
 - `userEvent.type`: `{` é tecla especial; para digitar `{{campo}}` escreva `'{{{{campo}}'`
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`

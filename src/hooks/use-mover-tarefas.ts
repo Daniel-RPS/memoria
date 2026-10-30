@@ -11,6 +11,9 @@ import { useHoje } from '@/hooks/use-hoje'
 import { somarDias } from '@/lib/datas'
 import { textoMovimento } from '@/lib/mover'
 
+/** Tempo do aviso com "Desfazer": o padrão (4 s) é curto para perceber um engano. */
+const DURACAO_AVISO_MS = 8000
+
 /**
  * Ações de mover tarefas entre dias com aviso e "Desfazer".
  * A tarefa some da tela ao ser movida, então o aviso confirma para onde foi.
@@ -21,6 +24,7 @@ export function useMoverTarefas() {
   function avisar(resultado: ResultadoMovimento, mensagem: string) {
     if (resultado.quantidade === 0) return resultado
     toast(mensagem, {
+      duration: DURACAO_AVISO_MS,
       action: {
         label: 'Desfazer',
         onClick: () => void restaurarPosicoes(resultado.anteriores),

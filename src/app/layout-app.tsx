@@ -29,19 +29,25 @@ function LinkTela({ para, isAtiva, children }: LinkTelaProps) {
 export function LayoutApp() {
   const rotaDia = useMatch('/dia/:data')
   const rotaSemana = useMatch('/semana/:data')
+  const rotaMes = useMatch('/mes/:data')
+  const rotaAno = useMatch('/ano/:ano')
   const isNasCategorias = useMatch('/categorias') !== null
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
-  // "Semana" abre a semana do dia que está aberto; "Dia" abre o dia de hoje.
-  const dataAberta = rotaDia?.params.data ?? hoje()
+  // "Semana", "Mês" e "Ano" abrem o período da data que está aberta; "Dia" abre hoje.
+  const dataAberta =
+    rotaDia?.params.data ?? rotaSemana?.params.data ?? rotaMes?.params.data ?? hoje()
+  const anoAberto = rotaAno?.params.ano ?? dataAberta.slice(0, 4)
+  const largura = rotaSemana
+    ? 'max-w-[96rem]'
+    : rotaMes || rotaAno
+      ? 'max-w-6xl'
+      : isNosProcedimentos
+        ? 'max-w-3xl'
+        : 'max-w-2xl'
 
   return (
     <div className="min-h-dvh bg-nevoa">
-      <div
-        className={cn(
-          'mx-auto px-4 pt-6 pb-16 sm:px-8',
-          rotaSemana ? 'max-w-[96rem]' : isNosProcedimentos ? 'max-w-3xl' : 'max-w-2xl',
-        )}
-      >
+      <div className={cn('mx-auto px-4 pt-6 pb-16 sm:px-8', largura)}>
         <header className="mb-10 flex items-baseline justify-between gap-4">
           <span className="text-sm font-semibold text-grafite">MemorIA</span>
           <nav aria-label="Telas" className="flex flex-wrap justify-end gap-x-4 gap-y-1">
@@ -50,6 +56,12 @@ export function LayoutApp() {
             </LinkTela>
             <LinkTela para={`/semana/${dataAberta}`} isAtiva={rotaSemana !== null}>
               Semana
+            </LinkTela>
+            <LinkTela para={`/mes/${dataAberta}`} isAtiva={rotaMes !== null}>
+              Mês
+            </LinkTela>
+            <LinkTela para={`/ano/${anoAberto}`} isAtiva={rotaAno !== null}>
+              Ano
             </LinkTela>
             <LinkTela para="/procedimentos" isAtiva={isNosProcedimentos}>
               Procedimentos
