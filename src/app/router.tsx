@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router'
 import { IrParaHoje } from '@/app/ir-para-hoje'
 import { LayoutApp } from '@/app/layout-app'
 import { AnoPage } from '@/features/ano/ano-page'
+import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
 import { DiaPage } from '@/features/dia/dia-page'
 import { MesPage } from '@/features/mes/mes-page'
@@ -30,6 +31,7 @@ export const rotas: RouteObject[] = [
       { path: '/procedimentos/:id/executar', element: <ExecutarProcedimentoPage /> },
       { path: '/procedimentos/:id/versoes/:versao', element: <VersaoProcedimentoPage /> },
       { path: '/categorias', element: <CategoriasPage /> },
+      { path: '/backup', element: <BackupPage /> },
       { path: '*', element: <IrParaHoje /> },
     ],
   },

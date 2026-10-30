@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
 
-> **Status:** fases 1 a 6 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês e ano). Próxima: fase 7, backup.
+> **Status:** fases 1 a 7 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano e backup). Próxima: fase 8, notas, fotos, desenhos e áudio.
 
 ## Funcionalidades
 
@@ -48,7 +48,7 @@ Legenda: ✅ pronto · 🔜 planejado
 
 ### Conteúdo e dados
 - 🔜 Notas, fotos, desenhos à mão livre e gravação de áudio
-- 🔜 Backup: exportar e importar todos os dados, incluindo anexos
+- ✅ Backup: exportar e importar todos os dados, incluindo anexos
 - 🔜 Compartilhamento com outras pessoas, só para ver ou para editar (exige servidor)
 
 ## Stack
@@ -113,14 +113,15 @@ Outros comandos:
 
 ## Backup e restauração
 
-> Planejado para a fase 7.
+Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou trocar de navegador apaga tudo**. O app pede ao navegador armazenamento persistente, mas o navegador nem sempre concede; a página **Backup** mostra a situação e permite pedir de novo.
 
-Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou trocar de navegador apaga tudo**. O app pede ao navegador armazenamento persistente, mas o navegador nem sempre concede. O backup vai funcionar assim:
+- **Fazer backup:** em **Backup → Baixar backup**, o app baixa `memoria-backup-AAAA-MM-DD.json` com tudo: tarefas, subtarefas, categorias, procedimentos (com versões e execuções), notas e anexos (fotos, desenhos e áudios vão dentro do arquivo). A página lembra quando foi o último backup neste navegador.
+- **Restaurar:** em **Backup → Escolher arquivo de backup**, o app confere o arquivo e mostra o que tem nele ao lado do que você tem agora. Ao confirmar **Substituir meus dados**, todos os dados deste navegador são trocados pelos do arquivo.
+- Arquivo que não é backup do MemorIA, que foi alterado ou que veio de uma versão mais nova do app é recusado, com a explicação, e nada muda.
+- A troca é feita de uma vez: se algo falhar no meio, os dados atuais ficam como estavam.
+- Antes de restaurar, use **Baixar backup dos dados atuais** se quiser poder voltar.
 
-- **Exportar:** gera um arquivo `.json` com todas as tarefas, categorias, procedimentos, notas e anexos (fotos, desenhos e áudios incluídos).
-- **Importar:** carrega esse arquivo e restaura todos os dados.
-
-Recomendação: exporte o backup com frequência e guarde o arquivo fora do computador.
+Recomendação: faça backup com frequência e guarde o arquivo fora do computador (pendrive ou nuvem).
 
 ## Roadmap
 
@@ -132,6 +133,6 @@ Recomendação: exporte o backup com frequência e guarde o arquivo fora do comp
 | 4 | Visão de semana, arrastar entre dias e ações de mover pendências | ✅ |
 | 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | ✅ |
 | 6 | Visões de mês e ano | ✅ |
-| 7 | Backup: exportar e importar (JSON com anexos) | 🔜 |
+| 7 | Backup: exportar e importar (JSON com anexos) | ✅ |
 | 8 | Notas, fotos, desenhos à mão livre e áudio | 🔜 |
 | 9 | Compartilhamento (ver ou editar), com servidor | 🔜 |

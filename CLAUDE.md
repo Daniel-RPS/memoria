@@ -35,6 +35,8 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
 - Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
 - Banco Dexie na versão 2 (índice `tasks.procedureId`); mudar índice = nova `version()`
+- IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
+- Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
 - Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
@@ -102,6 +104,8 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro` e no repositório
 - Teste que navega: espere um elemento da página nova (o endereço muda antes da tela desenhar)
 - A área de avisos do Sonner é uma `region` ("Notifications"): filtre por nome ao contar regiões
+- Nos testes, `Blob` é o do Node (`src/test/setup.ts`): o do jsdom vira objeto vazio no fake-indexeddb
+- Testes têm tsconfig próprio (`tsconfig.test.json`, com tipos do Node); o app não enxerga tipos do Node
 - `userEvent.type`: `{` é tecla especial; para digitar `{{campo}}` escreva `'{{{{campo}}'`
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
