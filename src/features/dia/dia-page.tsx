@@ -5,7 +5,7 @@ import { isDataLocalValida } from '@/lib/datas'
 import { CabecalhoDia } from '@/features/dia/components/cabecalho-dia'
 import { FiltroCategorias } from '@/features/dia/components/filtro-categorias'
 import { FolhaDoDia } from '@/features/dia/components/folha-do-dia'
-import { ContextoCategorias } from '@/features/dia/hooks/contexto-categorias'
+import { ContextoCategorias } from '@/hooks/contexto-categorias'
 import { useFiltroCategoria } from '@/features/dia/hooks/use-filtro-categoria'
 
 export function DiaPage() {

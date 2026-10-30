@@ -1,7 +1,7 @@
 import { cn } from 'cn'
 import type { FiltroCategoria } from '@/lib/categorias'
 import { corDaSubcategoria } from '@/lib/categorias'
-import { useCategoriasDaFolha } from '@/features/dia/hooks/contexto-categorias'
+import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 
 interface FiltroCategoriasProps {
   filtro: FiltroCategoria
@@ -42,7 +42,7 @@ function BotaoFiltro({ isAtivo, cor, onClick, children }: BotaoFiltroProps) {
 
 /** Botões para ver só uma categoria (e depois, se quiser, só uma subcategoria dela). */
 export function FiltroCategorias({ filtro, onMudar }: FiltroCategoriasProps) {
-  const categorias = useCategoriasDaFolha()
+  const categorias = useCategoriasDoContexto()
   const categoriaAtiva = categorias.find((categoria) => categoria.id === filtro.categoriaId)
 
   if (categorias.length === 0) return null

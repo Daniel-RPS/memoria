@@ -1,17 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider } from 'react-router'
 import { db } from '@/db/database'
 import { criarCategoria } from '@/db/repositories/category-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
-import { CategoriasPage } from '@/features/categorias/categorias-page'
+import { renderizarApp } from '@/test/renderizar-app'
 
 function renderizarCategorias() {
-  const router = createMemoryRouter([{ path: '/categorias', element: <CategoriasPage /> }], {
-    initialEntries: ['/categorias'],
-  })
-  render(<RouterProvider router={router} />)
+  renderizarApp('/categorias')
 }
 
 describe('Página de categorias', () => {

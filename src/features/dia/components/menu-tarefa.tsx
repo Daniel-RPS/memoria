@@ -1,5 +1,14 @@
 import { useRef, useState } from 'react'
-import { Archive, ListPlus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import {
+  Archive,
+  CalendarArrowUp,
+  CalendarDays,
+  ListPlus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from 'lucide-react'
+import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,20 +27,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { Task } from '@/db/types'
+import type { DataLocal, Task } from '@/db/types'
+import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { SubmenuCategoria } from '@/features/dia/components/submenu-categoria'
 
 interface MenuTarefaProps {
   tarefa: Task
+  hoje: DataLocal
   onRenomear: () => void
   onAdicionarSubtarefa: () => void
 }
 
-/** Ações secundárias da tarefa: renomear, subtarefa, categoria, arquivar e excluir. */
-export function MenuTarefa({ tarefa, onRenomear, onAdicionarSubtarefa }: MenuTarefaProps) {
+/** Ações secundárias da tarefa: adiar, mover, renomear, subtarefa, categoria, arquivar, excluir. */
+export function MenuTarefa({ tarefa, hoje, onRenomear, onAdicionarSubtarefa }: MenuTarefaProps) {
   const { arquivarTarefa, excluirTarefa } = useAcoesTarefa()
+  const { mover, adiar } = useMoverTarefas()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
+  const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
+  const isPendente = tarefa.status === 'pendente'
+  const isFutura = tarefa.data > hoje
   // Ações que abrem um campo: o foco deve ficar nele, não voltar para o botão do menu.
   const isAbrindoCampoRef = useRef(false)
 
@@ -62,6 +77,15 @@ export function MenuTarefa({ tarefa, onRenomear, onAdicionarSubtarefa }: MenuTar
             isAbrindoCampoRef.current = false
           }}
         >
+          {isPendente && (
+            <DropdownMenuItem onSelect={() => void adiar([tarefa.id])}>
+              <CalendarArrowUp /> {isFutura ? 'Adiar um dia' : 'Adiar para amanhã'}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onSelect={() => setIsEscolhendoDia(true)}>
+            <CalendarDays /> Mover para outro dia…
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => abrirCampo(onRenomear)}>
             <Pencil /> Renomear
           </DropdownMenuItem>
@@ -78,6 +102,16 @@ export function MenuTarefa({ tarefa, onRenomear, onAdicionarSubtarefa }: MenuTar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <DialogoEscolherDia
+        isAberto={isEscolhendoDia}
+        onMudarAberto={setIsEscolhendoDia}
+        titulo="Mover para outro dia"
+        descricao={tarefa.titulo}
+        dataInicial={tarefa.data}
+        hoje={hoje}
+        onEscolher={(destino) => void mover([tarefa.id], destino)}
+      />
 
       <AlertDialog open={isConfirmandoExclusao} onOpenChange={setIsConfirmandoExclusao}>
         <AlertDialogContent>

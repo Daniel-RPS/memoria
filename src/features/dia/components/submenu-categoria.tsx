@@ -12,7 +12,7 @@ import {
 import type { Task } from '@/db/types'
 import { corDaSubcategoria } from '@/lib/categorias'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
-import { useCategoriasDaFolha } from '@/features/dia/hooks/contexto-categorias'
+import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 
 interface SubmenuCategoriaProps {
   tarefa: Task
@@ -32,7 +32,7 @@ function Amostra({ cor }: { cor: string }) {
 
 /** Escolha da categoria/subcategoria da tarefa dentro do menu ⋯. */
 export function SubmenuCategoria({ tarefa }: SubmenuCategoriaProps) {
-  const categorias = useCategoriasDaFolha()
+  const categorias = useCategoriasDoContexto()
   const { definirCategoria } = useAcoesTarefa()
 
   function handleEscolher(valor: string) {

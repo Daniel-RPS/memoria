@@ -34,3 +34,10 @@ export function isDataLocalValida(texto: string | undefined): texto is DataLocal
   const data = deDataLocal(texto)
   return !Number.isNaN(data.getTime()) && paraDataLocal(data) === texto
 }
+
+const NOMES_RELATIVOS: Record<number, string> = { [-1]: 'ontem', 0: 'hoje', 1: 'amanhã' }
+
+/** "ontem", "hoje" ou "amanhã" em relação a `hoje`; `undefined` para outros dias. */
+export function nomeRelativo(data: DataLocal, hoje: DataLocal): string | undefined {
+  return NOMES_RELATIVOS[diasEntre(hoje, data)]
+}

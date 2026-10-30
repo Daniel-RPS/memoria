@@ -1,20 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider } from 'react-router'
 import { db } from '@/db/database'
 import { criarCategoria } from '@/db/repositories/category-repository'
 import { criarSubtarefa } from '@/db/repositories/subtask-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
-import { DiaPage } from '@/features/dia/dia-page'
 import { hoje, somarDias } from '@/lib/datas'
+import { renderizarApp } from '@/test/renderizar-app'
 
 function renderizarDia(data: string) {
-  const router = createMemoryRouter([{ path: '/dia/:data', element: <DiaPage /> }], {
-    initialEntries: [`/dia/${data}`],
-  })
-  render(<RouterProvider router={router} />)
-  return router
+  return renderizarApp(`/dia/${data}`)
 }
 
 describe('Visão do dia', () => {

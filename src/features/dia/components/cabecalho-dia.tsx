@@ -4,14 +4,12 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
-import { deDataLocal, diasEntre, somarDias } from '@/lib/datas'
+import { deDataLocal, nomeRelativo, somarDias } from '@/lib/datas'
 
 interface CabecalhoDiaProps {
   data: DataLocal
   hoje: DataLocal
 }
-
-const NOMES_RELATIVOS: Record<number, string> = { [-1]: 'ontem', 0: 'hoje', 1: 'amanhã' }
 
 function capitalizar(texto: string) {
   return texto.charAt(0).toUpperCase() + texto.slice(1)
@@ -22,7 +20,7 @@ export function CabecalhoDia({ data, hoje }: CabecalhoDiaProps) {
   const dia = deDataLocal(data)
   const diaDaSemana = capitalizar(format(dia, 'EEEE', { locale: ptBR }))
   const mesEAno = format(dia, "MMMM 'de' yyyy", { locale: ptBR })
-  const nomeRelativo = NOMES_RELATIVOS[diasEntre(hoje, data)]
+  const relativo = nomeRelativo(data, hoje)
   const isHoje = data === hoje
   // Mantém o filtro (`?categoria=...`) ao trocar de dia.
   const { search } = useLocation()
@@ -40,7 +38,7 @@ export function CabecalhoDia({ data, hoje }: CabecalhoDiaProps) {
         <span className="flex flex-col pb-1">
           <span className="text-xl font-semibold">
             {diaDaSemana}
-            {nomeRelativo && <span className="font-normal text-grafite">, {nomeRelativo}</span>}
+            {relativo && <span className="font-normal text-grafite">, {relativo}</span>}
           </span>
           <span className="text-grafite">
             <span className="sr-only">{format(dia, 'd')} de </span>

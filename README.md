@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 A primeira versão é para computador, para uso pessoal, e funciona **sem servidor**: todos os dados ficam no seu navegador. A versão para celular e o compartilhamento vêm depois.
 
-> **Status:** fases 1 a 3 concluídas (visão do dia, subtarefas e categorias). Próxima: fase 4, visão de semana e mover tarefas.
+> **Status:** fases 1 a 4 concluídas (dia, subtarefas, categorias, semana e mover tarefas). Próxima: fase 5, procedimentos.
 
 ## Funcionalidades
 
@@ -19,14 +19,16 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Subtarefas com progresso (ex.: "2 de 5"), reordenáveis e abertas logo abaixo da tarefa
 - ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
 - ✅ Filtro por categoria e subcategoria na visão do dia
-- 🔜 Visões de semana, mês e ano
+- ✅ Visão de semana (segunda a domingo)
+- 🔜 Visões de mês e ano
 
 ### Mover tarefas
-- 🔜 Arrastar uma tarefa de um dia para outro
-- 🔜 Trazer as pendências de ontem para hoje
-- 🔜 Adiar para amanhã
-- 🔜 Mover para outro dia escolhido
-- 🔜 Mover várias tarefas selecionadas de uma vez
+- ✅ Arrastar uma tarefa de um dia para outro na visão de semana (mouse ou teclado)
+- ✅ Trazer as pendências de ontem para hoje
+- ✅ Adiar para amanhã
+- ✅ Mover para outro dia escolhido no calendário
+- ✅ Mover ou adiar várias tarefas selecionadas de uma vez
+- ✅ "Desfazer" depois de mover ou adiar
 - ✅ Arquivar (tirar do calendário sem concluir)
 - 🔜 Ver e restaurar tarefas arquivadas
 
@@ -85,6 +87,10 @@ Depois, abra no navegador o endereço que aparecer no terminal (normalmente `htt
 - Clique no progresso ("2 de 5") para abrir ou fechar as subtarefas. Concluir todas as subtarefas não conclui a tarefa: você decide.
 - Em **Categorias**, crie categorias e subcategorias e clique na bolinha de cor para trocar a cor. Excluir uma categoria não apaga as tarefas: elas só ficam sem categoria.
 - Na visão do dia, os botões de categoria filtram as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
+- Mover uma tarefa só muda o dia dela: nada é copiado ou apagado, e a contagem "pendente há N dias" continua contando desde o dia em que foi criada.
+- No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
+- Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje**.
+- Em **Semana**, arraste as tarefas entre os dias. Pelo teclado: foque a tarefa, tecle espaço, use as setas e espaço de novo. Clique no dia para abrir a visão dele.
 
 Outros comandos:
 
@@ -113,7 +119,7 @@ Recomendação: exporte o backup com frequência e guarde o arquivo fora do comp
 | 1 | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação | ✅ |
 | 2 | Subtarefas com progresso | ✅ |
 | 3 | Categorias e subcategorias com cores e filtro | ✅ |
-| 4 | Visão de semana, arrastar entre dias e ações de mover pendências | 🔜 |
+| 4 | Visão de semana, arrastar entre dias e ações de mover pendências | ✅ |
 | 5 | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | 🔜 |
 | 6 | Visões de mês e ano | 🔜 |
 | 7 | Backup: exportar e importar (JSON com anexos) | 🔜 |

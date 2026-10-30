@@ -9,6 +9,8 @@ import { esquemaNovoItem, TAMANHO_MAXIMO_TITULO, type NovoItemInput } from '@/li
 interface CampoNovoItemProps {
   /** Texto do placeholder e nome acessível, ex.: "Nova tarefa". */
   rotulo: string
+  /** Nome acessível mais específico, quando há vários campos iguais na tela. */
+  nomeAcessivel?: string
   onCriar: (titulo: string) => Promise<unknown>
   /** `compacto` é usado nas subtarefas. */
   tamanho?: 'normal' | 'compacto'
@@ -20,6 +22,7 @@ interface CampoNovoItemProps {
 /** Linha em branco que cria um item com Enter e continua pronta para o próximo. Esc limpa. */
 export function CampoNovoItem({
   rotulo,
+  nomeAcessivel,
   onCriar,
   tamanho = 'normal',
   autoFocus,
@@ -71,7 +74,7 @@ export function CampoNovoItem({
             },
           })}
           placeholder={rotulo}
-          aria-label={rotulo}
+          aria-label={nomeAcessivel ?? rotulo}
           aria-invalid={erro ? true : undefined}
           aria-describedby={erro ? idErro : undefined}
           maxLength={TAMANHO_MAXIMO_TITULO}

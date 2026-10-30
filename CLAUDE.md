@@ -28,6 +28,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` na UI; reuse, não duplique
 - Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
 - Excluir categoria NUNCA apaga tarefas: só limpa `categoryId`/`subcategoryId`
+- IMPORTANTE: mover tarefa = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
+- Ações de mover na UI passam por `useMoverTarefas` (aviso com "Desfazer" via `restaurarPosicoes`)
+- Semana começa na segunda (`PRIMEIRO_DIA_DA_SEMANA` em `src/lib/semana.ts`); colunas do quadro em `src/lib/quadro.ts`
 - Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
@@ -86,6 +89,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 ## Armadilhas
 - IMPORTANTE: datas são data local `YYYY-MM-DD` (America/Sao_Paulo); NUNCA use `new Date("YYYY-MM-DD")` nem `toISOString()` para dia — geram UTC e deslocam um dia. Use `src/lib/datas.ts`
 - Testes rodam com `TZ=America/Sao_Paulo` (definido em `vite.config.ts`); sem `globals`, importe `describe/it/expect` de `vitest`
+- Teste de tela: `renderizarApp(caminho)` (`src/test/`) monta rotas + layout reais (avisos incluídos)
+- date-fns 4 pt-BR: `EEE` = "quarta" e `MMM` = "out", sem ponto — confira antes de testar textos de data
+- Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro` e no repositório
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
 - Campo de criar item: use `CampoNovoItem`; ele limpa ANTES do `await` para não apagar o que o usuário já digitou
