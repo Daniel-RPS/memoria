@@ -19,8 +19,6 @@ import { reduzirImagem } from '@/lib/imagem'
 
 interface PainelAnexosProps {
   dono: Dono
-  /** Só mostra (sem adicionar nem excluir), como no modo execução. */
-  isSomenteLeitura?: boolean
   /** Nome usado nos rótulos acessíveis, ex.: "da tarefa Pagar conta". */
   descricaoDono: string
 }
@@ -28,8 +26,8 @@ interface PainelAnexosProps {
 /** Tempo do aviso com "Desfazer" depois de excluir um anexo. */
 const DURACAO_AVISO_MS = 8000
 
-/** Fotos, desenhos, áudios e links de uma tarefa, nota, procedimento ou passo. */
-export function PainelAnexos({ dono, isSomenteLeitura, descricaoDono }: PainelAnexosProps) {
+/** Fotos, desenhos, áudios e links de uma tarefa ou nota. */
+export function PainelAnexos({ dono, descricaoDono }: PainelAnexosProps) {
   const anexos = useAnexos(dono)
   const entradaFotoRef = useRef<HTMLInputElement>(null)
   const [isGravando, setIsGravando] = useState(false)
@@ -69,8 +67,6 @@ export function PainelAnexos({ dono, isSomenteLeitura, descricaoDono }: PainelAn
     })
   }
 
-  if (isSomenteLeitura && anexos.length === 0) return null
-
   return (
     <div className="flex flex-col gap-3">
       {imagens.length > 0 && (
@@ -79,7 +75,6 @@ export function PainelAnexos({ dono, isSomenteLeitura, descricaoDono }: PainelAn
             <ItemAnexo
               key={anexo.id}
               anexo={anexo}
-              isSomenteLeitura={isSomenteLeitura}
               onExcluir={() => void handleExcluir(anexo)}
               onEditarDesenho={() => setDesenho({ isAberto: true, editando: anexo })}
             />
@@ -92,7 +87,6 @@ export function PainelAnexos({ dono, isSomenteLeitura, descricaoDono }: PainelAn
             <ItemAnexo
               key={anexo.id}
               anexo={anexo}
-              isSomenteLeitura={isSomenteLeitura}
               onExcluir={() => void handleExcluir(anexo)}
               onEditarDesenho={() => {}}
             />
@@ -100,84 +94,80 @@ export function PainelAnexos({ dono, isSomenteLeitura, descricaoDono }: PainelAn
         </ul>
       )}
 
-      {!isSomenteLeitura && (
-        <>
-          {isGravando && (
-            <GravadorAudio
-              onGravado={(audio) =>
-                adicionarAnexo({
-                  dono,
-                  tipo: 'audio',
-                  nome: nomePadrao('audio', new Date()),
-                  blob: audio,
-                })
-              }
-              onFechar={() => setIsGravando(false)}
-            />
-          )}
-          <div role="group" aria-label={`Anexar ${descricaoDono}`} className="flex flex-wrap gap-1">
-            <input
-              ref={entradaFotoRef}
-              type="file"
-              accept="image/*"
-              multiple
-              aria-label={`Escolher fotos ${descricaoDono}`}
-              className="sr-only"
-              onChange={(evento) => void handleFotos(evento)}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-grafite"
-              onClick={() => entradaFotoRef.current?.click()}
-            >
-              <Camera /> Foto
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-grafite"
-              onClick={() => setDesenho({ isAberto: true })}
-            >
-              <PenLine /> Desenho
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-grafite"
-              onClick={() => setIsGravando(true)}
-              disabled={isGravando}
-            >
-              <Mic /> Áudio
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-grafite"
-              onClick={() => setIsComLink(true)}
-            >
-              <Link2 /> Link
-            </Button>
-          </div>
-          <DialogoDesenho
-            isAberto={desenho.isAberto}
-            onMudarAberto={(isAberto) => setDesenho(isAberto ? desenho : { isAberto: false })}
-            inicial={desenho.editando?.blob}
-            onSalvar={handleSalvarDesenho}
-          />
-          <DialogoLink
-            isAberto={isComLink}
-            onMudarAberto={setIsComLink}
-            onSalvar={(link) =>
-              adicionarAnexo({ dono, tipo: 'link', nome: link.nome, url: link.url.trim() })
-            }
-          />
-        </>
+      {isGravando && (
+        <GravadorAudio
+          onGravado={(audio) =>
+            adicionarAnexo({
+              dono,
+              tipo: 'audio',
+              nome: nomePadrao('audio', new Date()),
+              blob: audio,
+            })
+          }
+          onFechar={() => setIsGravando(false)}
+        />
       )}
+      <div role="group" aria-label={`Anexar ${descricaoDono}`} className="flex flex-wrap gap-1">
+        <input
+          ref={entradaFotoRef}
+          type="file"
+          accept="image/*"
+          multiple
+          aria-label={`Escolher fotos ${descricaoDono}`}
+          className="sr-only"
+          onChange={(evento) => void handleFotos(evento)}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-grafite"
+          onClick={() => entradaFotoRef.current?.click()}
+        >
+          <Camera /> Foto
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-grafite"
+          onClick={() => setDesenho({ isAberto: true })}
+        >
+          <PenLine /> Desenho
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-grafite"
+          onClick={() => setIsGravando(true)}
+          disabled={isGravando}
+        >
+          <Mic /> Áudio
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-grafite"
+          onClick={() => setIsComLink(true)}
+        >
+          <Link2 /> Link
+        </Button>
+      </div>
+      <DialogoDesenho
+        isAberto={desenho.isAberto}
+        onMudarAberto={(isAberto) => setDesenho(isAberto ? desenho : { isAberto: false })}
+        inicial={desenho.editando?.blob}
+        onSalvar={handleSalvarDesenho}
+      />
+      <DialogoLink
+        isAberto={isComLink}
+        onMudarAberto={setIsComLink}
+        onSalvar={(link) =>
+          adicionarAnexo({ dono, tipo: 'link', nome: link.nome, url: link.url.trim() })
+        }
+      />
     </div>
   )
 }

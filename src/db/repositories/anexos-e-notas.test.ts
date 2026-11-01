@@ -14,11 +14,6 @@ import {
   obterNotaDoDono,
   salvarNotaDoDono,
 } from '@/db/repositories/note-repository'
-import {
-  criarProcedimento,
-  excluirProcedimento,
-  salvarProcedimento,
-} from '@/db/repositories/procedure-repository'
 import { criarTarefa, excluirTarefa } from '@/db/repositories/task-repository'
 import { esquemaLink, formatarDuracao, nomeDoLink, nomePadrao } from '@/lib/anexos'
 
@@ -143,34 +138,5 @@ describe('exclusão em cascata', () => {
 
     expect(await db.notes.count()).toBe(0)
     expect((await db.attachments.toArray()).map((anexo) => anexo.nome)).toEqual(['G'])
-  })
-
-  it('excluir o procedimento apaga os anexos dele e dos passos de todas as versões', async () => {
-    const procedimento = await criarProcedimento({
-      titulo: 'P',
-      descricao: '',
-      camposVariaveis: [],
-      secoes: [
-        { id: 's', titulo: 'S', passos: [{ id: 'antigo', texto: 'x', anexos: [], subpassos: [] }] },
-      ],
-    })
-    await salvarProcedimento(procedimento.id, {
-      ...procedimento,
-      secoes: [
-        { id: 's', titulo: 'S', passos: [{ id: 'novo', texto: 'y', anexos: [], subpassos: [] }] },
-      ],
-    })
-    await adicionarAnexo({
-      dono: { tipo: 'procedure', id: procedimento.id },
-      tipo: 'foto',
-      nome: 'P',
-    })
-    await adicionarAnexo({ dono: { tipo: 'step', id: 'antigo' }, tipo: 'foto', nome: 'A' })
-    await adicionarAnexo({ dono: { tipo: 'step', id: 'novo' }, tipo: 'foto', nome: 'N' })
-    await adicionarAnexo({ dono: { tipo: 'step', id: 'de-outro' }, tipo: 'foto', nome: 'O' })
-
-    await excluirProcedimento(procedimento.id)
-
-    expect((await db.attachments.toArray()).map((anexo) => anexo.nome)).toEqual(['O'])
   })
 })

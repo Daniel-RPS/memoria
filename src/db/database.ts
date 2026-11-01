@@ -2,18 +2,17 @@ import Dexie, { type EntityTable } from 'dexie'
 import type {
   Attachment,
   Category,
-  Execution,
   GroupCard,
   GroupItem,
   GroupSeries,
   Note,
   Procedure,
-  ProcedureVersion,
   Subcategory,
   Subtask,
   Task,
 } from '@/db/types'
 import { converterGruposAntigos, type CardAntigo, type TarefaAntiga } from '@/lib/migracao-grupos'
+import { converterProcedimentoAntigo, type ProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 
 /**
  * Banco local (IndexedDB). Componentes NUNCA usam esta instância direto:
@@ -25,8 +24,6 @@ export class MemoriaDatabase extends Dexie {
   tasks!: EntityTable<Task, 'id'>
   subtasks!: EntityTable<Subtask, 'id'>
   procedures!: EntityTable<Procedure, 'id'>
-  procedureVersions!: EntityTable<ProcedureVersion, 'id'>
-  executions!: EntityTable<Execution, 'id'>
   notes!: EntityTable<Note, 'id'>
   attachments!: EntityTable<Attachment, 'id'>
   groupSeries!: EntityTable<GroupSeries, 'id'>
@@ -105,6 +102,29 @@ export class MemoriaDatabase extends Dexie {
             card.criadoPorTransferencia =
               doCard.length > 0 && doCard.every((item) => item.origemItemId !== undefined)
           })
+      })
+    // v7: procedimento vira título, categoria e etapas. Converte os existentes e apaga o que
+    // saiu do modelo: versões, execuções, vínculo das tarefas e anexos/anotações de
+    // procedimento e de passo.
+    this.version(7)
+      .stores({
+        tasks: 'id, data, [data+ordem], status, categoryId, dataOriginal',
+        procedureVersions: null,
+        executions: null,
+      })
+      .upgrade(async (transacao) => {
+        const antigos = (await transacao.table('procedures').toArray()) as ProcedimentoAntigo[]
+        await transacao.table('procedures').bulkPut(antigos.map(converterProcedimentoAntigo))
+        await transacao
+          .table('tasks')
+          .filter((tarefa: object) => 'procedureId' in tarefa)
+          .modify((tarefa: { procedureId?: string }) => {
+            delete tarefa.procedureId
+          })
+        const isDonoRemovido = (registro: { dono?: { tipo: string } }) =>
+          registro.dono?.tipo === 'procedure' || registro.dono?.tipo === 'step'
+        await transacao.table('notes').filter(isDonoRemovido).delete()
+        await transacao.table('attachments').filter(isDonoRemovido).delete()
       })
   }
 }

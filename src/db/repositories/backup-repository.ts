@@ -23,8 +23,6 @@ export async function exportarDados(): Promise<Backup> {
     tasks: await db.tasks.toArray(),
     subtasks: await db.subtasks.toArray(),
     procedures: await db.procedures.toArray(),
-    procedureVersions: await db.procedureVersions.toArray(),
-    executions: await db.executions.toArray(),
     notes: await db.notes.toArray(),
     attachments: await db.attachments.toArray(),
     groupSeries: await db.groupSeries.toArray(),
@@ -56,8 +54,6 @@ export async function importarDados(backup: Backup) {
     await db.tasks.bulkAdd(tabelas.tasks)
     await db.subtasks.bulkAdd(tabelas.subtasks)
     await db.procedures.bulkAdd(tabelas.procedures)
-    await db.procedureVersions.bulkAdd(tabelas.procedureVersions)
-    await db.executions.bulkAdd(tabelas.executions)
     await db.notes.bulkAdd(tabelas.notes)
     await db.attachments.bulkAdd(anexos)
     await db.groupSeries.bulkAdd(tabelas.groupSeries)

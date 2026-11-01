@@ -40,11 +40,11 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
 - Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
 - Card da semana: o card inteiro arrasta o grupo (ponteiro); o cabeçalho é o ativador (foco/espaço). Área com `data-sem-arrasto` (itens, botão →) não arrasta o card; item só pela alça ⋮⋮ (`setActivatorNodeRef`). NÃO use `stopPropagation` no `onKeyDown`: bloqueia o Ctrl+Z global
-- Banco Dexie na versão 6 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`; v6: marca `criadoPorTransferencia`); mudar índice = nova `version()`
+- Banco Dexie na versão 7 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`; v6: marca `criadoPorTransferencia`; v7: procedimento vira etapas via `lib/migracao-procedimentos.ts`, apaga `procedureVersions`/`executions`, `tasks.procedureId` e anexos/notas de procedimento/passo); mudar índice = nova `version()`
 - IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
 - Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
-- Anexo pertence ao `dono` {tipo, id} (tarefa, nota, procedimento, passo); `Step.anexos` não é usado — a fonte é `attachments`
-- Excluir tarefa/nota/procedimento SEMPRE apaga anexos e anotações dele (`excluirAnexosDe`, `excluirNotasDe`) na mesma transação
+- Anexo pertence ao `dono` {tipo, id} (`task` ou `note`); procedimento não tem anexo nem anotação
+- Excluir tarefa/nota SEMPRE apaga anexos e anotações dele (`excluirAnexosDe`, `excluirNotasDe`) na mesma transação
 - Anotação de tarefa = Note com `dono`; notas avulsas (página Notas) não têm dono
 - Painel de anexos reutilizável: `src/components/anexos/painel-anexos.tsx`; links SÓ http/https (`esquemaLink`)
 - Texto editado com gravação atrasada: use `useSalvarComAtraso` (grava o pendente ao sair da tela)
@@ -70,12 +70,8 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - GroupCard { id, seriesId, data, ordem, arquivado, criadoPorTransferencia? } — no máximo um por série e dia; encerrado é calculado (tem itens e nenhum pendente)
 - GroupItem { id, cardId, titulo, ordem, status: pendente|concluido|transferido|arquivado, concluidoEm?, transferidoParaCardId?, origemItemId?, dataOriginal }
 - Subtask { id, taskId, titulo, concluida, ordem }
-- Procedure { id, titulo, categoryId?, descricao, secoes[] (cada uma com passos[] embutidos), camposVariaveis[], versao }
-- Step { id, texto, codigo?, alerta?, anexos[], subpassos[] } — dentro de Procedure, sem tabela; subpasso tem 1 nível; ordem = posição no array
-- CampoVariavel tipo `credencial` guarda só `localCredencial`
-- ProcedureVersion { procedureId, versao, snapshot, alteradoEm }
-- Execution { id, procedureId, versao, data, valoresCampos, passosMarcados, passosPulados, observacoes, taskId? }
-- Note, Attachment (foto, desenho, áudio, link) ligados a tarefa, nota ou procedimento
+- Procedure { id, titulo, categoryId?, etapas: [{ id, texto, ordem }] } — etapas embutidas, sem tabela; `ordem` = posição (0, 1, 2…), regravada a cada salvamento (`numerarEtapas`)
+- Note, Attachment (foto, desenho, áudio, link) ligados a tarefa ou nota
 
 ## Regras de negócio
 
@@ -92,13 +88,10 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Tarefa solta continua sendo MOVIDA (não duplica), inclusive com subtarefas
 - Arquivar card = arquivar os pendentes (sai do calendário se não sobrar feito/transferido); excluir card apaga os itens e a série que ficar sem card
 - "+ Novo grupo" (ao lado de "+ Nova tarefa", no Dia e na Semana) com nome de série existente reusa a série; já existindo no dia, `ErroDeValidacao`
-- IMPORTANTE: modo execução NUNCA altera o procedimento original — `execution-repository` só escreve em `executions` (e na tarefa ligada)
-- Editar procedimento SEMPRE grava a versão anterior em ProcedureVersion (`salvarProcedimento`; uma versão por "Salvar")
-- Execução segue a versão em que começou (`obterVersao`); em andamento = sem `concluidaEm`, retomável
-- Campos variáveis: `{{nome}}` casa pelo nome sem acento/maiúscula; credencial mostra só `localCredencial`
-- Marcar passo: use `mudarEstadoDoPasso` (atômico); nunca grave a partir de uma execução lida antes
-- Tarefa com `procedureId` = execução agendada; concluir a execução conclui a tarefa
-- NUNCA crie campo de senha: credencial guarda só ONDE está (ex.: "cofre X, item Y")
+- Procedimento = título, categoria e etapas numeradas pela posição; SÓ isso (sem execução, versões, campos variáveis, anexos ou ligação com o calendário — removidos em 01/11/2026, não reintroduza sem o usuário pedir)
+- Lista de procedimentos: um bloco por categoria (`agruparPorCategoria`), "Sem categoria" no fim; busca por título e texto das etapas (`buscarProcedimentos`, `src/lib/procedimentos.ts`)
+- Novo procedimento grava ao clicar "Criar procedimento"; na página dele a edição grava sozinha (`useSalvarComAtraso` + `salvarProcedimento` com a lista inteira de etapas); excluir pede confirmação
+- NUNCA crie campo de senha no app
 - Interface toda em português do Brasil
 
 ## Estilo de código
@@ -114,7 +107,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Antes de cada fase, liste em poucas linhas o que será feito
 - Ao concluir fase: testes + build, atualizar status no README (e este arquivo se a estrutura mudar), commit
 - Commits: Conventional Commits (`feat:`, `fix:`, `chore:`)
-- Testes obrigatórios: mover tarefas, contagem de dias pendentes, modo execução, copiar/mesclar grupos
+- Testes obrigatórios: mover tarefas, contagem de dias pendentes, etapas e migração de procedimentos, copiar/mesclar grupos
 - Ambiguidade na proposta: pergunte, não suponha
 - Trabalho de interface: use a skill `frontend-design`
 
@@ -124,7 +117,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 2. Subtarefas com progresso ("2 de 5")
 3. Categorias e subcategorias com cores e filtro
 4. Semana, arrastar entre dias, ações de mover pendências
-5. Procedimentos: editor → execução → ligação ao calendário → histórico, campos variáveis, versões, busca
+5. Procedimentos: título, categoria, etapas numeradas, lista por categoria e busca (remodelado em 01/11/2026)
 6. Visões de mês e ano
 7. Backup: exportar/importar JSON com anexos
 8. Notas, fotos, desenho à mão livre, áudio
@@ -134,6 +127,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 
 - Ajuste 30/10/2026: grupos de tarefas (cards por dia em séries; levar a outro dia duplica o card com os pendentes) — detalhes em `docs/proposta-inicial.md`
 - Ajuste 31/10/2026: arrastar o card leva o grupo inteiro (item só pela alça), menu → "Levar pendentes", volta desfaz a transferência sem card fantasma, Ctrl+Z
+- Ajuste 01/11/2026: Procedimentos remodelados (só título, categoria e etapas; banco v7, backup formato 4) — detalhes em `docs/proposta-inicial.md`
 
 ## Armadilhas
 
@@ -149,6 +143,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Canvas, câmera, microfone e `createImageBitmap` não existem no jsdom: verifique desenho, foto e áudio no navegador
 - Testes têm tsconfig próprio (`tsconfig.test.json`, com tipos do Node); o app não enxerga tipos do Node
 - `userEvent.type`: `{` é tecla especial; para digitar `{{campo}}` escreva `'{{{{campo}}'`
+- Playwright `getByLabel('Etapa 1')` casa por trecho (pega "Excluir etapa 1"): use `{ exact: true }`
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
 - Campo de criar item: use `CampoNovoItem`; ele limpa ANTES do `await` para não apagar o que o usuário já digitou

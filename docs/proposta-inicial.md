@@ -7,8 +7,8 @@ App pessoal de organização em formato de calendário, para um computador, sem 
 - **Calendário:** visões de dia, semana, mês e ano. A semana começa na segunda.
 - **Tarefas:** caixa de seleção, subtarefas com progresso, categoria e subcategoria coloridas, contagem de dias pendentes a partir da data original.
 - **Mover é a função central:** mover só troca o dia; nunca copia nem apaga. Há "Adiar para amanhã", "Mover para outro dia", seleção múltipla, "Trazer pendências de ontem para hoje" e "Desfazer".
-- **Procedimentos:** passo a passo reutilizável, com modo execução que nunca altera o original, campos variáveis, versões, histórico e agendamento no calendário.
-- **Conteúdo:** notas, fotos, desenhos à mão livre, áudio e links ligados a tarefas, notas e procedimentos.
+- **Procedimentos:** título, categoria e etapas numeradas automaticamente. Lista separada por categoria ("Sem categoria" no fim) e busca por título e texto das etapas. Sem modo execução, versões, campos variáveis, anexos ou ligação com o calendário (removidos em 01/11/2026).
+- **Conteúdo:** notas, fotos, desenhos à mão livre, áudio e links ligados a tarefas e notas.
 - **Backup:** exportar e importar tudo num JSON, anexos incluídos.
 - **Fora do escopo:** compartilhamento, sincronização e versão para celular.
 
@@ -59,3 +59,13 @@ Arrastando para o dia 31:
 - `GroupItem { id, cardId, titulo, ordem, status: pendente | concluido | transferido | arquivado, concluidoEm?, transferidoParaCardId?, origemItemId?, dataOriginal }`
 - Duplicar é uma transação Dexie: acha ou cria o card de destino da mesma série, cria itens pendentes (com `origemItemId` e a mesma `dataOriginal`) e marca os originais como `transferido`.
 - Banco v4/v5 e backup formato 3 convertem os grupos da primeira versão (v3 / formato 2).
+
+## Procedimentos (remodelação de 01/11/2026)
+
+A primeira versão (seções, passos, subpassos, código, alertas, campos variáveis, modo execução, histórico, versões, anexos e agendamento) ficou complicada demais e foi substituída por esta.
+
+- A aba tem "+ Novo procedimento", a busca (título e texto das etapas) e a lista com um bloco por categoria, na cor dela, e "Sem categoria" no fim.
+- Criar/editar: título, categoria e etapas numeradas sozinhas. "+ Adicionar etapa" quantas vezes quiser; cada etapa se renomeia ali mesmo e se exclui, e a numeração se ajusta. A edição grava sozinha. Excluir o procedimento pede confirmação.
+- Modelo: `Procedure { id, titulo, categoryId?, etapas: [{ id, texto, ordem }], criadoEm, atualizadoEm }`.
+- Banco v7 converte os existentes (título e categoria mantidos; passos de todas as seções viram etapas na ordem, cada subpasso logo após o seu passo) e apaga versões, execuções, o vínculo das tarefas e os anexos/anotações de procedimento e de passo.
+- Backup formato 4. Backups até o formato 3 são convertidos do mesmo jeito ao importar.

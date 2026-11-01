@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
 import { adicionarAnexo } from '@/db/repositories/attachment-repository'
 import { criarNota } from '@/db/repositories/note-repository'
-import { criarProcedimento } from '@/db/repositories/procedure-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { hoje } from '@/lib/datas'
 import { renderizarApp } from '@/test/renderizar-app'
@@ -167,59 +166,5 @@ describe('Anotação e anexos da tarefa', () => {
       conteudo: 'Protocolo 12345',
       dono: { tipo: 'task', id: tarefa.id },
     })
-  })
-})
-
-describe('Anexos do procedimento', () => {
-  beforeEach(async () => {
-    await Promise.all(db.tables.map((tabela) => tabela.clear()))
-  })
-
-  it('anexo de passo adicionado na página aparece na execução, só para ver', async () => {
-    const procedimento = await criarProcedimento({
-      titulo: 'Trocar toner',
-      descricao: '',
-      camposVariaveis: [],
-      secoes: [
-        {
-          id: 's',
-          titulo: 'S',
-          passos: [{ id: 'p1', texto: 'Abrir a tampa', anexos: [], subpassos: [] }],
-        },
-      ],
-    })
-    await adicionarAnexo({
-      dono: { tipo: 'step', id: 'p1' },
-      tipo: 'link',
-      nome: 'Vídeo do fabricante',
-      url: 'https://exemplo.com/video',
-    })
-    renderizarApp(`/procedimentos/${procedimento.id}/executar`)
-
-    expect(await screen.findByRole('link', { name: /Vídeo do fabricante/ })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Excluir Vídeo do fabricante' }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: 'Anexar do passo 1' })).not.toBeInTheDocument()
-  })
-
-  it('na página do procedimento, "Anexar" abre o painel do passo', async () => {
-    const usuario = userEvent.setup()
-    const procedimento = await criarProcedimento({
-      titulo: 'Trocar toner',
-      descricao: '',
-      camposVariaveis: [],
-      secoes: [
-        {
-          id: 's',
-          titulo: 'S',
-          passos: [{ id: 'p1', texto: 'Abrir a tampa', anexos: [], subpassos: [] }],
-        },
-      ],
-    })
-    renderizarApp(`/procedimentos/${procedimento.id}`)
-
-    await usuario.click(await screen.findByRole('button', { name: 'Anexar ao passo 1' }))
-    expect(screen.getByRole('group', { name: 'Anexar do passo 1' })).toBeInTheDocument()
   })
 })

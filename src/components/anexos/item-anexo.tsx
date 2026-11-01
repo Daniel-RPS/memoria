@@ -8,18 +8,17 @@ import { nomeDoLink } from '@/lib/anexos'
 
 interface ItemAnexoProps {
   anexo: Attachment
-  isSomenteLeitura?: boolean
   onExcluir: () => void
   onEditarDesenho: () => void
 }
 
 /** Um anexo: miniatura (foto/desenho), player (áudio) ou link. */
-export function ItemAnexo({ anexo, isSomenteLeitura, onExcluir, onEditarDesenho }: ItemAnexoProps) {
+export function ItemAnexo({ anexo, onExcluir, onEditarDesenho }: ItemAnexoProps) {
   const url = useUrlDoBlob(anexo.blob)
   const [isAmpliado, setIsAmpliado] = useState(false)
   const isImagem = anexo.tipo === 'foto' || anexo.tipo === 'desenho'
 
-  const botaoExcluir = !isSomenteLeitura && (
+  const botaoExcluir = (
     <Button
       variant="ghost"
       size="icon-xs"
@@ -44,7 +43,7 @@ export function ItemAnexo({ anexo, isSomenteLeitura, onExcluir, onEditarDesenho 
         </button>
         <div className="mt-1 flex items-center gap-1">
           <span className="min-w-0 flex-1 truncate text-xs text-grafite">{anexo.nome}</span>
-          {anexo.tipo === 'desenho' && !isSomenteLeitura && (
+          {anexo.tipo === 'desenho' && (
             <Button
               variant="ghost"
               size="icon-xs"

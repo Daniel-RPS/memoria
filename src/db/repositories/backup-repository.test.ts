@@ -7,7 +7,6 @@ import {
   versaoDoBanco,
 } from '@/db/repositories/backup-repository'
 import { criarCategoria, criarSubcategoria } from '@/db/repositories/category-repository'
-import { concluirExecucao, iniciarOuRetomarExecucao } from '@/db/repositories/execution-repository'
 import { criarProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
 import { criarSubtarefa } from '@/db/repositories/subtask-repository'
 import { criarTarefa, moverTarefas } from '@/db/repositories/task-repository'
@@ -26,18 +25,18 @@ async function popularBanco() {
   await criarSubtarefa({ taskId: tarefa.id, titulo: 'Comprar tesoura' })
   const procedimento = await criarProcedimento({
     titulo: 'Backup',
-    descricao: '',
-    camposVariaveis: [{ id: 'c', nome: 'Disco', tipo: 'texto' }],
-    secoes: [
-      { id: 's', titulo: 'S', passos: [{ id: 'p', texto: 'x', anexos: [], subpassos: [] }] },
+    categoryId: casa.id,
+    etapas: [
+      { id: 'e1', texto: 'Conectar o disco' },
+      { id: 'e2', texto: 'Copiar a pasta' },
     ],
   })
-  await salvarProcedimento(procedimento.id, { ...procedimento, titulo: 'Backup v2' })
-  const execucao = await iniciarOuRetomarExecucao({
-    procedureId: procedimento.id,
-    hoje: '2026-10-30',
+  await salvarProcedimento(procedimento.id, {
+    titulo: 'Backup semanal',
+    categoryId: casa.id,
+    etapas: [{ id: 'e2', texto: 'Copiar a pasta' }],
   })
-  await concluirExecucao(execucao.id)
+  await criarProcedimento({ titulo: 'Sem categoria', categoryId: '', etapas: [] })
   await db.notes.add({ id: 'n', titulo: 'Nota', conteudo: 'texto', criadoEm: '', atualizadoEm: '' })
   await db.attachments.add({
     id: 'a',
@@ -85,6 +84,11 @@ describe('backup', () => {
     expect(await fotografarBanco()).toEqual(antes)
     const tarefa = (await db.tasks.toArray())[0]
     expect(tarefa).toMatchObject({ data: '2026-10-30', dataOriginal: '2026-10-28' })
+    const procedimentos = await db.procedures.orderBy('titulo').toArray()
+    expect(procedimentos.map(({ titulo, etapas }) => ({ titulo, etapas }))).toEqual([
+      { titulo: 'Backup semanal', etapas: [{ id: 'e2', texto: 'Copiar a pasta', ordem: 0 }] },
+      { titulo: 'Sem categoria', etapas: [] },
+    ])
   })
 
   it('importar substitui: o que não está no backup some', async () => {
@@ -120,9 +124,7 @@ describe('backup', () => {
       subtasks: 1,
       categories: 1,
       subcategories: 1,
-      procedures: 1,
-      procedureVersions: 1,
-      executions: 1,
+      procedures: 2,
       notes: 1,
       attachments: 1,
     })

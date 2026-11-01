@@ -48,7 +48,7 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
         >
           {tarefa.titulo}
         </Link>
-        {(dias !== null || progresso || classificacao || tarefa.procedureId) && (
+        {(dias !== null || progresso || classificacao) && (
           <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-grafite">
             {dias !== null && (
               <span className="bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)] px-0.5 text-tinta">
@@ -57,7 +57,6 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
             )}
             {progresso && <span className="tabular-nums">{textoProgresso(progresso)}</span>}
             {classificacao && <span>{classificacao.rotulo}</span>}
-            {tarefa.procedureId && <span className="text-caneta">procedimento</span>}
           </p>
         )}
       </div>

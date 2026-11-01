@@ -1,5 +1,5 @@
 import { db } from '@/db/database'
-import type { DataLocal, Procedure, Task } from '@/db/types'
+import type { DataLocal, Task } from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
 import { excluirNotasDe } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
@@ -29,7 +29,6 @@ export interface NovaTarefa {
   data: DataLocal
   categoryId?: string
   subcategoryId?: string
-  procedureId?: string
 }
 
 export async function criarTarefa(dados: NovaTarefa): Promise<Task> {
@@ -43,7 +42,6 @@ export async function criarTarefa(dados: NovaTarefa): Promise<Task> {
       dataOriginal: dados.data,
       categoryId: dados.categoryId,
       subcategoryId: dados.categoryId ? dados.subcategoryId : undefined,
-      procedureId: dados.procedureId,
       ordem: maiorOrdem + 1,
       status: 'pendente',
       criadoEm: momento,
@@ -51,19 +49,6 @@ export async function criarTarefa(dados: NovaTarefa): Promise<Task> {
     }
     await db.tasks.add(tarefa)
     return tarefa
-  })
-}
-
-/** Cria no dia uma tarefa ligada ao procedimento (título e categoria vêm dele). */
-export function agendarProcedimento(
-  procedimento: Pick<Procedure, 'id' | 'titulo' | 'categoryId'>,
-  data: DataLocal,
-) {
-  return criarTarefa({
-    titulo: procedimento.titulo,
-    data,
-    categoryId: procedimento.categoryId,
-    procedureId: procedimento.id,
   })
 }
 

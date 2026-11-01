@@ -38,7 +38,7 @@ export async function excluirNota(id: string) {
   })
 }
 
-/** A anotação ligada a uma tarefa ou procedimento (no máximo uma por dono). */
+/** A anotação ligada a uma tarefa (no máximo uma por dono). */
 export function obterNotaDoDono(dono: Dono) {
   return db.notes.where('[dono.tipo+dono.id]').equals([dono.tipo, dono.id]).first()
 }

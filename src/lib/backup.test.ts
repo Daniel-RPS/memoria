@@ -27,8 +27,6 @@ function backupVazio(): Backup {
       tasks: [],
       subtasks: [],
       procedures: [],
-      procedureVersions: [],
-      executions: [],
       notes: [],
       attachments: [],
       groupSeries: [],
@@ -91,6 +89,73 @@ describe('lerBackup', () => {
     expect(tabelas.groupItems).toMatchObject([
       { id: 'i', cardId: 'c', titulo: 'Varrer', status: 'pendente', dataOriginal: '2026-10-28' },
     ])
+  })
+
+  it('converte o backup do formato 3: procedimentos com passos viram etapas', () => {
+    const { procedures, ...resto } = backupVazio().tabelas
+    const base = { criadoEm: '', atualizadoEm: '' }
+    const antigo = {
+      ...backupVazio(),
+      formato: 3,
+      versaoBanco: VERSAO_BANCO,
+      tabelas: {
+        ...resto,
+        tasks: [{ ...tarefa, procedureId: 'p' }],
+        procedures: [
+          {
+            id: 'p',
+            titulo: 'Backup',
+            categoryId: 'casa',
+            descricao: '',
+            camposVariaveis: [],
+            versao: 2,
+            secoes: [
+              {
+                id: 's',
+                titulo: 'S',
+                passos: [
+                  { id: 'p1', texto: 'Conectar', anexos: [], subpassos: [] },
+                  { id: 'p2', texto: 'Copiar', codigo: 'cp', anexos: [], subpassos: [] },
+                ],
+              },
+            ],
+            ...base,
+          },
+        ],
+        procedureVersions: [{ id: 'v', procedureId: 'p', versao: 1, alteradoEm: '' }],
+        executions: [{ id: 'x', procedureId: 'p' }],
+        notes: [
+          { id: 'n1', titulo: '', conteudo: 'x', dono: { tipo: 'procedure', id: 'p' }, ...base },
+          { id: 'n2', titulo: 'Avulsa', conteudo: 'y', ...base },
+        ],
+        attachments: [
+          { id: 'a1', dono: { tipo: 'step', id: 'p1' }, tipo: 'link', nome: 'V', ...base },
+          { id: 'a2', dono: { tipo: 'task', id: 't1' }, tipo: 'link', nome: 'T', ...base },
+        ],
+      },
+    }
+    expect(procedures).toEqual([])
+    const resultado = lerBackup(JSON.stringify(antigo), VERSAO_BANCO)
+    expect(resultado.isValido).toBe(true)
+    if (!resultado.isValido) return
+    const { tabelas } = resultado.backup
+    expect(tabelas.procedures).toEqual([
+      {
+        id: 'p',
+        titulo: 'Backup',
+        categoryId: 'casa',
+        etapas: [
+          { id: 'p1', texto: 'Conectar', ordem: 0 },
+          { id: 'p2', texto: 'Copiar', ordem: 1 },
+        ],
+        ...base,
+      },
+    ])
+    expect(tabelas).not.toHaveProperty('procedureVersions')
+    expect(tabelas).not.toHaveProperty('executions')
+    expect(tabelas.tasks[0]).not.toHaveProperty('procedureId')
+    expect(tabelas.notes.map((nota) => nota.id)).toEqual(['n2'])
+    expect(tabelas.attachments.map((anexo) => anexo.id)).toEqual(['a2'])
   })
 
   it('recusa o que não é JSON', () => {

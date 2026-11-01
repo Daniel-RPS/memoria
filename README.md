@@ -1,6 +1,6 @@
 # MemorIA
 
-App pessoal de organização em formato de calendário. Reúne tarefas do dia, subtarefas, **grupos de tarefas**, categorias coloridas e **procedimentos reutilizáveis**: passo a passo que você executa várias vezes, como uma configuração de servidor ou uma rotina mensal.
+App pessoal de organização em formato de calendário. Reúne tarefas do dia, subtarefas, **grupos de tarefas**, categorias coloridas e **procedimentos**: etapas numeradas de algo que você repete, como uma configuração de servidor ou uma rotina mensal.
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
@@ -56,22 +56,16 @@ Legenda: ✅ pronto · 🔜 planejado
 
 ### Procedimentos
 
-- ✅ Criar e editar procedimentos com seções, passos, subpassos, trechos de código e alertas
-- ✅ Anexos no procedimento e em cada passo (vistos também no modo execução)
-- ✅ Campos variáveis preenchidos a cada execução (`{{nome}}` nos passos)
-- ✅ Modo execução: marcar e pular passos, copiar comandos, observações, sem alterar o modelo original
-- ✅ Execução pela metade fica salva e pode ser retomada
-- ✅ Ligação com o calendário: agendar cria uma tarefa; executar por ela conclui a tarefa
-- ✅ Histórico de execuções com valores usados, passos feitos e pulados
-- ✅ Versões: cada edição salva guarda a versão anterior, que pode ser vista e restaurada
-- ✅ Busca em títulos, descrições e passos, sem diferenciar acentos
-
-> **Sobre senhas:** o MemorIA não guarda senhas. Ele guarda só **onde** a senha está, por exemplo "cofre X, item Y".
+- ✅ Procedimento = título, categoria e etapas numeradas sozinhas (Etapa 1, 2, 3…)
+- ✅ Adicionar, renomear (ali mesmo) e excluir etapas; a numeração se ajusta
+- ✅ Edição grava sozinha; excluir o procedimento pede confirmação
+- ✅ Lista separada por categoria, com a cor dela, e "Sem categoria" no fim
+- ✅ Busca em títulos e etapas, sem diferenciar acentos
 
 ### Conteúdo e dados
 
 - ✅ Notas com texto livre que se salva sozinho, busca e anexos
-- ✅ Anexos em tarefas, notas e procedimentos: fotos, desenhos à mão livre, gravações de áudio e links
+- ✅ Anexos em tarefas e notas: fotos, desenhos à mão livre, gravações de áudio e links
 - ✅ Anotação de texto em cada tarefa
 - ✅ Backup: exportar e importar todos os dados, incluindo anexos
 
@@ -127,15 +121,11 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Tarefas soltas continuam sendo **movidas** (não copiadas).
 - Grupos com o mesmo nome são o mesmo grupo em dias diferentes: se o destino já tem o card "Casa", os itens entram nele. Renomear ou trocar a categoria do card vale para todos os dias.
 - Arraste uma tarefa solta para dentro de um card, ou um item para fora (vira tarefa solta). Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**. Subtarefas, anotação e anexos da tarefa não passam para o item.
-- Em **Procedimentos**, crie o passo a passo. Valores que mudam (servidor, data, número do chamado) viram **campos variáveis**: escreva `{{Servidor}}` no passo e, ao executar, o valor digitado aparece no lugar, inclusive no comando copiado.
-- Para senhas, use um campo do tipo **credencial**: ele guarda só onde a senha está (ex.: "cofre X, item Y"). O MemorIA não tem campo de senha.
-- **Executar** abre o checklist. O modelo nunca muda; o que você marca e preenche vai para o histórico daquela execução.
-- **Agendar** cria uma tarefa no dia escolhido. Na tarefa, **Executar procedimento** abre a execução, e concluí-la conclui a tarefa.
-- Cada **Salvar nova versão** guarda a anterior em **Versões anteriores**, onde dá para ver e restaurar.
+- Em **Procedimentos**, **Novo procedimento** pede título, categoria e etapas (**Adicionar etapa** quantas vezes quiser). Depois de criado, clique nele na lista para ver e editar: o texto das etapas se edita ali mesmo e tudo grava sozinho ("Salvo"). A lixeira exclui a etapa e a numeração se ajusta.
 - Em **Mês**, cada dia mostra até 3 pendentes (atrasadas com marca-texto) e o resto como "+N". Arraste uma tarefa para outro dia; pelo teclado, foque a tarefa, tecle espaço, use as setas (lados = um dia, cima/baixo = uma semana) e espaço de novo.
 - Em **Ano**, o tom de cada dia indica quantas tarefas há, e um ponto amarelo marca pendência atrasada. Clique no mês ou no dia para abrir.
 - Em **Notas**, **Nova nota** abre uma página que se salva sozinha enquanto você escreve.
-- Anexos (em notas, no menu **⋯ → Anotação e anexos** de uma tarefa e na página de um procedimento):
+- Anexos (em notas e no menu **⋯ → Anotação e anexos** de uma tarefa):
   - **Foto:** escolha uma ou várias imagens. Fotos com mais de 2048 px são reduzidas para não encher o armazenamento e o backup.
   - **Desenho:** desenhe com mouse, caneta (sensível à pressão) ou dedo; cores, espessuras, borracha e desfazer. O lápis na miniatura reabre para continuar o desenho.
   - **Áudio:** grave pelo microfone (o navegador pede permissão na primeira vez). Para sozinho em 10 minutos.
@@ -156,7 +146,7 @@ Outros comandos:
 
 Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou trocar de navegador apaga tudo**. O app pede ao navegador armazenamento persistente, mas o navegador nem sempre concede; a página **Backup** mostra a situação e permite pedir de novo.
 
-- **Fazer backup:** em **Backup → Baixar backup**, o app baixa `memoria-backup-AAAA-MM-DD.json` com tudo: tarefas, subtarefas, grupos, categorias, procedimentos (com versões e execuções), notas e anexos (fotos, desenhos e áudios vão dentro do arquivo). A página lembra quando foi o último backup neste navegador.
+- **Fazer backup:** em **Backup → Baixar backup**, o app baixa `memoria-backup-AAAA-MM-DD.json` com tudo: tarefas, subtarefas, grupos, categorias, procedimentos, notas e anexos (fotos, desenhos e áudios vão dentro do arquivo). A página lembra quando foi o último backup neste navegador.
 - **Restaurar:** em **Backup → Escolher arquivo de backup**, o app confere o arquivo e mostra o que tem nele ao lado do que você tem agora. Ao confirmar **Substituir meus dados**, todos os dados deste navegador são trocados pelos do arquivo.
 - Arquivo que não é backup do MemorIA, que foi alterado ou que veio de uma versão mais nova do app é recusado, com a explicação, e nada muda.
 - A troca é feita de uma vez: se algo falhar no meio, os dados atuais ficam como estavam.
@@ -166,17 +156,17 @@ Recomendação: faça backup com frequência e guarde o arquivo fora do computad
 
 ## Roadmap
 
-| Fase | Entrega                                                                                        | Status         |
-| ---- | ---------------------------------------------------------------------------------------------- | -------------- |
-| 1    | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação         | ✅             |
-| 2    | Subtarefas com progresso                                                                       | ✅             |
-| 3    | Categorias e subcategorias com cores e filtro                                                  | ✅             |
-| 4    | Visão de semana, arrastar entre dias e ações de mover pendências                               | ✅             |
-| 5    | Procedimentos: edição, modo execução, calendário, histórico, campos variáveis, versões e busca | ✅             |
-| 6    | Visões de mês e ano                                                                            | ✅             |
-| 7    | Backup: exportar e importar (JSON com anexos)                                                  | ✅             |
-| 8    | Notas, fotos, desenhos à mão livre e áudio                                                     | ✅             |
-| 9    | Compartilhamento (ver ou editar), com servidor                                                 | Fora do escopo |
+| Fase | Entrega                                                                                | Status         |
+| ---- | -------------------------------------------------------------------------------------- | -------------- |
+| 1    | Visão do dia: tarefas, caixas de seleção, concluídas riscadas e agrupadas, reordenação | ✅             |
+| 2    | Subtarefas com progresso                                                               | ✅             |
+| 3    | Categorias e subcategorias com cores e filtro                                          | ✅             |
+| 4    | Visão de semana, arrastar entre dias e ações de mover pendências                       | ✅             |
+| 5    | Procedimentos: título, categoria, etapas numeradas, lista por categoria e busca        | ✅             |
+| 6    | Visões de mês e ano                                                                    | ✅             |
+| 7    | Backup: exportar e importar (JSON com anexos)                                          | ✅             |
+| 8    | Notas, fotos, desenhos à mão livre e áudio                                             | ✅             |
+| 9    | Compartilhamento (ver ou editar), com servidor                                         | Fora do escopo |
 
 ## Fora do escopo
 

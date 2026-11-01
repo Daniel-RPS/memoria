@@ -33,8 +33,6 @@ export interface Task extends EntidadeBase {
   /** Definida só na criação; base da contagem de dias pendentes. */
   dataOriginal: DataLocal
   concluidaEm?: string
-  /** Tarefa agendada para executar este procedimento. */
-  procedureId?: string
 }
 
 /**
@@ -89,72 +87,20 @@ export interface Subtask extends EntidadeBase {
   ordem: number
 }
 
-export type TipoCampoVariavel = 'texto' | 'numero' | 'data' | 'credencial'
-
-export interface CampoVariavel {
-  id: string
-  nome: string
-  tipo: TipoCampoVariavel
-  /** Para `credencial`: só ONDE a senha está (ex.: "cofre X, item Y"), nunca o valor. */
-  localCredencial?: string
-}
-
-/** Subpasso: um nível só, sem subpassos próprios. */
-export interface Subpasso {
+/** Etapa de um procedimento. A numeração na tela vem da `ordem` (0, 1, 2…). */
+export interface Etapa {
   id: string
   texto: string
-}
-
-/** Passo de um procedimento. A ordem é a posição no array `passos` da seção. */
-export interface Step {
-  id: string
-  texto: string
-  codigo?: string
-  alerta?: string
-  anexos: string[]
-  subpassos: Subpasso[]
-}
-
-/** Seção de um procedimento. A ordem é a posição no array `secoes`. */
-export interface Secao {
-  id: string
-  titulo: string
-  passos: Step[]
+  ordem: number
 }
 
 export interface Procedure extends EntidadeBase {
   titulo: string
   categoryId?: string
-  descricao: string
-  secoes: Secao[]
-  camposVariaveis: CampoVariavel[]
-  versao: number
+  etapas: Etapa[]
 }
 
-export interface ProcedureVersion {
-  id: string
-  procedureId: string
-  versao: number
-  snapshot: Procedure
-  alteradoEm: string
-}
-
-export interface Execution extends EntidadeBase {
-  procedureId: string
-  /** Versão do procedimento usada; a execução segue essa versão até o fim. */
-  versao: number
-  data: DataLocal
-  /** Valor digitado por id do campo. Campos `credencial` não têm valor aqui. */
-  valoresCampos: Record<string, string>
-  passosMarcados: string[]
-  passosPulados: string[]
-  observacoes: string
-  taskId?: string
-  /** Ausente enquanto a execução está em andamento. */
-  concluidaEm?: string
-}
-
-export type TipoDono = 'task' | 'note' | 'procedure' | 'step'
+export type TipoDono = 'task' | 'note'
 
 export interface Dono {
   tipo: TipoDono

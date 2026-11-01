@@ -2,7 +2,7 @@ import { db } from '@/db/database'
 import type { Attachment, Dono, TipoAnexo } from '@/db/types'
 import { agora } from '@/db/repositories/ordenacao'
 
-/** Anexos de um dono (tarefa, nota, procedimento ou passo), do mais antigo ao mais novo. */
+/** Anexos de um dono (tarefa ou nota), do mais antigo ao mais novo. */
 export async function listarAnexos(dono: Dono) {
   const anexos = await db.attachments
     .where('[dono.tipo+dono.id]')
@@ -67,7 +67,7 @@ export async function restaurarAnexo(anexo: Attachment) {
 }
 
 /**
- * Apaga os anexos de vários donos. Usado ao excluir tarefa, nota ou procedimento;
+ * Apaga os anexos de vários donos. Usado ao excluir tarefa ou nota;
  * deve rodar dentro da transação de quem chama (que inclui `db.attachments`).
  */
 export async function excluirAnexosDe(donos: Dono[]) {

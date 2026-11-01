@@ -1,11 +1,12 @@
 import { z } from 'zod'
-import type { Attachment, DataLocal } from '@/db/types'
+import type { Attachment, DataLocal, Dono, TipoDono } from '@/db/types'
 import { converterGruposAntigos } from '@/lib/migracao-grupos'
+import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 3
+export const FORMATO_ATUAL = 4
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -25,7 +26,6 @@ const tarefa = z.object({
   status: z.enum(['pendente', 'concluida', 'arquivada']),
   dataOriginal: dataLocal,
   concluidaEm: texto.optional(),
-  procedureId: texto.optional(),
   // Formato 2: item de grupo era tarefa com card.
   groupInstanceId: texto.optional(),
 })
@@ -67,54 +67,33 @@ const subtarefa = z.object({
   ordem: z.number(),
 })
 
-const passo = z.object({
-  id,
-  texto,
-  codigo: texto.optional(),
-  alerta: texto.optional(),
-  anexos: z.array(texto),
-  subpassos: z.array(z.object({ id, texto })),
-})
-
 const procedimento = z.object({
   ...base,
   titulo: texto,
   categoryId: texto.optional(),
-  descricao: texto,
-  secoes: z.array(z.object({ id, titulo: texto, passos: z.array(passo) })),
-  camposVariaveis: z.array(
-    z.object({
-      id,
-      nome: texto,
-      tipo: z.enum(['texto', 'numero', 'data', 'credencial']),
-      localCredencial: texto.optional(),
-    }),
-  ),
-  versao: z.number().int().positive(),
+  etapas: z.array(z.object({ id, texto, ordem: z.number() })),
 })
 
-const versaoProcedimento = z.object({
-  id,
-  procedureId: id,
-  versao: z.number().int().positive(),
-  snapshot: procedimento,
-  alteradoEm: texto,
-})
+// Formatos 1 a 3: seções com passos e subpassos. Viram etapas como na migração do banco (v7).
+const procedimentoAntigo = z
+  .object({
+    ...base,
+    titulo: texto,
+    categoryId: texto.optional(),
+    secoes: z.array(
+      z.object({
+        passos: z.array(
+          z.object({ id, texto, subpassos: z.array(z.object({ id, texto })).optional() }),
+        ),
+      }),
+    ),
+  })
+  .transform(converterProcedimentoAntigo)
 
-const execucao = z.object({
-  ...base,
-  procedureId: id,
-  versao: z.number().int().positive(),
-  data: dataLocal,
-  valoresCampos: z.record(z.string(), texto),
-  passosMarcados: z.array(texto),
-  passosPulados: z.array(texto),
-  observacoes: texto,
-  taskId: texto.optional(),
-  concluidaEm: texto.optional(),
-})
-
+// 'procedure' e 'step' só existem em backups até o formato 3; são descartados ao ler.
 const dono = z.object({ tipo: z.enum(['task', 'note', 'procedure', 'step']), id })
+const DONOS_ATUAIS = new Set<string>(['task', 'note'] satisfies TipoDono[])
+const isDonoAtual = (valor: z.infer<typeof dono>): valor is Dono => DONOS_ATUAIS.has(valor.tipo)
 
 const nota = z.object({ ...base, titulo: texto, conteudo: texto, dono: dono.optional() })
 
@@ -140,9 +119,7 @@ export const esquemaBackup = z.object({
       subcategories: z.array(subcategoria),
       tasks: z.array(tarefa),
       subtasks: z.array(subtarefa),
-      procedures: z.array(procedimento),
-      procedureVersions: z.array(versaoProcedimento),
-      executions: z.array(execucao),
+      procedures: z.array(z.union([procedimento, procedimentoAntigo])),
       notes: z.array(nota),
       attachments: z.array(anexoNoArquivo),
       // Formato 1 não tinha grupos.
@@ -152,10 +129,17 @@ export const esquemaBackup = z.object({
       // Formato 2: cards se chamavam instâncias e os itens eram tarefas.
       groupInstances: z.array(cardDeGrupo).optional(),
     })
-    .transform(({ groupInstances, tasks, ...tabelas }) => {
+    .transform(({ groupInstances, tasks, notes, attachments, ...tabelas }) => {
       const { cards, itens, soltas } = converterGruposAntigos(groupInstances ?? [], tasks)
       return {
         ...tabelas,
+        notes: notes.flatMap(({ dono: donoDaNota, ...nota }) => {
+          if (!donoDaNota) return [nota]
+          return isDonoAtual(donoDaNota) ? [{ ...nota, dono: donoDaNota }] : []
+        }),
+        attachments: attachments.flatMap((anexo) =>
+          isDonoAtual(anexo.dono) ? [{ ...anexo, dono: anexo.dono }] : [],
+        ),
         tasks: soltas,
         groupCards: [...tabelas.groupCards, ...cards],
         groupItems: [...tabelas.groupItems, ...itens],
@@ -174,8 +158,6 @@ export const NOMES_DAS_TABELAS: Record<NomeTabela, [string, string]> = {
   categories: ['categoria', 'categorias'],
   subcategories: ['subcategoria', 'subcategorias'],
   procedures: ['procedimento', 'procedimentos'],
-  procedureVersions: ['versão anterior', 'versões anteriores'],
-  executions: ['execução', 'execuções'],
   notes: ['nota', 'notas'],
   attachments: ['anexo', 'anexos'],
   groupSeries: ['grupo', 'grupos'],
