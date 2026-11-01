@@ -21,7 +21,7 @@ export function LegendaAno() {
         </li>
       ))}
       <li className="flex items-center gap-1.5">
-        <span aria-hidden className="size-1.5 rounded-full bg-marca-texto ring-1 ring-tinta/60" />
+        <span aria-hidden className="size-1.5 rounded-full bg-tinta ring-1 ring-papel" />
         tem pendência atrasada
       </li>
     </ul>

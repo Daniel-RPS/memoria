@@ -76,7 +76,7 @@ export function MiniMes({ inicio, hoje, resumo }: MiniMesProps) {
                 {(doDia?.atrasadas ?? 0) > 0 && (
                   <span
                     aria-hidden
-                    className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-marca-texto ring-1 ring-tinta/60"
+                    className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-tinta ring-1 ring-papel"
                   />
                 )}
               </Link>
