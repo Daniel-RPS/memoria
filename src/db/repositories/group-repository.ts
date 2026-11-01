@@ -52,6 +52,23 @@ export async function listarGruposEntre(inicio: DataLocal, fim: DataLocal) {
   }
 }
 
+/** Cards visíveis de dias que já passaram que ainda têm itens pendentes, com séries e itens. */
+export async function listarGruposAtrasados(hoje: DataLocal) {
+  const pendentes = await db.groupItems.where('status').equals('pendente').toArray()
+  const idsCards = [...new Set(pendentes.map((item) => item.cardId))]
+  const cards = (await db.groupCards.bulkGet(idsCards)).filter(
+    (card): card is GroupCard => card !== undefined && !card.arquivado && card.data < hoje,
+  )
+  const idsSeries = [...new Set(cards.map((card) => card.seriesId))]
+  const series = await db.groupSeries.bulkGet(idsSeries)
+  const doCard = new Set(cards.map((card) => card.id))
+  return {
+    cards,
+    series: series.filter((serie): serie is GroupSeries => serie !== undefined),
+    itens: pendentes.filter((item) => doCard.has(item.cardId)),
+  }
+}
+
 async function serieComTitulo(titulo: string) {
   const series = await db.groupSeries.toArray()
   return series.find((serie) => mesmoTituloDeSerie(serie.titulo, titulo))

@@ -1,10 +1,10 @@
-import { createBrowserRouter, type RouteObject } from 'react-router'
-import { IrParaHoje } from '@/app/ir-para-hoje'
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 import { LayoutApp } from '@/app/layout-app'
 import { AnoPage } from '@/features/ano/ano-page'
 import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
 import { DiaPage } from '@/features/dia/dia-page'
+import { InicioPage } from '@/features/inicio/inicio-page'
 import { MesPage } from '@/features/mes/mes-page'
 import { NotaPage } from '@/features/notas/nota-page'
 import { NotasPage } from '@/features/notas/notas-page'
@@ -18,7 +18,8 @@ export const rotas: RouteObject[] = [
   {
     element: <LayoutApp />,
     children: [
-      { path: '/', element: <IrParaHoje /> },
+      { path: '/', element: <Navigate to="/inicio" replace /> },
+      { path: '/inicio', element: <InicioPage /> },
       { path: '/dia/:data', element: <DiaPage /> },
       { path: '/semana/:data', element: <SemanaPage /> },
       { path: '/mes/:data', element: <MesPage /> },
@@ -30,7 +31,7 @@ export const rotas: RouteObject[] = [
       { path: '/notas/:id', element: <NotaPage /> },
       { path: '/categorias', element: <CategoriasPage /> },
       { path: '/backup', element: <BackupPage /> },
-      { path: '*', element: <IrParaHoje /> },
+      { path: '*', element: <Navigate to="/inicio" replace /> },
     ],
   },
 ]

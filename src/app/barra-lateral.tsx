@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CalendarRange,
   HardDriveDownload,
+  House,
   ListOrdered,
   PanelLeftClose,
   PanelLeftOpen,
@@ -115,6 +116,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const rotaSemana = useMatch('/semana/:data')
   const rotaMes = useMatch('/mes/:data')
   const rotaAno = useMatch('/ano/:ano')
+  const isNoInicio = useMatch('/inicio') !== null
   const isNasCategorias = useMatch('/categorias') !== null
   const isNoBackup = useMatch('/backup') !== null
   const isNasNotas = useMatch({ path: '/notas', end: false }) !== null
@@ -185,6 +187,9 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
           </DicaDaBarra>
         </div>
         <nav aria-label="Telas" className="flex flex-col gap-0.5">
+          <LinkTela para="/inicio" icone={House} isAtiva={isNoInicio} isRecolhida={isRecolhida}>
+            Início
+          </LinkTela>
           {isRecolhida ? (
             <GrupoCalendarioRecolhido visoes={visoes} />
           ) : (

@@ -15,7 +15,8 @@ import {
 } from '@/db/repositories/category-repository'
 import { criarProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
 import { criarSubtarefa } from '@/db/repositories/subtask-repository'
-import { criarTarefa, moverTarefas } from '@/db/repositories/task-repository'
+import { criarGrupo, criarItem, definirConclusaoItem } from '@/db/repositories/group-repository'
+import { criarTarefa, definirConclusao, moverTarefas } from '@/db/repositories/task-repository'
 import { lerBackup } from '@/lib/backup'
 
 async function popularBanco() {
@@ -122,6 +123,27 @@ describe('backup', () => {
     expect(categorias.map((categoria) => categoria.nome)).toEqual(['Trabalho', 'Casa'])
     expect(categorias[1].subcategorias.map((sub) => sub.nome)).toEqual(['Contas', 'Jardim'])
     expect((await db.procedures.toArray())[0]).toMatchObject({ subcategoryId: jardim.id })
+  })
+
+  it('exporta e importa o momento da conclusão de tarefas e itens de grupo (mapa do Início)', async () => {
+    const tarefa = await criarTarefa({ titulo: 'Feita', data: '2026-10-30' })
+    await definirConclusao(tarefa.id, true)
+    const card = await criarGrupo({ titulo: 'Casa', data: '2026-10-30' })
+    const item = await criarItem(card.id, 'Varrer')
+    await definirConclusaoItem(item.id, true)
+    const concluidaEm = (await db.tasks.get(tarefa.id))?.concluidaEm
+    const concluidoEm = (await db.groupItems.get(item.id))?.concluidoEm
+    expect(concluidaEm).toBeDefined()
+    expect(concluidoEm).toBeDefined()
+
+    const arquivo = JSON.stringify(await exportarDados())
+    await Promise.all(db.tables.map((tabela) => tabela.clear()))
+    const leitura = lerBackup(arquivo, versaoDoBanco())
+    if (!leitura.isValido) throw new Error(leitura.mensagem)
+    await importarDados(leitura.backup)
+
+    expect(await db.tasks.get(tarefa.id)).toMatchObject({ status: 'concluida', concluidaEm })
+    expect(await db.groupItems.get(item.id)).toMatchObject({ status: 'concluido', concluidoEm })
   })
 
   it('importar substitui: o que não está no backup some', async () => {

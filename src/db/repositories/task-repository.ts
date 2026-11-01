@@ -196,6 +196,16 @@ export async function restaurarPosicoes(anteriores: PosicaoAnterior[]) {
   )
 }
 
+/** Tarefas soltas pendentes em dias que já passaram, da mais antiga à mais nova. */
+export async function listarTarefasAtrasadas(hoje: DataLocal) {
+  const tarefas = await db.tasks
+    .where('data')
+    .below(hoje)
+    .filter((tarefa) => tarefa.status === 'pendente')
+    .toArray()
+  return tarefas.sort((a, b) => a.data.localeCompare(b.data) || a.ordem - b.ordem)
+}
+
 /** Tarefas soltas pendentes de ontem. */
 export async function listarPendenciasDeOntem(hoje: DataLocal) {
   const deOntem = await db.tasks.where('data').equals(somarDias(hoje, -1)).toArray()

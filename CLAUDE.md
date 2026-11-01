@@ -60,9 +60,12 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupCard.ordem`, `tabelaDoDia`); `ordem` de item é a posição dentro do card
 - Colocar tarefa no grupo / tirar item = conversão com o MESMO id (`colocarNoGrupo`/`tirarDoGrupo`); subtarefas, anotação e anexos da tarefa não passam para o item
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
-- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; a data fica na URL (`/dia/YYYY-MM-DD`). Não há filtro por categoria (removido em 01/11/2026): todas as visões mostram todas as categorias
+- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; o app abre no Início (`/inicio`; `/` e `*` redirecionam); a data fica na URL (`/dia/YYYY-MM-DD`). Não há filtro por categoria (removido em 01/11/2026): todas as visões mostram todas as categorias
 - Moldura: `BarraLateral` (`src/app/barra-lateral.tsx`). IMPORTANTE: recolher (só ícones) é SÓ escolha do usuário — botão ao lado do logo ou Ctrl+B, `useBarraRecolhida` (localStorage); trocar de tela NUNCA recolhe nem fecha o grupo. Dia/Semana/Mês/Ano no `GrupoCalendario` (`src/app/grupo-calendario.tsx`; recolhida = `GrupoCalendarioRecolhido`, menu), aberto/fechado em `useGrupoCalendarioAberto` (abre sozinho numa visão do calendário). Dicas pelo `DicaDaBarra` (Tooltip shadcn, ligado só na barra recolhida); localStorage sempre via `preferencia-local.ts`
 - Logo: originais em `img/` (só PNG opaco, não alterar); recortes transparentes em `src/assets/logo-memoria.png` (completa) e `simbolo-memoria.png` (quadrado), usados pelo `LogoDaBarra` (`barra-lateral.tsx`: a moldura estreita cortando o nome e o símbolo surge por cima); favicon (`favicon.ico`, `favicon-32.png`) e `apple-touch-icon.png` em `public/`, sobre ficha na cor `tinta`; logo do README em `docs/logo-memoria.png`. Sem manifest/PWA
+- Início (`src/features/inicio/`): captura rápida (RHF + Zod em `lib/captura.ts`; grava por `capturar`/`desfazerCaptura` em `captura-repository`), Hoje e Atrasadas discretos ao lado, Próximos 7 dias (`lib/inicio.ts`) e mapa de conclusões. Ctrl+K/N: `useAtalhoCaptura` (`src/app/`) navega para `/inicio` com `{ focarCaptura }` no estado
+- Mapa de conclusões: TODA conta em `src/lib/estatisticas.ts` (puro); semana do mapa começa no DOMINGO (como no GitHub), ao contrário do resto do app. Dia da conclusão = dia local de `concluidaEm`/`concluidoEm` (`diaDoMomento`); sem ele, o dia planejado
+- Aviso com "Desfazer" + Ctrl+Z: `avisarComDesfazer` (`use-mover-tarefas.ts`), uma ação desfazível por vez
 - Arrastar na Semana: `detectarAlvo` (`quadro-semana.tsx`) escolhe o dia pela coluna sob o ponteiro e, dentro dela, `closestCorners` (a prévia é larga e encosta na coluna vizinha)
 
 ## Modelo de dados (resumo)
@@ -112,7 +115,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Antes de cada fase, liste em poucas linhas o que será feito
 - Ao concluir fase: testes + build, atualizar status no README (e este arquivo se a estrutura mudar), commit
 - Commits: Conventional Commits (`feat:`, `fix:`, `chore:`)
-- Testes obrigatórios: mover tarefas, contagem de dias pendentes, etapas e migração de procedimentos, copiar/mesclar grupos
+- Testes obrigatórios: mover tarefas, contagem de dias pendentes, etapas e migração de procedimentos, copiar/mesclar grupos, contagem do mapa de conclusões
 - Ambiguidade na proposta: pergunte, não suponha
 - Trabalho de interface: use a skill `frontend-design`
 
@@ -138,6 +141,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 01/11/2026: grupo "Calendário" na barra lateral (variação "traço de caneta": traço violeta desliza pela linha-guia; só CSS, sem biblioteca de animação)
 - Ajuste 01/11/2026: barra lateral recolhível só pelo usuário (botão/Ctrl+B, lembrada; não recolhe mais na Semana), rótulo só "Calendário" e filtro por categoria removido do Dia
 - Ajuste 01/11/2026: logo oficial na barra (completa ↔ símbolo), favicon, apple-touch-icon e README
+- Ajuste 01/11/2026: tela Início (tela principal): captura rápida, Hoje/Atrasadas ao lado, próximos 7 dias e mapa de conclusões estilo GitHub — detalhes em `docs/proposta-inicial.md`. "Sem data" ficou de fora
 
 ## Armadilhas
 

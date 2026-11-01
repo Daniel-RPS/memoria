@@ -11,6 +11,7 @@ import type { DataLocal } from '@/db/types'
 import { useHoje } from '@/hooks/use-hoje'
 import { somarDias } from '@/lib/datas'
 import { textoAcao } from '@/lib/mover'
+import { isCampoDeTexto } from '@/lib/teclado'
 
 /** Tempo do aviso com "Desfazer": o padrão (4 s) é curto para perceber um engano. */
 const DURACAO_AVISO_MS = 8000
@@ -21,39 +22,45 @@ export interface DeGrupos {
   itens?: string[]
 }
 
-/** Última movimentação com aviso na tela: é o que o Ctrl+Z desfaz. */
-let ultimaAcao: { resultado: ResultadoAcao; idAviso: string | number } | null = null
+/** Última ação com aviso na tela (mover, levar, capturar): é o que o Ctrl+Z desfaz. */
+let ultimaAcao: { desfazer: () => Promise<unknown>; idAviso: string | number } | null = null
 
-/** Desfaz a última movimentação enquanto o aviso dela está na tela. */
+/** Desfaz a última ação enquanto o aviso dela está na tela. */
 export async function desfazerUltimaAcao() {
   if (!ultimaAcao) return false
-  const { resultado, idAviso } = ultimaAcao
+  const { desfazer, idAviso } = ultimaAcao
   ultimaAcao = null
   toast.dismiss(idAviso)
-  await desfazerAcao(resultado)
+  await desfazer()
   return true
 }
 
-function avisar(resultado: ResultadoAcao, mensagem: string) {
-  if (resultado.tarefasMovidas === 0 && resultado.itensLevados === 0) return resultado
+/**
+ * Aviso com "Desfazer" que o Ctrl+Z também aciona enquanto está na tela. `outraAcao` é um
+ * segundo botão (ex.: "Ver no dia"), mostrado antes do "Desfazer".
+ */
+export function avisarComDesfazer(
+  mensagem: string,
+  desfazer: () => Promise<unknown>,
+  outraAcao?: { label: string; onClick: () => void },
+) {
   const esquecer = (aviso: { id: string | number }) => {
     if (ultimaAcao?.idAviso === aviso.id) ultimaAcao = null
   }
   const idAviso = toast(mensagem, {
     duration: DURACAO_AVISO_MS,
     action: { label: 'Desfazer', onClick: () => void desfazerUltimaAcao() },
+    cancel: outraAcao,
     onAutoClose: esquecer,
     onDismiss: esquecer,
   })
-  ultimaAcao = { resultado, idAviso }
-  return resultado
+  ultimaAcao = { desfazer, idAviso }
 }
 
-function isCampoDeTexto(alvo: EventTarget | null) {
-  return (
-    alvo instanceof HTMLElement &&
-    (alvo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo.tagName))
-  )
+function avisar(resultado: ResultadoAcao, mensagem: string) {
+  if (resultado.tarefasMovidas === 0 && resultado.itensLevados === 0) return resultado
+  avisarComDesfazer(mensagem, () => desfazerAcao(resultado))
+  return resultado
 }
 
 /** Ctrl+Z (ou ⌘Z) desfaz a última movimentação; dentro de um campo, fica o desfazer do texto. */

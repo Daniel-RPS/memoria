@@ -8,11 +8,22 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias, e o mapa de conclusões do último ano (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
 Legenda: ✅ pronto · 🔜 planejado
+
+### Início
+
+- ✅ Tela principal do app (primeiro item da barra lateral): o app abre nela
+- ✅ Captura rápida: "O que precisa ser feito?" já focado; Enter cria. Tarefa ou Grupo (itens um por linha), categoria pelo seletor de sempre (com "+ Nova categoria" ali mesmo) e dia: Hoje, Amanhã, Próxima semana (a segunda seguinte) ou Escolher data…
+- ✅ Anexar foto/imagem ou link à tarefa já na captura
+- ✅ **Ctrl+K** (ou **N**, fora de um campo de texto) abre o Início com a captura focada, de qualquer tela
+- ✅ Aviso "Tarefa criada para 03/11 · Ver no dia · Desfazer" (Ctrl+Z também desfaz)
+- ✅ Ao lado, discretos: **Hoje** (marcável ali mesmo, tarefas e itens de grupo) e **Atrasadas** ("há 5 dias", Trazer para hoje, uma ou todas)
+- ✅ Próximos 7 dias com quantos pendentes; clicar abre o Dia
+- ✅ Mapa de conclusões do último ano, no formato do GitHub: tarefas e itens de grupo concluídos por dia (pelo dia em que foram concluídos), 5 tons de violeta pelos quartis, dica "5 concluídos em 12/10/2026", clique abre o Dia, filtro por categoria, sequência atual, maior sequência e dia mais produtivo
 
 ### Calendário e tarefas
 
@@ -110,6 +121,8 @@ Depois, abra no navegador **`http://localhost:5173`**.
 
 ### Usando
 
+- O app abre no **Início**. Escreva em **O que precisa ser feito?** e tecle Enter: vira uma tarefa de hoje. Antes, se quiser, escolha **Grupo** (e escreva os itens embaixo, Enter abre a próxima linha; Enter numa linha vazia cria), a categoria e o dia. Tab passa pelo tipo, categoria e dia. De qualquer tela, **Ctrl+K** (ou **N**) volta para cá com o campo pronto.
+- No Início, marque o que é de hoje no bloco **Hoje** e traga o que ficou para trás em **Atrasadas**. Clique num dia dos **Próximos 7 dias** ou num quadrado do mapa para abrir aquele dia.
 - Na barra lateral, **Calendário** junta Dia, Semana, Mês e Ano. Clicar nele só abre e fecha (escolher uma visão não fecha o grupo); o app lembra a escolha e abre o grupo sozinho quando você está numa dessas visões. Pelo teclado: Tab até ele, Enter ou espaço abre e fecha, setas andam entre as visões.
 - Para dar mais espaço à tela, recolha a barra pelo botão ao lado do nome **MemorIA** ou com **Ctrl+B** (de novo para expandir). Recolhida, ela mostra só os ícones, com o nome ao passar o mouse; o ícone de calendário abre Dia, Semana, Mês e Ano num menu. O app lembra se ela estava recolhida.
 - Escreva na linha **Nova tarefa** e tecle Enter; o campo continua pronto para a próxima.

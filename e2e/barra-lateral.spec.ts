@@ -189,6 +189,8 @@ test('teclado: Tab chega no grupo, Enter/Espaço alternam, setas andam nas visõ
   await page.keyboard.press('Tab')
   await expect(page.getByRole('button', { name: 'Recolher menu' })).toBeFocused()
   await page.keyboard.press('Tab')
+  await expect(navegacao(page).getByRole('link', { name: 'Início' })).toBeFocused()
+  await page.keyboard.press('Tab')
   await expect(grupo).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(grupo).toHaveAttribute('aria-expanded', 'false')

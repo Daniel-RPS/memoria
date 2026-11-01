@@ -1,0 +1,58 @@
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { ContextoCategorias } from '@/hooks/contexto-categorias'
+import { useCategorias } from '@/hooks/use-categorias'
+import { useHoje } from '@/hooks/use-hoje'
+import { deDataLocal } from '@/lib/datas'
+import { BlocoAtrasadas } from '@/features/inicio/components/bloco-atrasadas'
+import { BlocoHoje } from '@/features/inicio/components/bloco-hoje'
+import { CapturaRapida } from '@/features/inicio/components/captura-rapida'
+import { MapaDeConclusoes } from '@/features/inicio/components/mapa-de-conclusoes'
+import { ProximosDias } from '@/features/inicio/components/proximos-dias'
+import {
+  useAtrasadas,
+  useHojeNoInicio,
+  useProximosDias,
+} from '@/features/inicio/hooks/use-resumo-do-inicio'
+
+function capitalizar(texto: string) {
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+/**
+ * Porta de entrada: anotar (captura rápida), o que vem pela frente e o mapa do último ano;
+ * ao lado, discretos, o que está em hoje e o que ficou para trás.
+ */
+export function InicioPage() {
+  const hoje = useHoje()
+  const { categorias } = useCategorias()
+  const entradasDeHoje = useHojeNoInicio(hoje)
+  const atrasadas = useAtrasadas(hoje)
+  const proximos = useProximosDias(hoje)
+  const dia = deDataLocal(hoje)
+
+  return (
+    <ContextoCategorias.Provider value={categorias}>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+        <h1 className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">Início</h1>
+        <p className="text-grafite">
+          <span className="font-semibold text-tinta">
+            {capitalizar(format(dia, 'EEEE', { locale: ptBR }))}
+          </span>
+          , {format(dia, "d 'de' MMMM", { locale: ptBR })}
+        </p>
+      </header>
+      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_17rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <CapturaRapida key={hoje} hoje={hoje} />
+          <ProximosDias dias={proximos} />
+          <MapaDeConclusoes hoje={hoje} />
+        </div>
+        <aside aria-label="Hoje e atrasadas" className="flex flex-col gap-8 lg:pt-1">
+          <BlocoHoje entradas={entradasDeHoje} />
+          <BlocoAtrasadas atrasadas={atrasadas} />
+        </aside>
+      </div>
+    </ContextoCategorias.Provider>
+  )
+}

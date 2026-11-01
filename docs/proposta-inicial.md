@@ -4,6 +4,7 @@ App pessoal de organização em formato de calendário, para um computador, sem 
 
 ## Visão geral
 
+- **Início (tela principal):** captura rápida de tarefas e grupos, resumo de hoje, atrasadas, próximos 7 dias e mapa de conclusões do último ano. As visões do calendário ficam para ver por período.
 - **Calendário:** visões de dia, semana, mês e ano. A semana começa na segunda.
 - **Tarefas:** caixa de seleção, subtarefas com progresso, categoria e subcategoria coloridas, contagem de dias pendentes a partir da data original.
 - **Mover é a função central:** mover só troca o dia; nunca copia nem apaga. Há "Adiar para amanhã", "Mover para outro dia", seleção múltipla, "Trazer pendências de ontem para hoje" e "Desfazer".
@@ -93,3 +94,14 @@ Escolhida entre três direções num protótipo (folha pautada, mesa de controle
 - **Tarefa solta**: bolinha de cor junto do nome da categoria (no Mês, os chips mantêm a faixa à esquerda).
 - **Hoje**: número em violeta, circulado a caneta na Semana e no Mês, com fundo lavanda na coluna/célula.
 - **Menus ⋯ e seletor de categoria**: borda de papel e sombra lavanda; só aparência (o seletor continua com "+ Nova categoria" e formulário).
+
+## Início: a tela principal (ajuste de 01/11/2026)
+
+Antes, para anotar era preciso escolher Dia, Semana, Mês ou Ano. Agora o app abre no Início (`/inicio`; `/` e endereços desconhecidos levam para lá) e as visões do calendário servem para ver por período. Layout escolhido entre três variações de protótipo: coluna principal (captura, próximos 7 dias e mapa) e, ao lado, Hoje e Atrasadas discretos, sem cartão.
+
+- **Barra lateral**: "Início" (ícone de casa) no topo, acima de Calendário; recolhida, vira ícone com dica.
+- **Captura rápida**: campo único focado ao abrir; Enter cria. Tipo Tarefa ou Grupo (itens um por linha ou "Adicionar item"); categoria pelo seletor único; dia por Hoje, Amanhã, Próxima semana (segunda seguinte, pois a semana do app começa na segunda) ou calendário (padrão: Hoje). Na tarefa, anexar foto/imagem ou link (o que a fase 8 já tinha; desenho e áudio continuam no painel da tarefa). Grupo com nome existente reusa a série, como no "+ Novo grupo". Depois de criar: "Tarefa criada para 03/11 · Ver no dia · Desfazer" (Ctrl+Z também). Ctrl+K ou N (fora de campo de texto) abre o Início com a captura focada.
+- **Hoje**: tarefas e itens de grupo do dia, marcáveis ali. **Atrasadas**: pendentes de dias anteriores (tarefas e cards com pendentes), "há X dias" pela `dataOriginal`, "Trazer para hoje" pela mesma ação de mover do resto do app (tarefa é movida; card leva os pendentes). **Próximos 7 dias**: pendentes por dia, clique abre o Dia.
+- **Mapa de conclusões** (formato GitHub, regras puras em `src/lib/estatisticas.ts`): colunas = semanas de domingo a sábado (como no GitHub), dos últimos 12 meses. Conta tarefas soltas concluídas e itens de grupo concluídos pelo dia local de `concluidaEm`/`concluidoEm` (sem ele, o dia planejado); transferidos e arquivados não contam. Nível 0 e 4 faixas pelos quartis dos dias com conclusões, em tons de violeta. Dica "5 concluídos em 12/10/2026"; clique (ou Enter) abre o Dia; setas andam pela grade. Abaixo: sequência atual (hoje vazio ainda não quebra), maior sequência e dia mais produtivo. Filtro por categoria (item usa a categoria da série).
+- **Dados**: nada mudou no banco nem no backup. `GroupItem.concluidoEm` já existia (gravado ao marcar desde a v4) e já ia no backup.
+- **Ficou de fora** (decisão de 01/11/2026): "Sem data" / caixa de entrada; exigiria `Task.data` opcional (nova versão do banco), um bloco próprio no Início e mudança no backup.
