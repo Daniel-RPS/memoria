@@ -5,6 +5,7 @@ import type { DataLocal, Task } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
 import type { GrupoDoDia } from '@/lib/grupos'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface ChipTarefaProps {
   tarefa: Task
@@ -16,6 +17,7 @@ interface ChipTarefaProps {
 /** Tarefa em uma linha: cor da categoria e título cortado. Atrasadas ganham o marca-texto. */
 export function ChipTarefa({ tarefa, hoje, isSobreposto }: ChipTarefaProps) {
   const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
+  const corNaTela = useCorNaTela()
   const isAtrasada = tarefa.data < hoje
 
   return (
@@ -25,7 +27,7 @@ export function ChipTarefa({ tarefa, hoje, isSobreposto }: ChipTarefaProps) {
         isAtrasada && 'bg-marca-texto text-violeta-profundo',
         isSobreposto && 'rotate-1 shadow-lg ring-2 ring-caneta/40',
       )}
-      style={{ borderLeftColor: classificacao?.cor ?? 'var(--pauta)' }}
+      style={{ borderLeftColor: classificacao ? corNaTela(classificacao.cor) : 'var(--pauta)' }}
     >
       <span className="truncate">{tarefa.titulo}</span>
     </span>
@@ -75,6 +77,7 @@ interface ChipGrupoProps {
 /** Card de grupo em uma linha: "Casa · 2" (itens pendentes), na cor da categoria. */
 export function ChipGrupo({ grupo, quantidade, hoje, isSobreposto }: ChipGrupoProps) {
   const classificacao = classificarTarefa(grupo.serie, useCategoriasDoContexto())
+  const corNaTela = useCorNaTela()
   const isAtrasado = grupo.card.data < hoje
 
   return (
@@ -84,7 +87,7 @@ export function ChipGrupo({ grupo, quantidade, hoje, isSobreposto }: ChipGrupoPr
         isAtrasado && 'bg-marca-texto text-violeta-profundo',
         isSobreposto && 'rotate-1 shadow-lg ring-2 ring-caneta/40',
       )}
-      style={{ borderLeftColor: classificacao?.cor ?? 'var(--grafite)' }}
+      style={{ borderLeftColor: classificacao ? corNaTela(classificacao.cor) : 'var(--grafite)' }}
     >
       <span className="truncate">{grupo.serie.titulo}</span>
       <span className="font-normal text-grafite tabular-nums">· {quantidade}</span>

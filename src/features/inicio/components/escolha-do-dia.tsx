@@ -37,7 +37,7 @@ export function EscolhaDoDia({ hoje, data, onEscolher }: EscolhaDoDiaProps) {
             className={cn(
               CLASSE_OPCAO,
               isEscolhido
-                ? 'bg-caneta font-semibold text-white'
+                ? 'bg-caneta font-semibold text-primary-foreground'
                 : 'text-grafite hover:bg-accent hover:text-tinta',
             )}
           >
@@ -52,7 +52,7 @@ export function EscolhaDoDia({ hoje, data, onEscolher }: EscolhaDoDiaProps) {
         className={cn(
           CLASSE_OPCAO,
           isOutroDia
-            ? 'bg-caneta font-semibold text-white'
+            ? 'bg-caneta font-semibold text-primary-foreground'
             : 'text-grafite hover:bg-accent hover:text-tinta',
         )}
       >

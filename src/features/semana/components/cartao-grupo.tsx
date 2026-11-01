@@ -25,6 +25,7 @@ import {
 import { MenuGrupo } from '@/features/dia/components/menu-grupo'
 import { MenuItemGrupo } from '@/features/dia/components/menu-item-grupo'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface CartaoGrupoProps {
   grupo: GrupoDoDia
@@ -63,6 +64,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
   const { renomearGrupo, criarItem } = useAcoesGrupo()
   const [isEditando, setIsEditando] = useState(false)
   const classificacao = classificarTarefa(serie, useCategoriasDoContexto())
+  const corNaTela = useCorNaTela()
   const progresso = progressoDoGrupo(grupo)
   const isEncerrado = isGrupoEncerrado(grupo)
   const isArrastavel = podeCopiarGrupo(grupo) && arrasto !== undefined && !isEditando
@@ -103,7 +105,9 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
           'absolute -inset-x-px -top-px h-[3px] rounded-t-md',
           isEncerrado && 'opacity-40',
         )}
-        style={{ backgroundColor: classificacao?.cor ?? 'var(--grafite)' }}
+        style={{
+          backgroundColor: classificacao ? corNaTela(classificacao.cor) : 'var(--grafite)',
+        }}
       />
       <div className="group/cabecalho flex items-start gap-1 border-b border-dashed border-pauta pt-0.5 pr-1 pl-1.5">
         {/* A alça é o ativador do teclado (foco e espaço); o ponteiro arrasta de qualquer lugar. */}

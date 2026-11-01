@@ -1,3 +1,5 @@
+import type { Tema } from '@/lib/aparencia'
+
 /** Cores disponíveis para categorias; escolhidas para ler bem sobre o papel claro. */
 export const PALETA_CATEGORIAS = [
   { nome: 'Tomate', hex: '#c8402f' },
@@ -57,6 +59,24 @@ export function variacaoCor(hex: string, indice: number) {
     '#' +
     canais
       .map((canal) => misturar(canal, passo.alvo, passo.quanto).toString(16).padStart(2, '0'))
+      .join('')
+  )
+}
+
+/** Quanto a cor da categoria clareia no tema escuro (as da paleta foram feitas para o claro). */
+const CLAREAR_NO_ESCURO = 0.28
+
+/**
+ * Cor da categoria como aparece na tela: no escuro, clareada para destacar do papel escuro;
+ * no claro, a própria. Só exibição: o banco guarda sempre a cor escolhida.
+ */
+export function corNaTela(hex: string, tema: Tema) {
+  if (tema === 'claro' || !isCorValida(hex)) return hex
+  return (
+    '#' +
+    [1, 3, 5]
+      .map((inicio) => parseInt(hex.slice(inicio, inicio + 2), 16))
+      .map((canal) => misturar(canal, 255, CLAREAR_NO_ESCURO).toString(16).padStart(2, '0'))
       .join('')
   )
 }

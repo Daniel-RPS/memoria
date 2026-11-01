@@ -7,6 +7,31 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MemorIA</title>
+    <!--
+      Tema antes do React e do CSS carregarem, para não piscar o tema errado ao abrir.
+      Mesma regra de src/lib/aparencia.ts (chave em src/app/use-aparencia.ts).
+    -->
+    <script>
+      ;(function () {
+        var escolha = null
+        try {
+          escolha = localStorage.getItem('memoria:tema')
+        } catch (erro) {}
+        var isEscuro =
+          escolha === 'escuro' ||
+          (escolha !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.tema = isEscuro ? 'escuro' : 'claro'
+      })()
+    </script>
+    <style>
+      :root {
+        background: #f4f2f8;
+      }
+      :root[data-tema='escuro'] {
+        background: #0f0d15;
+        color-scheme: dark;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

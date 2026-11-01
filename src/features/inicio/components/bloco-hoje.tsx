@@ -9,6 +9,7 @@ import { classificarTarefa } from '@/lib/categorias'
 import { pendentesDo, progressoDoGrupo, type EntradaDoDia, type GrupoDoDia } from '@/lib/grupos'
 import { ResumoLateral } from '@/features/inicio/components/resumo-lateral'
 import { useAcoesDoInicio } from '@/features/inicio/hooks/use-acoes-do-inicio'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface BlocoHojeProps {
   entradas: EntradaDoDia[]
@@ -16,13 +17,14 @@ interface BlocoHojeProps {
 
 function PontoDaCategoria({ dono }: { dono: Pick<Task, 'categoryId' | 'subcategoryId'> }) {
   const classificacao = classificarTarefa(dono, useCategoriasDoContexto())
+  const corNaTela = useCorNaTela()
   if (!classificacao) return null
   return (
     <span
       aria-hidden
       title={classificacao.rotulo}
       className="size-1.5 shrink-0 rounded-full"
-      style={{ backgroundColor: classificacao.cor }}
+      style={{ backgroundColor: corNaTela(classificacao.cor) }}
     />
   )
 }

@@ -14,6 +14,7 @@ import { CORES_DOS_NIVEIS } from '@/features/inicio/components/cores-dos-niveis'
 import { GradeDoMapa } from '@/features/inicio/components/grade-do-mapa'
 import { useFiltroDoMapa } from '@/features/inicio/hooks/use-filtro-do-mapa'
 import { useMapaDeConclusoes } from '@/features/inicio/hooks/use-mapa-de-conclusoes'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface MapaDeConclusoesProps {
   hoje: DataLocal
@@ -28,6 +29,7 @@ const NIVEIS: NivelDeIntensidade[] = [0, 1, 2, 3, 4]
 export function MapaDeConclusoes({ hoje }: MapaDeConclusoesProps) {
   const { categorias, isCarregando } = useCategorias()
   const filtro = useFiltroDoMapa()
+  const corNaTela = useCorNaTela()
   const [isMenuAberto, setIsMenuAberto] = useState(false)
   const categoria = categorias.find((opcao) => opcao.id === filtro.categoryId)
   // Categoria lembrada que foi excluída: volta para todas.
@@ -54,7 +56,7 @@ export function MapaDeConclusoes({ hoje }: MapaDeConclusoesProps) {
                 <span
                   aria-hidden
                   className="size-2 rounded-full"
-                  style={{ backgroundColor: categoria.cor }}
+                  style={{ backgroundColor: corNaTela(categoria.cor) }}
                 />
               )}
               <span className="max-w-40 truncate">{categoria?.nome ?? 'Todas as categorias'}</span>

@@ -14,6 +14,7 @@ import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
 import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
 import { MenuTarefa } from '@/features/dia/components/menu-tarefa'
 import { TituloEditavel } from '@/components/titulo-editavel'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface LinhaTarefaProps {
   tarefa: Task
@@ -39,6 +40,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
   const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
+  const corNaTela = useCorNaTela()
   const idPainel = `subtarefas-${tarefa.id}`
   const idPainelAnexos = `anexos-${tarefa.id}`
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
@@ -120,7 +122,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               <span
                 aria-hidden
                 className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: classificacao.cor }}
+                style={{ backgroundColor: corNaTela(classificacao.cor) }}
               />
               {classificacao.rotulo}
             </span>

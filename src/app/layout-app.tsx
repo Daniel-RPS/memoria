@@ -1,6 +1,9 @@
 import { Outlet, useMatch } from 'react-router'
 import { cn } from 'cn'
 import { BarraLateral } from '@/app/barra-lateral'
+import { FundoDoApp } from '@/app/fundo-do-app'
+import { useAparencia } from '@/app/use-aparencia'
+import { useAplicarTema } from '@/app/use-aplicar-tema'
 import { useBarraRecolhida } from '@/app/use-barra-recolhida'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -11,6 +14,8 @@ import { useAtalhoDesfazer } from '@/hooks/use-mover-tarefas'
 export function LayoutApp() {
   useAtalhoDesfazer()
   useAtalhoCaptura()
+  useAplicarTema()
+  const { tema, fundo } = useAparencia()
   const { isRecolhida, handleAlternar } = useBarraRecolhida()
   const isNaSemana = useMatch('/semana/:data') !== null
   const rotaMes = useMatch('/mes/:data')
@@ -29,7 +34,9 @@ export function LayoutApp() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex min-h-dvh bg-nevoa">
+      <FundoDoApp fundo={fundo} />
+      {/* Sem cor de fundo própria: a névoa fica no <html>, com o fundo decorativo por cima. */}
+      <div className="flex min-h-dvh">
         <BarraLateral isRecolhida={isRecolhida} onAlternarRecolhida={handleAlternar} />
         <main className="min-w-0 flex-1">
           <div className={cn('mx-auto px-4 pt-8 pb-16 sm:px-8', largura)}>
@@ -37,8 +44,7 @@ export function LayoutApp() {
           </div>
         </main>
       </div>
-      {/* Tema fixo claro: o app ainda não tem modo escuro. */}
-      <Toaster theme="light" position="bottom-center" />
+      <Toaster theme={tema === 'escuro' ? 'dark' : 'light'} position="bottom-center" />
     </TooltipProvider>
   )
 }

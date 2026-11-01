@@ -70,10 +70,10 @@ export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendari
         aria-controls={idPainel}
         onClick={onAlternar}
         className={cn(
-          'group/cab flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-sm transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-papel',
+          'group/cab flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-sm transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-barra-texto',
           !isAberto && visaoAtiva
-            ? 'bg-papel/7 text-papel'
-            : 'text-papel/70 hover:bg-papel/7 hover:text-papel',
+            ? 'bg-barra-realce text-barra-texto'
+            : 'text-barra-suave hover:bg-barra-realce hover:text-barra-texto',
         )}
       >
         <CalendarFold
@@ -84,7 +84,7 @@ export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendari
         <ChevronRight
           aria-hidden
           className={cn(
-            'ml-auto size-3.5 shrink-0 text-papel/45 transition-[rotate] duration-400 ease-mola motion-reduce:transition-none',
+            'ml-auto size-3.5 shrink-0 text-barra-suave transition-[rotate] duration-400 ease-mola motion-reduce:transition-none',
             isAberto && 'rotate-90',
           )}
         />
@@ -100,11 +100,11 @@ export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendari
         )}
       >
         <div className="min-h-0 overflow-hidden">
-          <ul className="relative mt-0.5 ml-[1.05rem] flex flex-col gap-0.5 border-l border-papel/10 py-0.5 pl-2">
+          <ul className="relative mt-0.5 ml-[1.05rem] flex flex-col gap-0.5 border-l border-barra-borda py-0.5 pl-2">
             <li
               aria-hidden
               className={cn(
-                'pointer-events-none absolute top-0.5 right-0 left-2 h-8 rounded-md bg-papel/7 transition-[translate,opacity] duration-500 ease-mola-suave motion-reduce:transition-none',
+                'pointer-events-none absolute top-0.5 right-0 left-2 h-8 rounded-md bg-barra-realce transition-[translate,opacity] duration-500 ease-mola-suave motion-reduce:transition-none',
                 visaoAtiva ? POSICAO_INDICADOR[indiceAtivo] : 'opacity-0',
               )}
             >
@@ -129,10 +129,10 @@ export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendari
                     aria-current={visao.isAtiva ? 'page' : undefined}
                     className={cn(
                       // Contorno para dentro: o painel corta o que passa da borda (overflow-hidden).
-                      'group/sub flex h-8 items-center gap-2.5 rounded-md px-2 text-sm transition-colors duration-200 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-papel',
+                      'group/sub flex h-8 items-center gap-2.5 rounded-md px-2 text-sm transition-colors duration-200 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-barra-texto',
                       visao.isAtiva
-                        ? 'font-semibold text-papel'
-                        : 'text-papel/65 hover:bg-papel/6 hover:text-papel',
+                        ? 'font-semibold text-barra-texto'
+                        : 'text-barra-suave hover:bg-barra-realce hover:text-barra-texto',
                     )}
                   >
                     <Icone
@@ -160,10 +160,10 @@ export function GrupoCalendarioRecolhido({ visoes }: { visoes: VisaoDoCalendario
         <DropdownMenuTrigger
           aria-label="Calendário"
           className={cn(
-            'flex h-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-papel',
+            'flex h-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-barra-texto',
             isNoCalendario
-              ? 'bg-caneta text-white'
-              : 'text-papel/70 hover:bg-papel/8 hover:text-papel data-[state=open]:bg-papel/8',
+              ? 'bg-caneta text-primary-foreground'
+              : 'text-barra-suave hover:bg-barra-realce hover:text-barra-texto data-[state=open]:bg-barra-realce',
           )}
         >
           <CalendarFold aria-hidden className="size-4" />

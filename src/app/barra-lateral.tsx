@@ -21,7 +21,10 @@ import {
   type VisaoDoCalendario,
 } from '@/app/grupo-calendario'
 import { useGrupoCalendarioAberto } from '@/app/use-grupo-calendario-aberto'
+import { SeletorAparencia } from '@/app/seletor-aparencia'
+import logoMemoriaClara from '@/assets/logo-memoria-clara.png'
 import logoMemoria from '@/assets/logo-memoria.png'
+import simboloMemoriaClaro from '@/assets/simbolo-memoria-claro.png'
 import simboloMemoria from '@/assets/simbolo-memoria.png'
 import { hoje } from '@/lib/datas'
 
@@ -45,12 +48,12 @@ function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, children }: LinkTe
         className={cn(
           // O ícone fica no lugar enquanto a barra estreita: muda só o recuo, e o nome some
           // por opacidade (continua sendo o nome acessível do link).
-          'flex h-8 items-center gap-2.5 overflow-hidden rounded-md text-sm whitespace-nowrap transition-[padding] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-papel',
+          'flex h-8 items-center gap-2.5 overflow-hidden rounded-md text-sm whitespace-nowrap transition-[padding] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-barra-texto',
           TRANSICAO_DA_BARRA,
           isRecolhida ? 'px-4' : 'px-2',
           isAtiva
-            ? 'bg-caneta font-semibold text-white'
-            : 'text-papel/70 hover:bg-papel/8 hover:text-papel',
+            ? 'bg-caneta font-semibold text-primary-foreground'
+            : 'text-barra-suave hover:bg-barra-realce hover:text-barra-texto',
         )}
       >
         <Icone aria-hidden className="size-4 shrink-0" />
@@ -70,7 +73,8 @@ function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, children }: LinkTe
 /**
  * Logo completa (expandida) ou só o símbolo (recolhida). O símbolo abre a logo completa, então a
  * moldura estreita com a mesma mola da barra, cortando o nome, e o símbolo quadrado surge por
- * cima no mesmo lugar. Só a imagem visível é anunciada como "MemorIA".
+ * cima no mesmo lugar. Há um par para cada tema (no claro, o "Memor" é tinta; no escuro, branco)
+ * e o CSS troca os dois por opacidade junto com o tema. Só a imagem visível é anunciada.
  */
 function LogoDaBarra({ isRecolhida }: { isRecolhida: boolean }) {
   return (
@@ -82,8 +86,41 @@ function LogoDaBarra({ isRecolhida }: { isRecolhida: boolean }) {
         isRecolhida ? 'w-8' : 'w-[calc(var(--spacing)*8*864/218)]',
       )}
     >
+      <ParDaLogo
+        logo={logoMemoriaClara}
+        simbolo={simboloMemoriaClaro}
+        isRecolhida={isRecolhida}
+        className="dark:invisible dark:opacity-0"
+      />
+      <ParDaLogo
+        logo={logoMemoria}
+        simbolo={simboloMemoria}
+        isRecolhida={isRecolhida}
+        className="invisible opacity-0 dark:visible dark:opacity-100"
+      />
+    </span>
+  )
+}
+
+interface ParDaLogoProps {
+  logo: string
+  simbolo: string
+  isRecolhida: boolean
+  /** Some no tema que não é o seu (`invisible` também tira do leitor de tela). */
+  className: string
+}
+
+function ParDaLogo({ logo, simbolo, isRecolhida, className }: ParDaLogoProps) {
+  return (
+    <span
+      data-logo
+      className={cn(
+        'absolute inset-0 transition-[opacity,visibility] duration-200 motion-reduce:transition-none',
+        className,
+      )}
+    >
       <img
-        src={logoMemoria}
+        src={logo}
         alt={isRecolhida ? '' : 'MemorIA'}
         aria-hidden={isRecolhida || undefined}
         className={cn(
@@ -92,7 +129,7 @@ function LogoDaBarra({ isRecolhida }: { isRecolhida: boolean }) {
         )}
       />
       <img
-        src={simboloMemoria}
+        src={simbolo}
         alt={isRecolhida ? 'MemorIA' : ''}
         aria-hidden={!isRecolhida || undefined}
         className={cn(
@@ -110,7 +147,7 @@ interface BarraLateralProps {
   onAlternarRecolhida: () => void
 }
 
-/** Moldura lateral: nome do app, botão de recolher e as telas. */
+/** Moldura lateral: nome do app, botão de recolher, as telas e, no rodapé, tema e fundo. */
 export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralProps) {
   const rotaDia = useMatch('/dia/:data')
   const rotaSemana = useMatch('/semana/:data')
@@ -154,7 +191,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
 
   return (
     // O fundo acompanha a página inteira; o conteúdo fica preso no topo ao rolar.
-    <div className="shrink-0 bg-tinta">
+    <div className="shrink-0 border-r border-barra-borda bg-barra text-barra-texto">
       <aside
         className={cn(
           // A tela principal é `flex-1`: acompanha a largura a cada quadro, sem pular.
@@ -176,7 +213,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
               aria-label={isRecolhida ? 'Expandir menu' : 'Recolher menu'}
               aria-keyshortcuts="Control+B"
               onClick={onAlternarRecolhida}
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-papel/50 transition-colors hover:bg-papel/8 hover:text-papel focus-visible:outline-2 focus-visible:outline-papel"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-barra-suave transition-colors hover:bg-barra-realce hover:text-barra-texto focus-visible:outline-2 focus-visible:outline-barra-texto"
             >
               {isRecolhida ? (
                 <PanelLeftOpen aria-hidden className="size-4" />
@@ -186,7 +223,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
             </button>
           </DicaDaBarra>
         </div>
-        <nav aria-label="Telas" className="flex flex-col gap-0.5">
+        <nav aria-label="Telas" className="mb-4 flex flex-1 flex-col gap-0.5">
           <LinkTela para="/inicio" icone={House} isAtiva={isNoInicio} isRecolhida={isRecolhida}>
             Início
           </LinkTela>
@@ -207,6 +244,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
             </LinkTela>
           ))}
         </nav>
+        <SeletorAparencia isRecolhida={isRecolhida} />
       </aside>
     </div>
   )

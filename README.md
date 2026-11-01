@@ -8,7 +8,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias, e o mapa de conclusões do último ano (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias, e o mapa de conclusões do último ano (01/11/2026). Modo claro e escuro (ou seguindo o sistema) e um fundo animado discreto, com a logo ajustada a cada tema (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
@@ -87,6 +87,11 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Anotação de texto em cada tarefa
 - ✅ Backup: exportar e importar todos os dados, incluindo anexos
 
+### Aparência
+
+- ✅ Tema Claro, Escuro ou Sistema (segue o sistema operacional), lembrado entre sessões e igual em todas as abas
+- ✅ Fundo à escolha: Aurora (luz difusa que deriva devagar), Grade de pontos, Grade com holofote ou Liso
+
 ## Stack
 
 | Área                | Tecnologia                       |
@@ -127,6 +132,7 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - No Início, marque o que é de hoje no bloco **Hoje** e traga o que ficou para trás em **Atrasadas**. Clique num dia dos **Próximos 7 dias** ou num quadrado do mapa para abrir aquele dia.
 - Na barra lateral, **Calendário** junta Dia, Semana, Mês e Ano. Clicar nele só abre e fecha (escolher uma visão não fecha o grupo); o app lembra a escolha e abre o grupo sozinho quando você está numa dessas visões. Pelo teclado: Tab até ele, Enter ou espaço abre e fecha, setas andam entre as visões.
 - Para dar mais espaço à tela, recolha a barra pelo botão ao lado do nome **MemorIA** ou com **Ctrl+B** (de novo para expandir). Recolhida, ela mostra só os ícones, com o nome ao passar o mouse; o ícone de calendário abre Dia, Semana, Mês e Ano num menu. O app lembra se ela estava recolhida.
+- No rodapé da barra lateral, os ícones de sol, lua e monitor escolhem o tema: **Claro**, **Escuro** ou **Sistema** (o padrão, que acompanha o sistema operacional). **Ctrl+Shift+L** alterna entre claro e escuro. O ícone de camadas ao lado escolhe o **fundo**: Aurora (padrão), Grade de pontos, Grade com holofote ou Liso. Com a barra recolhida, um ícone só abre tema e fundo. A animação do fundo para quando a aba fica escondida e não roda se o sistema pede movimento reduzido.
 - Escreva na linha **Nova tarefa** e tecle Enter; o campo continua pronto para a próxima.
 - Clique no título para renomear (Enter salva, Esc cancela).
 - Arraste pela alça à esquerda para reordenar. Pelo teclado: foque a alça, tecle espaço, use as setas e espaço de novo.

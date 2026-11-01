@@ -13,6 +13,7 @@ import { useCategorias } from '@/hooks/use-categorias'
 import { corDaSubcategoria, type CategoriaComSubcategorias } from '@/lib/categorias'
 import { normalizar } from '@/lib/procedimentos'
 import { proximaCor } from '@/lib/cores'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 export interface CategoriaEscolhida {
   categoryId?: string
@@ -44,8 +45,13 @@ function valorDe({ categoryId, subcategoryId }: CategoriaEscolhida) {
 }
 
 function Amostra({ cor }: { cor: string }) {
+  const corNaTela = useCorNaTela()
   return (
-    <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: cor }} />
+    <span
+      aria-hidden
+      className="size-2.5 shrink-0 rounded-full"
+      style={{ backgroundColor: corNaTela(cor) }}
+    />
   )
 }
 

@@ -20,6 +20,7 @@ import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { LinhaItem } from '@/features/dia/components/linha-item'
 import { MenuGrupo } from '@/features/dia/components/menu-grupo'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface CardGrupoProps {
   grupo: GrupoDoDia
@@ -43,13 +44,14 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   const { renomearGrupo, criarItem } = useAcoesGrupo()
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
   const classificacao = classificarTarefa(serie, useCategoriasDoContexto())
+  const corNaTela = useCorNaTela()
   const progresso = progressoDoGrupo(grupo)
   const total = progresso.pendentes + progresso.feitos + progresso.transferidos
   const fracao = total === 0 ? 0 : (progresso.feitos + progresso.transferidos) / total
   const idItens = `itens-${card.id}`
   const isSelecionavel = isSelecionando && podeCopiarGrupo(grupo)
   const isSelecionado = isSelecionavel && selecionados.has(card.id)
-  const cor = classificacao?.cor ?? 'var(--grafite)'
+  const cor = classificacao ? corNaTela(classificacao.cor) : 'var(--grafite)'
   const itensParados = grupo.itens.filter((item) => item.status !== 'pendente')
 
   async function handleSalvarTitulo(titulo: string) {

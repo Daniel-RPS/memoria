@@ -6,6 +6,7 @@ import type { DataLocal, Subtask, Task } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
 import { diasPendente, progressoSubtarefas, textoProgresso } from '@/lib/tarefas'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface CartaoTarefaProps {
   tarefa: Task
@@ -18,6 +19,7 @@ interface CartaoTarefaProps {
 /** Tarefa compacta da semana: uma linha da pauta com caixa, título e sinais (atraso, categoria). */
 export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoTarefaProps) {
   const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
+  const corNaTela = useCorNaTela()
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
 
@@ -54,7 +56,7 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
                 <span
                   aria-hidden
                   className="size-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: classificacao.cor }}
+                  style={{ backgroundColor: corNaTela(classificacao.cor) }}
                 />
                 {classificacao.rotulo}
               </span>

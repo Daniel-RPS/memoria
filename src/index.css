@@ -3,6 +3,9 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/bricolage-grotesque/standard.css';
 
+/* `dark:` segue o tema do app (atributo no <html>), não só o do sistema. */
+@custom-variant dark (&:where([data-tema='escuro'], [data-tema='escuro'] *));
+
 @theme inline {
   --font-sans: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
@@ -15,6 +18,12 @@
   --color-caneta: var(--caneta);
   --color-violeta-profundo: var(--violeta-profundo);
   --color-marca-texto: var(--marca-texto);
+
+  --color-barra: var(--barra);
+  --color-barra-borda: var(--barra-borda);
+  --color-barra-texto: var(--barra-texto);
+  --color-barra-suave: var(--barra-suave);
+  --color-barra-realce: var(--barra-realce);
 
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -96,7 +105,7 @@
   --nevoa: #f4f2f8;
   --papel: #ffffff;
   --tinta: #111019;
-  --grafite: #6e6a7c;
+  --grafite: #625e70;
   --pauta: #e4e0ee;
   --caneta: #8b3dff;
   --violeta-profundo: #4b16a8;
@@ -121,17 +130,84 @@
   --input: #cdc7da;
   --ring: var(--caneta);
   --radius: 0.375rem;
+
+  /* Barra lateral: no claro, um papel um pouco mais frio que o branco das fichas. */
+  --barra: #fbfafd;
+  --barra-borda: var(--pauta);
+  --barra-texto: var(--tinta);
+  --barra-suave: var(--grafite);
+  --barra-realce: color-mix(in oklab, var(--tinta) 6%, transparent);
+
+  /* Fundo decorativo (`FundoDoApp`). */
+  --fundo-mancha-1: color-mix(in oklab, var(--caneta) 12%, transparent);
+  --fundo-mancha-2: color-mix(in oklab, #4f7dff 13%, transparent);
+  --fundo-mancha-3: color-mix(in oklab, #d36bff 12%, transparent);
+  --fundo-ponto: color-mix(in oklab, var(--tinta) 15%, transparent);
+  --fundo-linha: color-mix(in oklab, var(--tinta) 7%, transparent);
+  --fundo-brilho: color-mix(in oklab, var(--caneta) 15%, transparent);
+  --fundo-holofote: color-mix(in oklab, var(--caneta) 11%, transparent);
+  --fundo-grao: 0.05;
+
+  color-scheme: light;
+}
+
+/*
+ * Tema escuro (01/11/2026): noite violeta. A caneta clareia para manter 4,5:1 sobre o papel
+ * escuro e, por isso, o texto sobre ela passa a ser escuro. Mesmos nomes de token: os
+ * componentes não sabem do tema.
+ */
+:root[data-tema='escuro'] {
+  --nevoa: #0f0d15;
+  --papel: #19161f;
+  --tinta: #ece8f5;
+  --grafite: #a39eb3;
+  --pauta: #2c2738;
+  --caneta: #a274ff;
+  --violeta-profundo: #c6a8ff;
+  --marca-texto: #2b2042;
+
+  --popover: #1e1a26;
+  --primary-foreground: #14101f;
+  --secondary: #231f2c;
+  --muted: #231f2c;
+  --accent: #2a2240;
+  --destructive: #f07a7a;
+  --input: #3b3549;
+
+  --barra: #121017;
+  --barra-realce: rgb(255 255 255 / 0.06);
+
+  --fundo-mancha-1: color-mix(in oklab, var(--caneta) 22%, transparent);
+  --fundo-mancha-3: color-mix(in oklab, #d36bff 10%, transparent);
+  --fundo-ponto: color-mix(in oklab, var(--tinta) 12%, transparent);
+  --fundo-linha: color-mix(in oklab, var(--tinta) 6%, transparent);
+  --fundo-brilho: color-mix(in oklab, var(--caneta) 20%, transparent);
+  --fundo-holofote: color-mix(in oklab, var(--caneta) 14%, transparent);
+  --fundo-grao: 0.07;
+
+  color-scheme: dark;
+}
+
+/* Troca de tema: as cores deslizam só durante a troca (`data-trocando-tema`, ~200 ms). */
+:root[data-trocando-tema],
+:root[data-trocando-tema] * {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease !important;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  /* O fundo fica no <html> (e não no body) para a camada `FundoDoApp` aparecer por cima dele. */
   html {
-    @apply font-sans antialiased;
+    @apply bg-background font-sans antialiased;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
   }
 }
 
@@ -161,4 +237,107 @@
 }
 [data-slot='dropdown-menu-radio-item'][data-state='checked'] {
   font-weight: 500;
+}
+
+/*
+ * Fundo do app (`FundoDoApp`): camada fixa atrás de tudo, sem ponteiro. "aurora" (padrão):
+ * três manchas de luz que derivam devagar, com grão leve; "pontos": grade de pontos estática
+ * com um brilho no canto; "grade": grade fina que some nas bordas, com holofote no ponteiro.
+ * Só gradientes e `transform` (sem blur nem WebGL) para não pesar num app aberto o dia todo.
+ */
+.fundo-do-app {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fundo-do-app[data-fundo='pontos'] {
+  background-image:
+    radial-gradient(ellipse 50% 45% at 92% -5%, var(--fundo-brilho), transparent 70%),
+    radial-gradient(circle at center, var(--fundo-ponto) 1px, transparent 1.6px);
+  background-size:
+    100% 100%,
+    22px 22px;
+}
+.fundo-do-app .mancha {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  will-change: transform;
+}
+.fundo-do-app .mancha:nth-child(1) {
+  top: -35vmax;
+  right: -20vmax;
+  background: radial-gradient(circle, var(--fundo-mancha-1), transparent 65%);
+  animation: deriva-1 38s ease-in-out infinite alternate;
+}
+.fundo-do-app .mancha:nth-child(2) {
+  bottom: -40vmax;
+  left: -10vmax;
+  background: radial-gradient(circle, var(--fundo-mancha-2), transparent 65%);
+  animation: deriva-2 46s ease-in-out infinite alternate;
+}
+.fundo-do-app .mancha:nth-child(3) {
+  top: 10%;
+  left: 35%;
+  width: 45vmax;
+  height: 45vmax;
+  background: radial-gradient(circle, var(--fundo-mancha-3), transparent 65%);
+  animation: deriva-3 54s ease-in-out infinite alternate;
+}
+.fundo-do-app[data-fundo='aurora']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: var(--fundo-grao);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+@keyframes deriva-1 {
+  to {
+    transform: translate3d(-12vmax, 8vmax, 0);
+  }
+}
+@keyframes deriva-2 {
+  to {
+    transform: translate3d(14vmax, -10vmax, 0);
+  }
+}
+@keyframes deriva-3 {
+  to {
+    transform: translate3d(-10vmax, 12vmax, 0) scale(1.15);
+  }
+}
+.fundo-do-app[data-fundo='grade']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--fundo-linha) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fundo-linha) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 75% at 50% 30%, black 25%, transparent 80%);
+}
+.fundo-do-app[data-fundo='grade']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    380px circle at var(--holofote-x, -9999px) var(--holofote-y, -9999px),
+    var(--fundo-holofote),
+    transparent 70%
+  );
+}
+/* Aba escondida: a deriva para. */
+.fundo-do-app[data-pausado] .mancha {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fundo-do-app .mancha:nth-child(n) {
+    animation: none;
+  }
+  .fundo-do-app[data-fundo='grade']::after {
+    display: none;
+  }
 }

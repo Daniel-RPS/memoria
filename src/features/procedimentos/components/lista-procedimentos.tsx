@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import type { BlocoDeProcedimentos } from '@/lib/procedimentos'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface ListaProcedimentosProps {
   blocos: BlocoDeProcedimentos[]
@@ -11,6 +12,7 @@ function textoEtapas(total: number) {
 
 /** Um bloco por categoria (com a cor dela) e "Sem categoria" no fim. */
 export function ListaProcedimentos({ blocos }: ListaProcedimentosProps) {
+  const corNaTela = useCorNaTela()
   return (
     <div className="flex flex-col gap-8">
       {blocos.map(({ categoria, procedimentos }) => {
@@ -21,7 +23,7 @@ export function ListaProcedimentos({ blocos }: ListaProcedimentosProps) {
               <span
                 aria-hidden
                 className="size-3 shrink-0 translate-y-px rounded-full border border-pauta"
-                style={categoria ? { backgroundColor: categoria.cor } : undefined}
+                style={categoria ? { backgroundColor: corNaTela(categoria.cor) } : undefined}
               />
               {nome}
               <span className="text-sm font-normal text-grafite tabular-nums">
@@ -38,7 +40,7 @@ export function ListaProcedimentos({ blocos }: ListaProcedimentosProps) {
                     <span
                       aria-hidden
                       className="absolute inset-y-1 left-0 w-1 rounded-r-sm"
-                      style={{ backgroundColor: categoria.cor }}
+                      style={{ backgroundColor: corNaTela(categoria.cor) }}
                     />
                   )}
                   <Link

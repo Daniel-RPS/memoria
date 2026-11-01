@@ -26,7 +26,11 @@ async function logoVisivel(page: Page) {
 }
 
 async function esperarOpacidade(page: Page, arquivo: string, opacidade: string) {
-  const imagem = page.locator(`aside img[src*="${arquivo}"]`)
+  // Só o par da logo do tema atual (o do outro tema fica escondido).
+  const imagem = page
+    .locator('aside [data-logo]')
+    .filter({ visible: true })
+    .locator(`img[src*="${arquivo}"]`)
   await expect.poll(() => imagem.evaluate((img) => getComputedStyle(img).opacity)).toBe(opacidade)
 }
 
