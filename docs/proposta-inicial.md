@@ -81,3 +81,15 @@ Antes, para usar uma categoria nova era preciso ir à aba Categorias e voltar.
 - **Sincronizado**: todas as telas leem com `useLiveQuery`, então qualquer mudança aparece na hora, também em outra aba aberta no app.
 - **Modelo**: `Category { id, nome, cor, ordem }`, `Subcategory { id, categoryId, nome, cor?, ordem }` e `Procedure` ganha `subcategoryId?`. Banco v8 preenche `ordem` das existentes (categorias por nome, subcategorias pela criação, a ordem mostrada antes). Backup formato 5 inclui `ordem`; nos anteriores ela é preenchida ao importar.
 - O tom automático da subcategoria continua pela ordem de **criação**: reordenar não troca as cores.
+
+## Nova interface: folha pautada com barra lateral (ajuste de 01/11/2026)
+
+Escolhida entre três direções num protótipo (folha pautada, mesa de controle com barra lateral e fichas coloridas): a mistura das duas primeiras, na paleta violeta. Mudou só a camada visual; dados, regras, arrastar e atalhos ficaram iguais.
+
+- **Paleta** (tokens em `src/index.css`, mesmos nomes de antes): violeta elétrico #8B3DFF (`caneta`: ação, caixas marcadas, tela ativa), violeta profundo #4B16A8 (destaques miúdos, como "transferido para"), grafite #111019 (`tinta`) e papel branco. Atrasos usam o marca-texto lavanda.
+- **Barra lateral** grafite com as telas e, no Dia, o filtro por categoria (o estado continua na URL). Na Semana ela recolhe para só os ícones.
+- **Folha**: Dia, Semana, Mês e Ano ficam numa folha branca com um traço grafite sob o cabeçalho; as telas de lista (Procedimentos, Notas, Categorias, Backup) têm o mesmo traço no cabeçalho.
+- **Card de grupo** vira uma ficha presa na folha: borda de cima na cor da categoria, sombra lavanda deslocada e barra de progresso violeta. Substitui a faixa lateral descrita em "Grupos de tarefas › Interface".
+- **Tarefa solta**: bolinha de cor junto do nome da categoria (no Mês, os chips mantêm a faixa à esquerda).
+- **Hoje**: número em violeta, circulado a caneta na Semana e no Mês, com fundo lavanda na coluna/célula.
+- **Menus ⋯ e seletor de categoria**: borda de papel e sombra lavanda; só aparência (o seletor continua com "+ Nova categoria" e formulário).
