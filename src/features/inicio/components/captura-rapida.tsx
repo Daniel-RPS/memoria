@@ -1,5 +1,5 @@
-import { useEffect, useId, useState } from 'react'
-import { useFieldArray, useForm, useWatch } from 'react-hook-form'
+import { useEffect, useId, useState, type KeyboardEvent } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CornerDownLeft, Plus } from 'lucide-react'
 import { useLocation } from 'react-router'
@@ -10,12 +10,11 @@ import type { AnexoDaCaptura } from '@/db/repositories/captura-repository'
 import type { DataLocal } from '@/db/types'
 import { isPedidoDeFocarCaptura } from '@/app/use-atalho-captura'
 import { nomeDoLink, type LinkInput } from '@/lib/anexos'
-import { esquemaCaptura, type CapturaInput } from '@/lib/captura'
+import { dividirTexto, esquemaCaptura, type CapturaInput } from '@/lib/captura'
 import { ErroDeValidacao } from '@/lib/erros'
 import { AnexosEscolhidos, BotaoAnexar } from '@/features/inicio/components/anexos-da-captura'
 import { EscolhaDoDia } from '@/features/inicio/components/escolha-do-dia'
 import { EscolhaDoTipo } from '@/features/inicio/components/escolha-do-tipo'
-import { ItensDaCaptura } from '@/features/inicio/components/itens-da-captura'
 import { SeletorDeGrupo } from '@/features/inicio/components/seletor-de-grupo'
 import { useCaptura } from '@/features/inicio/hooks/use-captura'
 import { useSeriesParaEscolher } from '@/features/inicio/hooks/use-series-para-escolher'
@@ -25,18 +24,20 @@ interface CapturaRapidaProps {
 }
 
 function valoresIniciais(hoje: DataLocal): CapturaInput {
-  return { titulo: '', tipo: 'tarefa', data: hoje, itens: [{ titulo: '' }] }
+  return { texto: '', tipo: 'tarefa', data: hoje }
 }
 
+/** A 2ª linha do placeholder ensina o que as linhas seguintes viram (`dividirTexto`). */
 const PLACEHOLDER: Record<CapturaInput['tipo'], string> = {
-  tarefa: 'O que precisa ser feito?',
-  grupo: 'Nome do grupo',
-  'em-grupo': 'Item para o grupo',
+  tarefa: 'O que precisa ser feito?\nDetalhes nas linhas de baixo viram anotação',
+  grupo: 'Nome do grupo\nUm item por linha',
+  'em-grupo': 'Item para o grupo\nUm item por linha',
 }
 
 /**
- * Anotar sem sair do Início: título, tipo (tarefa, grupo novo com itens ou item num grupo
- * que já existe), categoria, dia e, na tarefa, anexos. Enter cria; o campo volta pronto.
+ * Anotar sem sair do Início: texto, tipo (tarefa, grupo novo com itens ou item num grupo
+ * que já existe), categoria, dia e, na tarefa, anexos. Enter cria e Shift+Enter quebra a
+ * linha: a 1ª linha é o título e as outras viram a anotação da tarefa ou itens do grupo.
  */
 export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   const idErro = useId()
@@ -59,44 +60,61 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     resolver: zodResolver(esquemaCaptura),
     defaultValues: valoresIniciais(hoje),
   })
-  const camposDosItens = useFieldArray({ control, name: 'itens' })
   const [tipo, data, categoryId, subcategoryId, seriesId] = useWatch({
     control,
     name: ['tipo', 'data', 'categoryId', 'subcategoryId', 'seriesId'],
   })
   const series = useSeriesParaEscolher(data)
-  const erro = errors.titulo?.message ?? errors.seriesId?.message
-  const isComItens = tipo === 'grupo' || tipo === 'em-grupo'
+  const erro = errors.texto?.message ?? errors.seriesId?.message
 
   // Ctrl+K / N de qualquer tela chega aqui com um pedido novo no estado da navegação.
   useEffect(() => {
-    if (isPedidoDeFocarCaptura(location.state)) setFocus('titulo')
+    if (isPedidoDeFocarCaptura(location.state)) setFocus('texto')
   }, [location.state, setFocus])
 
   async function handleCriar(dados: CapturaInput) {
     try {
       const grupo = series.find((opcao) => opcao.serie.id === dados.seriesId)
+      const { titulo, itens, anotacao } = dividirTexto(dados.tipo, dados.texto)
+      const isTarefa = dados.tipo === 'tarefa'
       await capturar(
-        { ...dados, anexos: dados.tipo === 'tarefa' ? anexos : [] },
+        {
+          tipo: dados.tipo,
+          data: dados.data,
+          categoryId: dados.categoryId,
+          subcategoryId: dados.subcategoryId,
+          seriesId: dados.seriesId,
+          titulo,
+          itens: itens.map((item) => ({ titulo: item })),
+          anotacao: isTarefa ? anotacao : undefined,
+          anexos: isTarefa ? anexos : [],
+        },
         grupo?.serie.titulo,
       )
     } catch (falha) {
       if (falha instanceof ErroDeValidacao) {
-        setError('titulo', { message: falha.message })
-        setFocus('titulo')
+        setError('texto', { message: falha.message })
+        setFocus('texto')
         return
       }
       throw falha
     }
     reset(valoresIniciais(hoje))
     setAnexos([])
-    setFocus('titulo')
+    setFocus('texto')
   }
 
   const criar = handleSubmit(handleCriar, (falhas) => {
     // Só falta o grupo: abre a lista para escolher.
-    if (falhas.seriesId && !falhas.titulo) setIsSeletorDeGrupoAberto(true)
+    if (falhas.seriesId && !falhas.texto) setIsSeletorDeGrupoAberto(true)
   })
+
+  /** Enter cria; Shift+Enter quebra a linha (fora durante a composição de acentos). */
+  function handleKeyDown(evento: KeyboardEvent<HTMLTextAreaElement>) {
+    if (evento.key !== 'Enter' || evento.shiftKey || evento.nativeEvent.isComposing) return
+    evento.preventDefault()
+    void criar()
+  }
 
   function handleEscolherTipo(novo: CapturaInput['tipo']) {
     setValue('tipo', novo)
@@ -114,13 +132,15 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   return (
     <section
       aria-label="Captura rápida"
-      className="rounded-lg border border-pauta bg-papel px-6 pt-5 pb-4 shadow-[4px_4px_0_var(--marca-texto)]"
+      className="rounded-lg border border-pauta bg-papel px-5 pt-6 pb-4 shadow-[4px_4px_0_var(--marca-texto)]"
     >
       <form noValidate onSubmit={(evento) => void criar(evento)}>
-        <div className="flex items-center gap-3">
-          <Plus aria-hidden className="size-6 shrink-0 text-caneta" />
-          <input
-            {...register('titulo')}
+        <div className="flex items-start gap-3">
+          <Plus aria-hidden className="mt-1 size-6 shrink-0 text-caneta" />
+          <textarea
+            {...register('texto')}
+            onKeyDown={handleKeyDown}
+            rows={3}
             autoFocus
             autoComplete="off"
             aria-label="O que precisa ser feito?"
@@ -128,9 +148,9 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
             aria-describedby={erro ? idErro : undefined}
             aria-keyshortcuts="Control+K N"
             placeholder={PLACEHOLDER[tipo]}
-            className="min-w-0 flex-1 bg-transparent text-2xl font-semibold tracking-[-0.01em] caret-caneta outline-none placeholder:font-normal placeholder:text-grafite/70"
+            className="field-sizing-content max-h-80 min-h-[3lh] min-w-0 flex-1 resize-none bg-transparent text-xl leading-8 font-medium tracking-[-0.01em] caret-caneta outline-none placeholder:font-normal placeholder:text-grafite/70"
           />
-          <kbd className="hidden rounded border border-pauta px-1.5 py-0.5 font-sans text-xs text-grafite sm:block">
+          <kbd className="mt-1.5 hidden rounded border border-pauta px-1.5 py-0.5 font-sans text-xs text-grafite sm:block">
             Ctrl K
           </kbd>
         </div>
@@ -139,16 +159,10 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
             {erro}
           </p>
         )}
-
-        {isComItens && (
-          <ItensDaCaptura
-            campos={camposDosItens}
-            register={register}
-            valorDe={(indice) => getValues(`itens.${indice}.titulo`) ?? ''}
-            onCriar={() => void criar()}
-            primeiroNumero={tipo === 'em-grupo' ? 2 : 1}
-          />
+        {!erro && tipo === 'em-grupo' && (
+          <p className="mt-1 ml-9 text-xs text-grafite">O item usa a categoria do grupo.</p>
         )}
+
         {tipo === 'tarefa' && (
           <AnexosEscolhidos
             anexos={anexos}
@@ -158,24 +172,21 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
           />
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-dashed border-pauta pt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-2 border-t border-dashed border-pauta pt-4">
           <EscolhaDoTipo tipo={tipo} onEscolher={handleEscolherTipo} />
           {tipo === 'em-grupo' ? (
-            <>
-              <SeletorDeGrupo
-                series={series}
-                seriesId={seriesId}
-                data={data}
-                isAberto={isSeletorDeGrupoAberto}
-                onMudarAberto={setIsSeletorDeGrupoAberto}
-                onEscolher={(id) => {
-                  setValue('seriesId', id, { shouldValidate: Boolean(errors.seriesId) })
-                  setFocus('titulo')
-                }}
-                isInvalido={Boolean(errors.seriesId)}
-              />
-              <span className="text-xs text-grafite">usa a categoria do grupo</span>
-            </>
+            <SeletorDeGrupo
+              series={series}
+              seriesId={seriesId}
+              data={data}
+              isAberto={isSeletorDeGrupoAberto}
+              onMudarAberto={setIsSeletorDeGrupoAberto}
+              onEscolher={(id) => {
+                setValue('seriesId', id, { shouldValidate: Boolean(errors.seriesId) })
+                setFocus('texto')
+              }}
+              isInvalido={Boolean(errors.seriesId)}
+            />
           ) : (
             <CampoCategoria
               atual={{ categoryId, subcategoryId }}
@@ -183,10 +194,9 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
                 setValue('categoryId', categoria.categoryId)
                 setValue('subcategoryId', categoria.subcategoryId)
               }}
-              className="w-auto max-w-56 gap-2"
+              className="w-auto max-w-40 gap-2"
             />
           )}
-          <span aria-hidden className="mx-1 hidden h-5 w-px bg-pauta sm:block" />
           <EscolhaDoDia
             hoje={hoje}
             data={data}

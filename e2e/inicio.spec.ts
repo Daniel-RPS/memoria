@@ -139,12 +139,8 @@ test('cria tarefa para amanhã com categoria nova e ela aparece no Dia sem recar
 test('cria grupo com 3 itens para hoje e marca pelo bloco Hoje', async ({ page }) => {
   await page.goto('/inicio')
   await page.getByRole('button', { name: 'Grupo', exact: true }).click()
-  await campoDeCaptura(page).fill('Mercado')
-  await page.getByRole('textbox', { name: 'Item 1', exact: true }).fill('Café')
-  await page.getByRole('textbox', { name: 'Item 1', exact: true }).press('Enter')
-  await page.getByRole('textbox', { name: 'Item 2', exact: true }).fill('Pão')
-  await page.getByRole('textbox', { name: 'Item 2', exact: true }).press('Enter')
-  await page.getByRole('textbox', { name: 'Item 3', exact: true }).fill('Leite')
+  // 1ª linha = nome do grupo; cada linha seguinte, um item.
+  await campoDeCaptura(page).fill('Mercado\nCafé\nPão\nLeite')
   await capturar(page, '3-antes')
   await page.getByRole('button', { name: 'Criar' }).click()
 

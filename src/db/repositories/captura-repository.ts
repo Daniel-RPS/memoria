@@ -1,6 +1,7 @@
 import { db } from '@/db/database'
 import type { DataLocal } from '@/db/types'
 import { adicionarAnexo } from '@/db/repositories/attachment-repository'
+import { salvarNotaDoDono } from '@/db/repositories/note-repository'
 import {
   adicionarItensNaSerie,
   criarGrupo,
@@ -27,6 +28,8 @@ export interface NovaCaptura {
   itens?: { titulo: string }[]
   /** Só da tarefa. */
   anexos?: AnexoDaCaptura[]
+  /** Só da tarefa: vira a anotação dela (as linhas depois do título). */
+  anotacao?: string
 }
 
 export type ResultadoCaptura =
@@ -34,7 +37,7 @@ export type ResultadoCaptura =
   | ({ tipo: 'grupo' | 'em-grupo' } & ItensAdicionados)
 
 /**
- * Cria pela captura rápida, numa transação: tarefa solta (com anexos), grupo novo com itens
+ * Cria pela captura rápida, numa transação: tarefa solta (com anexos e anotação), grupo novo com itens
  * (nome de série existente reusa a série, regra de `criarGrupo`) ou itens num grupo que já
  * existe (`adicionarItensNaSerie`).
  */
@@ -42,11 +45,13 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
   const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
   const itens = itensPreenchidos(dados.itens ?? [])
   if (dados.tipo === 'tarefa') {
-    return db.transaction('rw', db.tasks, db.groupCards, db.attachments, async () => {
+    return db.transaction('rw', [db.tasks, db.groupCards, db.attachments, db.notes], async () => {
       const tarefa = await criarTarefa({ titulo: dados.titulo, data: dados.data, ...categoria })
+      const dono = { tipo: 'task' as const, id: tarefa.id }
       for (const anexo of dados.anexos ?? []) {
-        await adicionarAnexo({ dono: { tipo: 'task', id: tarefa.id }, ...anexo })
+        await adicionarAnexo({ dono, ...anexo })
       }
+      if (dados.anotacao) await salvarNotaDoDono(dono, dados.anotacao)
       return { tipo: 'tarefa', id: tarefa.id, data: tarefa.data }
     })
   }
@@ -81,7 +86,7 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
 }
 
 /**
- * Desfaz a captura: apaga a tarefa (e anexos) ou os itens; card criado agora some, card
+ * Desfaz a captura: apaga a tarefa (com anexos e anotação) ou os itens; card criado agora some, card
  * reaberto volta a arquivado e card que já existia fica.
  */
 export async function desfazerCaptura(resultado: ResultadoCaptura) {

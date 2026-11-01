@@ -15,16 +15,16 @@ interface EscolhaDoDiaProps {
 }
 
 const CLASSE_OPCAO =
-  'flex h-8 items-center gap-1.5 rounded-full px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+  'flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
 
-/** Hoje, Amanhã, Próxima semana ou outro dia no calendário. O dia escolhido fica marcado. */
+/** Hoje, Amanhã ou outro dia no calendário. O dia escolhido fica marcado. */
 export function EscolhaDoDia({ hoje, data, onEscolher }: EscolhaDoDiaProps) {
   const [isCalendarioAberto, setIsCalendarioAberto] = useState(false)
   const atalhos = atalhosDeDia(hoje)
   const isOutroDia = !atalhos.some((atalho) => atalho.data === data)
 
   return (
-    <div role="group" aria-label="Dia" className="flex flex-wrap gap-1">
+    <div role="group" aria-label="Dia" className="flex flex-wrap gap-0.5">
       {atalhos.map((atalho) => {
         const isEscolhido = atalho.data === data
         return (
@@ -56,7 +56,7 @@ export function EscolhaDoDia({ hoje, data, onEscolher }: EscolhaDoDiaProps) {
             : 'text-grafite hover:bg-accent hover:text-tinta',
         )}
       >
-        <CalendarDays aria-hidden className="size-3.5" />
+        {isOutroDia && <CalendarDays aria-hidden className="size-3.5" />}
         {isOutroDia
           ? format(deDataLocal(data), "EEE, d 'de' MMM", { locale: ptBR })
           : 'Escolher data…'}

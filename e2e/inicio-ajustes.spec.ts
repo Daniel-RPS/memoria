@@ -136,8 +136,7 @@ test('Em grupo… → Casa → Amanhã, com duas linhas: cria o card de amanhã 
   await semearCasaHoje(page)
   await escolherEmGrupo(page, 'Casa')
   await page.getByRole('button', { name: 'Amanhã' }).click()
-  await campoDeCaptura(page).fill('fazer lasanha')
-  await page.getByRole('textbox', { name: 'Item 2', exact: true }).fill('comprar queijo')
+  await campoDeCaptura(page).fill('fazer lasanha\ncomprar queijo')
   await capturar(page, '2-antes')
   await page.getByRole('button', { name: 'Criar' }).click()
 
