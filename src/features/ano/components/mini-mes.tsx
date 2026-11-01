@@ -69,7 +69,7 @@ export function MiniMes({ inicio, hoje, resumo }: MiniMesProps) {
                 className={cn(
                   'relative flex aspect-square items-center justify-center rounded-sm tabular-nums hover:ring-1 hover:ring-tinta focus-visible:outline-2 focus-visible:outline-caneta',
                   TONS[tom],
-                  isHoje && 'font-bold ring-2 ring-tinta',
+                  isHoje && 'font-bold ring-2 ring-caneta ring-offset-1 ring-offset-papel',
                 )}
               >
                 {Number(data.slice(8))}

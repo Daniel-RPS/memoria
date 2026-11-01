@@ -38,7 +38,8 @@ function Ano({ ano, hoje }: { ano: number; hoje: string }) {
   const isEsteAno = hoje.startsWith(String(ano))
 
   return (
-    <>
+    // A folha do ano: cabeçalho e legenda; abaixo do traço, os 12 meses.
+    <div className="rounded-lg border border-pauta bg-papel px-4 pt-5 pb-8 sm:px-6">
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <h1 className="text-6xl font-extrabold tracking-[-0.04em] tabular-nums [font-stretch:75%]">
           {ano}
@@ -73,12 +74,12 @@ function Ano({ ano, hoje }: { ano: number; hoje: string }) {
       <LegendaAno />
 
       {!isCarregando && !isCarregandoGrupos && (
-        <div className="mt-6 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-5 grid gap-x-8 gap-y-10 border-t-2 border-tinta pt-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {mesesDoAno(ano).map((inicio) => (
             <MiniMes key={inicio} inicio={inicio} hoje={hoje} resumo={resumo} />
           ))}
         </div>
       )}
-    </>
+    </div>
   )
 }

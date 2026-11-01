@@ -31,54 +31,57 @@ function Mes({ inicio, hoje }: { inicio: string; hoje: string }) {
 
   return (
     <ContextoCategorias.Provider value={categorias}>
-      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <h1 className="flex items-baseline gap-3">
-          <span className="text-5xl font-extrabold tracking-[-0.03em] capitalize [font-stretch:75%]">
-            {nome}
-          </span>
-          <Link
-            to={`/ano/${ano}`}
-            className="text-xl text-grafite hover:text-caneta focus-visible:outline-2 focus-visible:outline-caneta"
-          >
-            {ano}
-          </Link>
-        </h1>
-        <nav aria-label="Navegar entre meses" className="flex items-center gap-1">
-          <Button asChild variant="ghost" size="icon">
-            <Link to={`/mes/${somarMeses(inicio, -1)}`} aria-label="Mês anterior">
-              <ChevronLeft />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            className={isEsteMes ? 'pointer-events-none opacity-50' : undefined}
-          >
+      {/* A folha do mês: cabeçalho e, abaixo do traço, a grade. */}
+      <div className="rounded-lg border border-pauta bg-papel px-4 pt-5 pb-6 sm:px-6">
+        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <h1 className="flex items-baseline gap-3">
+            <span className="text-5xl font-extrabold tracking-[-0.03em] capitalize [font-stretch:75%]">
+              {nome}
+            </span>
             <Link
-              to={`/mes/${hoje}`}
-              aria-disabled={isEsteMes}
-              tabIndex={isEsteMes ? -1 : undefined}
+              to={`/ano/${ano}`}
+              className="text-xl text-grafite hover:text-caneta focus-visible:outline-2 focus-visible:outline-caneta"
             >
-              Este mês
+              {ano}
             </Link>
-          </Button>
-          <Button asChild variant="ghost" size="icon">
-            <Link to={`/mes/${somarMeses(inicio, 1)}`} aria-label="Próximo mês">
-              <ChevronRight />
-            </Link>
-          </Button>
-        </nav>
-      </header>
+          </h1>
+          <nav aria-label="Navegar entre meses" className="flex items-center gap-1">
+            <Button asChild variant="ghost" size="icon">
+              <Link to={`/mes/${somarMeses(inicio, -1)}`} aria-label="Mês anterior">
+                <ChevronLeft />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className={isEsteMes ? 'pointer-events-none opacity-50' : undefined}
+            >
+              <Link
+                to={`/mes/${hoje}`}
+                aria-disabled={isEsteMes}
+                tabIndex={isEsteMes ? -1 : undefined}
+              >
+                Este mês
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="icon">
+              <Link to={`/mes/${somarMeses(inicio, 1)}`} aria-label="Próximo mês">
+                <ChevronRight />
+              </Link>
+            </Button>
+          </nav>
+        </header>
 
-      {!isCarregando && !isCarregandoGrupos && (
-        <GradeMes
-          inicioDoMes={inicio}
-          semanas={semanas}
-          tarefas={tarefas}
-          grupos={grupos}
-          hoje={hoje}
-        />
-      )}
+        {!isCarregando && !isCarregandoGrupos && (
+          <GradeMes
+            inicioDoMes={inicio}
+            semanas={semanas}
+            tarefas={tarefas}
+            grupos={grupos}
+            hoje={hoje}
+          />
+        )}
+      </div>
     </ContextoCategorias.Provider>
   )
 }

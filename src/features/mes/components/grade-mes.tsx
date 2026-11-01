@@ -130,7 +130,7 @@ export function GradeMes({ inicioDoMes, semanas, tarefas, grupos, hoje }: GradeM
       }}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
-      <div className="mt-8 overflow-hidden rounded-md border border-pauta bg-papel">
+      <div className="mt-5 border-t-2 border-tinta">
         <div className="grid grid-cols-7 border-b border-pauta" aria-hidden>
           {dias.map((dia) => (
             <div

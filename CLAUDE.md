@@ -131,7 +131,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 31/10/2026: arrastar o card leva o grupo inteiro (item só pela alça), menu → "Levar pendentes", volta desfaz a transferência sem card fantasma, Ctrl+Z
 - Ajuste 01/11/2026: Procedimentos remodelados (só título, categoria e etapas; banco v7, backup formato 4) — detalhes em `docs/proposta-inicial.md`
 - Ajuste 01/11/2026: categorias criadas e aplicadas ali mesmo (seletor único), aba Categorias com uso e ordem arrastável, card editável na Semana (banco v8, backup formato 5)
-- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Feitas: fase 0 (valores dos tokens), fase 1 (barra lateral com telas e o filtro do Dia), fase 2 (Dia: folha com cabeçalho, card como ficha, bolinha de categoria no lugar da faixa), fase 3 (Semana: folha única, hoje circulado, tarefas como linhas, card como ficha) e fase 4 (menus e seletor: borda e sombra lavanda)
+- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Feitas: fase 0 (valores dos tokens), fase 1 (barra lateral com telas e o filtro do Dia), fase 2 (Dia: folha com cabeçalho, card como ficha, bolinha de categoria no lugar da faixa), fase 3 (Semana: folha única, hoje circulado, tarefas como linhas, card como ficha), fase 4 (menus e seletor: borda e sombra lavanda) e fase 5 (Mês e Ano em folha; hoje circulado com `CirculoHoje` em `src/components/`; tom máximo do Ano = violeta cheio)
 
 ## Armadilhas
 

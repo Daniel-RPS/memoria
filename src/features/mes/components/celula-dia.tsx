@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale'
 import { Check } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
+import { CirculoHoje } from '@/components/circulo-hoje'
 import type { DataLocal, Task } from '@/db/types'
 import { isMesmoMes } from '@/lib/calendario'
 import { deDataLocal } from '@/lib/datas'
@@ -64,6 +65,7 @@ export function CelulaDia({
       className={cn(
         'flex min-h-28 min-w-0 flex-col gap-1 border-r border-b border-pauta p-1.5 [&:nth-child(7n)]:border-r-0',
         isForaDoMes && 'bg-nevoa/60',
+        isHoje && 'bg-marca-texto/40',
         isOver && 'bg-accent',
       )}
     >
@@ -71,12 +73,13 @@ export function CelulaDia({
         to={`/dia/${data}`}
         aria-label={`Abrir ${nomeCompleto}`}
         className={cn(
-          'flex size-7 items-center justify-center self-start rounded-full text-sm font-semibold tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-caneta',
+          'relative flex size-7 items-center justify-center self-start rounded-full text-sm font-semibold tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-caneta',
           isForaDoMes && 'font-normal text-grafite',
-          isHoje && 'bg-caneta text-white hover:bg-caneta',
+          isHoje && 'font-bold text-caneta',
         )}
       >
         {format(dia, 'd')}
+        {isHoje && <CirculoHoje />}
       </Link>
       <div className="flex min-w-0 flex-col gap-0.5">
         {chips

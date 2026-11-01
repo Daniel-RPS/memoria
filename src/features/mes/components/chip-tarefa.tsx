@@ -22,8 +22,7 @@ export function ChipTarefa({ tarefa, hoje, isSobreposto }: ChipTarefaProps) {
     <span
       className={cn(
         'flex min-w-0 items-center gap-1.5 rounded-sm border-l-[3px] bg-papel px-1.5 py-0.5 text-xs leading-snug',
-        isAtrasada &&
-          'bg-[linear-gradient(transparent_15%,var(--marca-texto)_15%,var(--marca-texto)_85%,transparent_85%)]',
+        isAtrasada && 'bg-marca-texto text-violeta-profundo',
         isSobreposto && 'rotate-1 shadow-lg ring-2 ring-caneta/40',
       )}
       style={{ borderLeftColor: classificacao?.cor ?? 'var(--pauta)' }}
@@ -82,8 +81,7 @@ export function ChipGrupo({ grupo, quantidade, hoje, isSobreposto }: ChipGrupoPr
     <span
       className={cn(
         'flex min-w-0 items-center gap-1.5 rounded-sm border-l-[3px] bg-papel px-1.5 py-0.5 text-xs leading-snug font-semibold',
-        isAtrasado &&
-          'bg-[linear-gradient(transparent_15%,var(--marca-texto)_15%,var(--marca-texto)_85%,transparent_85%)]',
+        isAtrasado && 'bg-marca-texto text-violeta-profundo',
         isSobreposto && 'rotate-1 shadow-lg ring-2 ring-caneta/40',
       )}
       style={{ borderLeftColor: classificacao?.cor ?? 'var(--grafite)' }}
