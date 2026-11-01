@@ -5,9 +5,11 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   useSensor,
   useSensors,
   type Announcements,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -37,6 +39,28 @@ const DISTANCIA_PARA_ARRASTAR = 4
 const instrucoesLeitorDeTela = {
   draggable:
     'Para mover, pressione espaço. Use as setas para trocar de posição ou de dia e espaço de novo para soltar. Esc cancela. Grupos ficam no dia: só os itens pendentes vão para o outro dia.',
+}
+
+/**
+ * Com o ponteiro, o dia é o da coluna sob ele: a prévia arrastada é larga e, com colunas
+ * estreitas, encosta na vizinha. Dentro da coluna vale o alvo mais próximo pelos cantos, como
+ * antes. Pelo teclado (sem ponteiro), só os cantos.
+ */
+const detectarAlvo: CollisionDetection = (argumentos) => {
+  const { droppableContainers, droppableRects, pointerCoordinates } = argumentos
+  if (!pointerCoordinates) return closestCorners(argumentos)
+  const colunas = droppableContainers.filter((alvo) => String(alvo.id).startsWith(PREFIXO_COLUNA))
+  const [colunaSob] = pointerWithin({ ...argumentos, droppableContainers: colunas })
+  const coluna = colunaSob ? droppableRects.get(colunaSob.id) : undefined
+  if (!coluna) return closestCorners(argumentos)
+  const naColuna = droppableContainers.filter((alvo) => {
+    const retangulo = droppableRects.get(alvo.id)
+    if (!retangulo) return false
+    const x = retangulo.left + retangulo.width / 2
+    const y = retangulo.top + retangulo.height / 2
+    return x >= coluna.left && x <= coluna.right && y >= coluna.top && y <= coluna.bottom
+  })
+  return closestCorners({ ...argumentos, droppableContainers: naColuna })
 }
 
 function colunasDe(semana: DiaDaSemana[]): Colunas {
@@ -211,7 +235,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   return (
     <DndContext
       sensors={sensores}
-      collisionDetection={closestCorners}
+      collisionDetection={detectarAlvo}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}

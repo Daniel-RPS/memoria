@@ -1,33 +1,20 @@
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import type { DataLocal } from '@/db/types'
-import type { FiltroCategoria } from '@/lib/categorias'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 
 interface NovaTarefaProps {
   data: DataLocal
-  /** Com um filtro ativo, a tarefa já nasce naquela categoria. */
-  filtro: FiltroCategoria
 }
 
 /** Próxima linha em branco da folha do dia. */
-export function NovaTarefa({ data, filtro }: NovaTarefaProps) {
+export function NovaTarefa({ data }: NovaTarefaProps) {
   const { criarTarefa } = useAcoesTarefa()
 
   return (
     <div className="flex items-center pl-1">
       <span className="w-5 shrink-0" />
       <div className="min-w-0 flex-1 pl-2">
-        <CampoNovoItem
-          rotulo="Nova tarefa"
-          onCriar={(titulo) =>
-            criarTarefa({
-              titulo,
-              data,
-              categoryId: filtro.categoriaId,
-              subcategoryId: filtro.subcategoriaId,
-            })
-          }
-        />
+        <CampoNovoItem rotulo="Nova tarefa" onCriar={(titulo) => criarTarefa({ titulo, data })} />
       </div>
     </div>
   )

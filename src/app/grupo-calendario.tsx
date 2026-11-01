@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import { CalendarFold, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
+import { DicaDaBarra } from '@/app/dica-da-barra'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +54,7 @@ interface GrupoCalendarioProps {
 
 /**
  * Dia, Semana, Mês e Ano num grupo que abre e fecha. Um traço de caneta corre pela
- * linha-guia até a visão aberta; fechado, o cabeçalho diz qual é ("Calendário · Semana").
+ * linha-guia até a visão aberta; fechado, o cabeçalho fica destacado se uma delas está aberta.
  */
 export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendarioProps) {
   const idPainel = useId()
@@ -67,7 +68,6 @@ export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendari
         data-navegavel
         aria-expanded={isAberto}
         aria-controls={idPainel}
-        aria-label={!isAberto && visaoAtiva ? `Calendário · ${visaoAtiva.nome}` : 'Calendário'}
         onClick={onAlternar}
         className={cn(
           'group/cab flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-sm transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-papel',
@@ -80,18 +80,7 @@ export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendari
           aria-hidden
           className="size-4 shrink-0 transition-[scale] duration-300 ease-mola group-hover/cab:scale-110 motion-reduce:transition-none"
         />
-        <span className="flex min-w-0 items-baseline gap-1">
-          Calendário
-          <span
-            aria-hidden
-            className={cn(
-              'truncate text-caneta transition-[opacity,translate] duration-300 ease-mola motion-reduce:transition-none',
-              !isAberto && visaoAtiva ? 'translate-x-0 opacity-100' : '-translate-x-1 opacity-0',
-            )}
-          >
-            {visaoAtiva && `· ${visaoAtiva.nome}`}
-          </span>
-        </span>
+        Calendário
         <ChevronRight
           aria-hidden
           className={cn(
@@ -162,23 +151,24 @@ export function GrupoCalendario({ visoes, isAberto, onAlternar }: GrupoCalendari
   )
 }
 
-/** Barra recolhida (Semana): um ícone de calendário que abre as 4 visões num menu ao lado. */
+/** Barra recolhida: um ícone de calendário que abre as 4 visões num menu ao lado. */
 export function GrupoCalendarioRecolhido({ visoes }: { visoes: VisaoDoCalendario[] }) {
-  const visaoAtiva = visoes.find((visao) => visao.isAtiva)
+  const isNoCalendario = visoes.some((visao) => visao.isAtiva)
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label={visaoAtiva ? `Calendário: ${visaoAtiva.nome}` : 'Calendário'}
-        title="Calendário"
-        className={cn(
-          'flex items-center justify-center rounded-md px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-papel',
-          visaoAtiva
-            ? 'bg-caneta text-white'
-            : 'text-papel/70 hover:bg-papel/8 hover:text-papel data-[state=open]:bg-papel/8',
-        )}
-      >
-        <CalendarFold aria-hidden className="size-4" />
-      </DropdownMenuTrigger>
+      <DicaDaBarra texto="Calendário">
+        <DropdownMenuTrigger
+          aria-label="Calendário"
+          className={cn(
+            'flex h-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-papel',
+            isNoCalendario
+              ? 'bg-caneta text-white'
+              : 'text-papel/70 hover:bg-papel/8 hover:text-papel data-[state=open]:bg-papel/8',
+          )}
+        >
+          <CalendarFold aria-hidden className="size-4" />
+        </DropdownMenuTrigger>
+      </DicaDaBarra>
       <DropdownMenuContent side="right" align="start" sideOffset={10} className="w-40">
         {visoes.map((visao) => {
           const Icone = visao.icone

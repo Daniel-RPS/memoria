@@ -6,8 +6,6 @@ import type { CategoriaEscolhida } from '@/components/seletor-categoria/seletor-
 interface CampoNovoGrupoProps {
   /** Nome acessível do campo, ex.: "Novo grupo em sex, 31". */
   nomeAcessivel?: string
-  /** Categoria marcada ao abrir (ex.: o filtro ativo do dia). */
-  categoriaInicial?: CategoriaEscolhida
   tamanho?: 'normal' | 'compacto'
   onCriar: (dados: { titulo: string } & CategoriaEscolhida) => Promise<unknown>
 }
@@ -18,11 +16,10 @@ interface CampoNovoGrupoProps {
  */
 export function CampoNovoGrupo({
   nomeAcessivel,
-  categoriaInicial = {},
   tamanho = 'normal',
   onCriar,
 }: CampoNovoGrupoProps) {
-  const [categoria, setCategoria] = useState<CategoriaEscolhida>(categoriaInicial)
+  const [categoria, setCategoria] = useState<CategoriaEscolhida>({})
 
   return (
     <div className="flex items-start gap-1">

@@ -5,12 +5,15 @@ import {
   CalendarRange,
   HardDriveDownload,
   ListOrdered,
+  PanelLeftClose,
+  PanelLeftOpen,
   StickyNote,
   Sun,
   Tags,
 } from 'lucide-react'
 import { Link, useMatch } from 'react-router'
 import { cn } from 'cn'
+import { DicaDaBarra } from '@/app/dica-da-barra'
 import {
   GrupoCalendario,
   GrupoCalendarioRecolhido,
@@ -27,35 +30,48 @@ interface LinkTelaProps {
   children: string
 }
 
+// Recolher/expandir: a largura corre com a mesma mola do grupo Calendário.
+const TRANSICAO_DA_BARRA = 'duration-400 ease-mola-suave motion-reduce:transition-none'
+
 function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, children }: LinkTelaProps) {
   return (
-    <Link
-      to={para}
-      aria-current={isAtiva ? 'page' : undefined}
-      title={isRecolhida ? children : undefined}
-      className={cn(
-        'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-papel',
-        isRecolhida && 'justify-center',
-        isAtiva
-          ? 'bg-caneta font-semibold text-white'
-          : 'text-papel/70 hover:bg-papel/8 hover:text-papel',
-      )}
-    >
-      <Icone aria-hidden className="size-4 shrink-0" />
-      <span className={cn(isRecolhida && 'sr-only')}>{children}</span>
-    </Link>
+    <DicaDaBarra texto={children} isLigada={isRecolhida}>
+      <Link
+        to={para}
+        aria-current={isAtiva ? 'page' : undefined}
+        className={cn(
+          // O ícone fica no lugar enquanto a barra estreita: muda só o recuo, e o nome some
+          // por opacidade (continua sendo o nome acessível do link).
+          'flex h-8 items-center gap-2.5 overflow-hidden rounded-md text-sm whitespace-nowrap transition-[padding] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-papel',
+          TRANSICAO_DA_BARRA,
+          isRecolhida ? 'px-4' : 'px-2',
+          isAtiva
+            ? 'bg-caneta font-semibold text-white'
+            : 'text-papel/70 hover:bg-papel/8 hover:text-papel',
+        )}
+      >
+        <Icone aria-hidden className="size-4 shrink-0" />
+        <span
+          className={cn(
+            'transition-opacity duration-200 motion-reduce:transition-none',
+            isRecolhida && 'opacity-0',
+          )}
+        >
+          {children}
+        </span>
+      </Link>
+    </DicaDaBarra>
   )
 }
 
 interface BarraLateralProps {
-  /** Só os ícones (na Semana, para as 7 colunas terem largura). */
+  /** Só os ícones, para a tela principal ganhar espaço. Só o usuário muda (botão ou Ctrl+B). */
   isRecolhida: boolean
-  /** Recebe o elemento onde a página aberta desenha o que é dela (ex.: filtro do Dia). */
-  onAreaDaPagina: (elemento: HTMLElement | null) => void
+  onAlternarRecolhida: () => void
 }
 
-/** Moldura lateral: nome do app, telas e o espaço da página aberta. */
-export function BarraLateral({ isRecolhida, onAreaDaPagina }: BarraLateralProps) {
+/** Moldura lateral: nome do app, botão de recolher e as telas. */
+export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralProps) {
   const rotaDia = useMatch('/dia/:data')
   const rotaSemana = useMatch('/semana/:data')
   const rotaMes = useMatch('/mes/:data')
@@ -100,26 +116,45 @@ export function BarraLateral({ isRecolhida, onAreaDaPagina }: BarraLateralProps)
     <div className="shrink-0 bg-tinta">
       <aside
         className={cn(
-          'sticky top-0 flex h-dvh flex-col overflow-y-auto py-5',
+          // A tela principal é `flex-1`: acompanha a largura a cada quadro, sem pular.
+          'sticky top-0 flex h-dvh flex-col overflow-x-hidden overflow-y-auto py-5 transition-[width,padding]',
+          TRANSICAO_DA_BARRA,
           isRecolhida ? 'w-16 px-2' : 'w-56 px-3',
         )}
       >
-        <span
+        <div
           className={cn(
-            'mb-6 text-lg font-extrabold tracking-[-0.03em] text-papel',
-            isRecolhida ? 'text-center' : 'px-2',
+            'mb-6 flex items-center',
+            isRecolhida ? 'flex-col gap-3' : 'justify-between pl-2',
           )}
         >
-          {isRecolhida ? (
-            <span title="MemorIA">
-              M<span className="text-caneta">.</span>
-            </span>
-          ) : (
-            <>
-              Memor<span className="text-caneta">IA</span>
-            </>
-          )}
-        </span>
+          <span className="text-lg font-extrabold tracking-[-0.03em] whitespace-nowrap text-papel">
+            {isRecolhida ? (
+              <span title="MemorIA">
+                M<span className="text-caneta">.</span>
+              </span>
+            ) : (
+              <>
+                Memor<span className="text-caneta">IA</span>
+              </>
+            )}
+          </span>
+          <DicaDaBarra texto={isRecolhida ? 'Expandir menu' : 'Recolher menu'}>
+            <button
+              type="button"
+              aria-label={isRecolhida ? 'Expandir menu' : 'Recolher menu'}
+              aria-keyshortcuts="Control+B"
+              onClick={onAlternarRecolhida}
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-papel/50 transition-colors hover:bg-papel/8 hover:text-papel focus-visible:outline-2 focus-visible:outline-papel"
+            >
+              {isRecolhida ? (
+                <PanelLeftOpen aria-hidden className="size-4" />
+              ) : (
+                <PanelLeftClose aria-hidden className="size-4" />
+              )}
+            </button>
+          </DicaDaBarra>
+        </div>
         <nav aria-label="Telas" className="flex flex-col gap-0.5">
           {isRecolhida ? (
             <GrupoCalendarioRecolhido visoes={visoes} />
@@ -138,7 +173,6 @@ export function BarraLateral({ isRecolhida, onAreaDaPagina }: BarraLateralProps)
             </LinkTela>
           ))}
         </nav>
-        {!isRecolhida && <div ref={onAreaDaPagina} className="mt-8 empty:hidden" />}
       </aside>
     </div>
   )

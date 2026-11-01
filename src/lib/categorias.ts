@@ -137,21 +137,3 @@ export function classificarTarefa(
     rotulo: `${categoria.nome} › ${subcategoria.nome}`,
   }
 }
-
-export interface FiltroCategoria {
-  categoriaId?: string
-  subcategoriaId?: string
-}
-
-/** Filtra por categoria (inclui todas as subcategorias dela) ou por uma subcategoria. */
-export function filtrarPorCategoria<T extends Pick<Task, 'categoryId' | 'subcategoryId'>>(
-  tarefas: T[],
-  filtro: FiltroCategoria,
-) {
-  if (!filtro.categoriaId) return tarefas
-  return tarefas.filter(
-    (tarefa) =>
-      tarefa.categoryId === filtro.categoriaId &&
-      (!filtro.subcategoriaId || tarefa.subcategoryId === filtro.subcategoriaId),
-  )
-}

@@ -60,7 +60,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupCard.ordem`, `tabelaDoDia`); `ordem` de item é a posição dentro do card
 - Colocar tarefa no grupo / tirar item = conversão com o MESMO id (`colocarNoGrupo`/`tirarDoGrupo`); subtarefas, anotação e anexos da tarefa não passam para o item
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
-- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`). Moldura: `BarraLateral` (`src/app/barra-lateral.tsx`; recolhe para ícones na Semana) com Dia/Semana/Mês/Ano no `GrupoCalendario` (`src/app/grupo-calendario.tsx`; recolhida = `GrupoCalendarioRecolhido`, menu) e aberto/fechado em `useGrupoCalendarioAberto` (localStorage; abre sozinho numa visão do calendário); página que quer algo na barra usa `NaBarraLateral` (portal, estado continua na página), como o filtro do Dia
+- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; a data fica na URL (`/dia/YYYY-MM-DD`). Não há filtro por categoria (removido em 01/11/2026): todas as visões mostram todas as categorias
+- Moldura: `BarraLateral` (`src/app/barra-lateral.tsx`). IMPORTANTE: recolher (só ícones) é SÓ escolha do usuário — botão ao lado do logo ou Ctrl+B, `useBarraRecolhida` (localStorage); trocar de tela NUNCA recolhe nem fecha o grupo. Dia/Semana/Mês/Ano no `GrupoCalendario` (`src/app/grupo-calendario.tsx`; recolhida = `GrupoCalendarioRecolhido`, menu), aberto/fechado em `useGrupoCalendarioAberto` (abre sozinho numa visão do calendário). Dicas pelo `DicaDaBarra` (Tooltip shadcn, ligado só na barra recolhida); localStorage sempre via `preferencia-local.ts`
+- Arrastar na Semana: `detectarAlvo` (`quadro-semana.tsx`) escolhe o dia pela coluna sob o ponteiro e, dentro dela, `closestCorners` (a prévia é larga e encosta na coluna vizinha)
 
 ## Modelo de dados (resumo)
 
@@ -68,7 +70,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Alterar índices = nova `version()` no Dexie, NUNCA editar a versão existente
 - Category { id, nome, cor, ordem } · Subcategory { id, categoryId, nome, cor?, ordem } (sem cor = variação da cor da categoria)
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
-- GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — liga os cards de dias diferentes; categoria só dá cor e filtro
+- GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — liga os cards de dias diferentes; categoria só dá cor
 - GroupCard { id, seriesId, data, ordem, arquivado, criadoPorTransferencia? } — no máximo um por série e dia; encerrado é calculado (tem itens e nenhum pendente)
 - GroupItem { id, cardId, titulo, ordem, status: pendente|concluido|transferido|arquivado, concluidoEm?, transferidoParaCardId?, origemItemId?, dataOriginal }
 - Subtask { id, taskId, titulo, concluida, ordem }
@@ -133,6 +135,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 01/11/2026: categorias criadas e aplicadas ali mesmo (seletor único), aba Categorias com uso e ordem arrastável, card editável na Semana (banco v8, backup formato 5)
 - Ajuste 01/11/2026: nova interface "folha pautada + barra lateral" na paleta violeta (só camada visual): tokens, `BarraLateral` com o filtro do Dia, folhas com traço grafite, card como ficha, hoje circulado (`CirculoHoje`), menus por `data-slot` e `CabecalhoPagina` nas telas de lista — detalhes em `docs/proposta-inicial.md`
 - Ajuste 01/11/2026: grupo "Calendário" na barra lateral (variação "traço de caneta": traço violeta desliza pela linha-guia; só CSS, sem biblioteca de animação)
+- Ajuste 01/11/2026: barra lateral recolhível só pelo usuário (botão/Ctrl+B, lembrada; não recolhe mais na Semana), rótulo só "Calendário" e filtro por categoria removido do Dia
 
 ## Armadilhas
 

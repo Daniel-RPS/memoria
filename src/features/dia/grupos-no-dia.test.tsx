@@ -173,7 +173,7 @@ describe('Grupos na visão do dia', () => {
     expect(await db.groupItems.count()).toBe(0)
   })
 
-  it('o filtro de categoria vale para os cards', async () => {
+  it('mostra os cards de todas as categorias, mesmo com um ?categoria= antigo', async () => {
     await db.categories.add({
       id: 'casa',
       nome: 'Limpeza',
@@ -187,7 +187,7 @@ describe('Grupos na visão do dia', () => {
     renderizarApp(`/dia/${HOJE}?categoria=casa`)
 
     expect(await screen.findByRole('region', { name: 'Grupo Casa' })).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Grupo Trabalho' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Grupo Trabalho' })).toBeInTheDocument()
   })
 
   it('selecionando, clicar no cabeçalho marca o card inteiro', async () => {

@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
@@ -21,7 +21,6 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
 - ✅ Criar e aplicar categoria ou subcategoria ali mesmo, no seletor de categoria (menu ⋯ do card e da tarefa, "+ Novo grupo" e editor de procedimento)
 - ✅ Ordem das categorias e subcategorias definida por você, arrastando; vale em todo o app
-- ✅ Filtro por categoria e subcategoria na visão do dia
 - ✅ Visão de semana (segunda a domingo)
 - ✅ Grupos de tarefas: um card (ex.: "Casa") com itens; levar a outro dia cria uma cópia só com os pendentes e o card original fica como registro
 - ✅ Visão de mês, com arrastar tarefas entre dias
@@ -40,7 +39,7 @@ Legenda: ✅ pronto · 🔜 planejado
 
 ### Grupos de tarefas
 
-- ✅ "+ Novo grupo" ao lado de "+ Nova tarefa" (Dia e Semana): um card com título, categoria opcional (só cor e filtro) e itens com caixa de seleção
+- ✅ "+ Novo grupo" ao lado de "+ Nova tarefa" (Dia e Semana): um card com título, categoria opcional (só cor) e itens com caixa de seleção
 - ✅ Um grupo "Casa" e a categoria "Casa" são coisas independentes
 - ✅ Levar o card a outro dia **duplica**: o card fica no dia original e o destino recebe só os itens não marcados
 - ✅ No original, o item levado fica cinza, sem caixa, com "transferido para 31/10" (leva ao card de destino); o progresso vira "3 feitos · 1 transferido" e o card aparece encerrado
@@ -107,7 +106,8 @@ Depois, abra no navegador **`http://localhost:5173`**.
 
 ### Usando
 
-- Na barra lateral, **Calendário** junta Dia, Semana, Mês e Ano. Clicar nele só abre e fecha (fechado, ele mostra a visão aberta, como "Calendário · Semana"); o app lembra a escolha e abre o grupo sozinho quando você está numa dessas visões. Pelo teclado: Tab até ele, Enter ou espaço abre e fecha, setas andam entre as visões. Na Semana, a barra recolhida mostra um ícone de calendário que abre as quatro visões num menu.
+- Na barra lateral, **Calendário** junta Dia, Semana, Mês e Ano. Clicar nele só abre e fecha (escolher uma visão não fecha o grupo); o app lembra a escolha e abre o grupo sozinho quando você está numa dessas visões. Pelo teclado: Tab até ele, Enter ou espaço abre e fecha, setas andam entre as visões.
+- Para dar mais espaço à tela, recolha a barra pelo botão ao lado do nome **MemorIA** ou com **Ctrl+B** (de novo para expandir). Recolhida, ela mostra só os ícones, com o nome ao passar o mouse; o ícone de calendário abre Dia, Semana, Mês e Ano num menu. O app lembra se ela estava recolhida.
 - Escreva na linha **Nova tarefa** e tecle Enter; o campo continua pronto para a próxima.
 - Clique no título para renomear (Enter salva, Esc cancela).
 - Arraste pela alça à esquerda para reordenar. Pelo teclado: foque a alça, tecle espaço, use as setas e espaço de novo.
@@ -116,7 +116,6 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Em **Categorias**, crie a categoria no topo (nome e cor) e as subcategorias embaixo de cada uma. Clique no nome para renomear e na bolinha para trocar a cor. Cada categoria mostra quantos itens a usam ("4 tarefas · 2 grupos · 1 procedimento"). Arraste pela alça ⋮⋮ para mudar a ordem, que vale em todo o app. Excluir pede confirmação e não apaga nada além da categoria: os itens ficam "Sem categoria" (ou, ao excluir uma subcategoria, só perdem a subcategoria).
 - Não precisa sair da tela para usar uma categoria nova: em **Categoria ›** (menu ⋯), ao lado de **Novo grupo** ou no campo **Categoria** do procedimento, use **+ Nova categoria** ou **+ Nova subcategoria** (aparece ao passar o mouse sobre a categoria). Enter cria e já aplica ao item; Esc volta.
 - Tudo se atualiza sozinho em todas as telas, inclusive em outra aba do navegador aberta no app.
-- Na visão do dia, a lista de categorias na barra lateral filtra as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
 - Mover uma tarefa só muda o dia dela: nada é copiado ou apagado, e a contagem "pendente há N dias" continua contando desde o dia em que foi criada.
 - No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
 - Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje** (tarefas soltas vêm; itens de grupo são levados).

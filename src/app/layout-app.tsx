@@ -1,15 +1,15 @@
-import { useState } from 'react'
 import { Outlet, useMatch } from 'react-router'
 import { cn } from 'cn'
 import { BarraLateral } from '@/app/barra-lateral'
-import { ContextoAreaLateral } from '@/components/barra-lateral/contexto-area-lateral'
+import { useBarraRecolhida } from '@/app/use-barra-recolhida'
 import { Toaster } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAtalhoDesfazer } from '@/hooks/use-mover-tarefas'
 
 /** Moldura comum: barra lateral com as telas e, ao lado, a tela aberta. */
 export function LayoutApp() {
   useAtalhoDesfazer()
-  const [areaDaPagina, setAreaDaPagina] = useState<HTMLElement | null>(null)
+  const { isRecolhida, handleAlternar } = useBarraRecolhida()
   const isNaSemana = useMatch('/semana/:data') !== null
   const rotaMes = useMatch('/mes/:data')
   const rotaAno = useMatch('/ano/:ano')
@@ -25,9 +25,9 @@ export function LayoutApp() {
         : 'max-w-2xl'
 
   return (
-    <ContextoAreaLateral.Provider value={areaDaPagina}>
+    <TooltipProvider delayDuration={300}>
       <div className="flex min-h-dvh bg-nevoa">
-        <BarraLateral isRecolhida={isNaSemana} onAreaDaPagina={setAreaDaPagina} />
+        <BarraLateral isRecolhida={isRecolhida} onAlternarRecolhida={handleAlternar} />
         <main className="min-w-0 flex-1">
           <div className={cn('mx-auto px-4 pt-8 pb-16 sm:px-8', largura)}>
             <Outlet />
@@ -36,6 +36,6 @@ export function LayoutApp() {
       </div>
       {/* Tema fixo claro: o app ainda não tem modo escuro. */}
       <Toaster theme="light" position="bottom-center" />
-    </ContextoAreaLateral.Provider>
+    </TooltipProvider>
   )
 }

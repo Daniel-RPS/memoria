@@ -6,7 +6,6 @@ import { donosComNota } from '@/db/repositories/note-repository'
 import { listarSubtarefas } from '@/db/repositories/subtask-repository'
 import { listarTarefasDoDia } from '@/db/repositories/task-repository'
 import type { DataLocal } from '@/db/types'
-import { filtrarPorCategoria, type FiltroCategoria } from '@/lib/categorias'
 import { intercalarNoDia, montarGrupos } from '@/lib/grupos'
 import { agruparSubtarefas, separarDoDia } from '@/lib/tarefas'
 import type { ExtrasDaFolha } from '@/features/dia/hooks/contexto-extras'
@@ -19,10 +18,10 @@ const SEM_EXTRAS: ExtrasDaFolha = {
 }
 
 /**
- * Tarefas soltas e cards de grupo do dia (com o filtro de categoria), subtarefas, anexos e
+ * Tarefas soltas e cards de grupo do dia, subtarefas, anexos e
  * anotações, atualizados sozinhos. Cards ficam no lugar mesmo encerrados (são o registro).
  */
-export function useTarefasDoDia(data: DataLocal, filtro: FiltroCategoria = {}) {
+export function useTarefasDoDia(data: DataLocal) {
   const resultado = useLiveQuery(async () => {
     const [tarefas, grupos] = await Promise.all([
       listarTarefasDoDia(data),
@@ -36,19 +35,12 @@ export function useTarefasDoDia(data: DataLocal, filtro: FiltroCategoria = {}) {
     ])
     return { tarefas, grupos, subtarefas, anexosPorTarefa, tarefasComNota }
   }, [data])
-  const { categoriaId, subcategoriaId } = filtro
 
   return useMemo(() => {
-    const filtroAtivo = { categoriaId, subcategoriaId }
-    const soltas = filtrarPorCategoria(resultado?.tarefas ?? [], filtroAtivo)
-    const todosOsGrupos = resultado
+    const grupos = resultado
       ? montarGrupos(resultado.grupos.cards, resultado.grupos.series, resultado.grupos.itens)
       : []
-    // O card segue a categoria da série (independente do título do grupo).
-    const grupos = todosOsGrupos.filter(
-      (grupo) => filtrarPorCategoria([grupo.serie], filtroAtivo).length > 0,
-    )
-    const { pendentes, concluidas } = separarDoDia(soltas)
+    const { pendentes, concluidas } = separarDoDia(resultado?.tarefas ?? [])
     return {
       /** Tarefas soltas pendentes e cards, na ordem do dia. */
       entradas: intercalarNoDia(pendentes, grupos),
@@ -58,7 +50,7 @@ export function useTarefasDoDia(data: DataLocal, filtro: FiltroCategoria = {}) {
         ? {
             anexosPorTarefa: resultado.anexosPorTarefa,
             tarefasComNota: resultado.tarefasComNota,
-            gruposDoDia: todosOsGrupos.map((grupo) => ({
+            gruposDoDia: grupos.map((grupo) => ({
               id: grupo.card.id,
               titulo: grupo.serie.titulo,
             })),
@@ -67,5 +59,5 @@ export function useTarefasDoDia(data: DataLocal, filtro: FiltroCategoria = {}) {
         : SEM_EXTRAS,
       isCarregando: resultado === undefined,
     }
-  }, [resultado, categoriaId, subcategoriaId])
+  }, [resultado])
 }

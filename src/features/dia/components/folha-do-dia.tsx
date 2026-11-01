@@ -1,9 +1,7 @@
 import { CheckSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
-import { classificarTarefa, type FiltroCategoria } from '@/lib/categorias'
 import { pendentesDo, podeCopiarGrupo } from '@/lib/grupos'
-import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { ContextoExtras } from '@/features/dia/hooks/contexto-extras'
 import { ContextoSelecao, useSelecao } from '@/features/dia/hooks/use-selecao'
 import { useTarefasDoDia } from '@/features/dia/hooks/use-tarefas-do-dia'
@@ -17,16 +15,11 @@ import { NovoGrupo } from '@/features/dia/components/novo-grupo'
 interface FolhaDoDiaProps {
   data: DataLocal
   hoje: DataLocal
-  filtro: FiltroCategoria
 }
 
 /** A folha pautada do dia: pendentes e cards, linhas para criar e o grupo de concluídas. */
-export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
-  const categorias = useCategoriasDoContexto()
-  const { entradas, concluidas, subtarefasPorTarefa, extras, isCarregando } = useTarefasDoDia(
-    data,
-    filtro,
-  )
+export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
+  const { entradas, concluidas, subtarefasPorTarefa, extras, isCarregando } = useTarefasDoDia(data)
   const isVazio = !isCarregando && entradas.length === 0
   // O que dá para selecionar: tarefas soltas, cards com pendentes e itens pendentes.
   const gruposComPendentes = entradas.flatMap((entrada) =>
@@ -42,16 +35,9 @@ export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
         : [],
   )
   const selecao = useSelecao()
-  const nomeDoFiltro = filtro.categoriaId
-    ? classificarTarefa(
-        { categoryId: filtro.categoriaId, subcategoryId: filtro.subcategoriaId },
-        categorias,
-      )?.rotulo
-    : undefined
 
   function mensagemVazia() {
     if (concluidas.length > 0) return 'Tudo feito neste dia.'
-    if (nomeDoFiltro) return `Nada de ${nomeDoFiltro} neste dia. Escreva abaixo para criar.`
     return 'Nada marcado para este dia. Escreva a primeira tarefa abaixo.'
   }
 
@@ -80,10 +66,10 @@ export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
             {!selecao.isSelecionando && (
               <div className="flex flex-wrap">
                 <div className="min-w-0 flex-[2_1_18rem]">
-                  <NovaTarefa data={data} filtro={filtro} />
+                  <NovaTarefa data={data} />
                 </div>
                 <div className="min-w-0 flex-[1_1_12rem] border-t border-pauta sm:border-t-0 sm:border-l">
-                  <NovoGrupo data={data} filtro={filtro} />
+                  <NovoGrupo data={data} />
                 </div>
               </div>
             )}

@@ -3,7 +3,6 @@ import type { Category, Subcategory } from '@/db/types'
 import {
   classificarTarefa,
   corDaSubcategoria,
-  filtrarPorCategoria,
   montarCategorias,
   preencherOrdem,
   somarUso,
@@ -120,34 +119,6 @@ describe('classificarTarefa', () => {
   it('ignora categoria que não existe mais', () => {
     expect(classificarTarefa({ categoryId: 'sumiu' }, arvore)).toBeNull()
     expect(classificarTarefa({}, arvore)).toBeNull()
-  })
-})
-
-describe('filtrarPorCategoria', () => {
-  const tarefas = [
-    { id: '1', categoryId: 'casa', subcategoryId: 'jardim' },
-    { id: '2', categoryId: 'casa' },
-    { id: '3', categoryId: 'trab' },
-    { id: '4' },
-  ]
-
-  it('sem filtro mostra tudo', () => {
-    expect(filtrarPorCategoria(tarefas, {})).toHaveLength(4)
-  })
-
-  it('categoria inclui todas as subcategorias dela', () => {
-    expect(filtrarPorCategoria(tarefas, { categoriaId: 'casa' }).map((t) => t.id)).toEqual([
-      '1',
-      '2',
-    ])
-  })
-
-  it('subcategoria mostra só ela', () => {
-    expect(
-      filtrarPorCategoria(tarefas, { categoriaId: 'casa', subcategoriaId: 'jardim' }).map(
-        (t) => t.id,
-      ),
-    ).toEqual(['1'])
   })
 })
 

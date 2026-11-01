@@ -24,19 +24,29 @@ describe('grupo Calendário na barra lateral', () => {
     )
   })
 
-  it('o cabeçalho só abre e fecha; fechado, diz qual visão está aberta', async () => {
+  it('o cabeçalho só abre e fecha; fechado, o rótulo é só "Calendário"', async () => {
     const usuario = userEvent.setup()
     const router = renderizarApp('/mes/2026-11-01')
     const grupo = await within(navegacao()).findByRole('button', { name: /^Calendário/ })
 
     await usuario.click(grupo)
     expect(grupo).toHaveAttribute('aria-expanded', 'false')
-    expect(grupo).toHaveAccessibleName('Calendário · Mês')
+    expect(grupo).toHaveAccessibleName('Calendário')
     expect(router.state.location.pathname).toBe('/mes/2026-11-01')
 
     await usuario.keyboard('{Enter}')
     expect(grupo).toHaveAttribute('aria-expanded', 'true')
-    expect(grupo).toHaveAccessibleName('Calendário')
+  })
+
+  it('na Semana a barra continua expandida, com o grupo aberto', async () => {
+    renderizarApp('/semana/2026-11-02')
+    const grupo = await within(navegacao()).findByRole('button', { name: 'Calendário' })
+    expect(grupo).toHaveAttribute('aria-expanded', 'true')
+    expect(within(navegacao()).getByRole('link', { name: 'Semana' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getByRole('button', { name: 'Recolher menu' })).toBeInTheDocument()
   })
 
   it('fora do calendário vale o estado salvo e abre ao entrar numa visão', async () => {

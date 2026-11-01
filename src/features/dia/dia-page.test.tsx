@@ -118,30 +118,19 @@ describe('Visão do dia', () => {
     expect(screen.getByRole('checkbox', { name: 'Concluir Viajar' })).not.toBeChecked()
   })
 
-  it('filtra por categoria, guarda o filtro na URL e cria a tarefa já na categoria', async () => {
-    const usuario = userEvent.setup()
+  it('mostra tarefas de todas as categorias, sem filtro na barra', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
     const trabalho = await criarCategoria({ nome: 'Trabalho' })
     await criarTarefa({ titulo: 'Podar', data: hoje(), categoryId: casa.id })
     await criarTarefa({ titulo: 'Relatório', data: hoje(), categoryId: trabalho.id })
-    const router = renderizarDia(hoje())
-
-    const filtros = await screen.findByRole('group', { name: 'Filtrar por categoria' })
-    await usuario.click(within(filtros).getByRole('button', { name: 'Casa' }))
+    await criarTarefa({ titulo: 'Ler', data: hoje() })
+    renderizarDia(hoje())
 
     const pendentes = await screen.findByRole('list', { name: 'Pendentes' })
-    await waitFor(() => expect(within(pendentes).queryByText('Relatório')).not.toBeInTheDocument())
-    expect(within(pendentes).getByText('Podar')).toBeInTheDocument()
-    expect(router.state.location.search).toBe(`?categoria=${casa.id}`)
-
-    await usuario.type(screen.getByRole('textbox', { name: 'Nova tarefa' }), 'Regar{Enter}')
-    await waitFor(async () => {
-      const regar = (await db.tasks.toArray()).find((tarefa) => tarefa.titulo === 'Regar')
-      expect(regar?.categoryId).toBe(casa.id)
-    })
-
-    await usuario.click(screen.getByRole('link', { name: 'Próximo dia' }))
-    expect(router.state.location.search).toBe(`?categoria=${casa.id}`)
+    for (const titulo of ['Podar', 'Relatório', 'Ler']) {
+      expect(await within(pendentes).findByText(titulo)).toBeInTheDocument()
+    }
+    expect(screen.queryByRole('group', { name: 'Filtrar por categoria' })).not.toBeInTheDocument()
   })
 
   it('define a categoria pelo menu e mostra o rótulo na linha', async () => {

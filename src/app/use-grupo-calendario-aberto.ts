@@ -1,30 +1,17 @@
 import { useState } from 'react'
+import { gravarPreferencia, lerPreferencia } from '@/app/preferencia-local'
 
 export const CHAVE_GRUPO_CALENDARIO = 'memoria:grupo-calendario-aberto'
-
-/** Último estado escolhido; sem nada salvo (ou sem acesso ao armazenamento), aberto. */
-function lerSalvo(): boolean {
-  try {
-    return localStorage.getItem(CHAVE_GRUPO_CALENDARIO) !== 'false'
-  } catch {
-    return true
-  }
-}
-
-function salvar(isAberto: boolean) {
-  try {
-    localStorage.setItem(CHAVE_GRUPO_CALENDARIO, String(isAberto))
-  } catch {
-    // Sem armazenamento (janela privada, dados bloqueados): só não lembra.
-  }
-}
 
 /**
  * Aberto/fechado do grupo "Calendário" na barra lateral. Abre sozinho numa visão do
  * calendário (Dia, Semana, Mês, Ano); fora delas, vale o que o usuário escolheu por último.
  */
 export function useGrupoCalendarioAberto(isNoCalendario: boolean) {
-  const [isAberto, setIsAberto] = useState(() => isNoCalendario || lerSalvo())
+  const [isAberto, setIsAberto] = useState(
+    // Sem nada salvo (ou sem acesso ao armazenamento), aberto.
+    () => isNoCalendario || lerPreferencia(CHAVE_GRUPO_CALENDARIO) !== 'false',
+  )
   const [estavaNoCalendario, setEstavaNoCalendario] = useState(isNoCalendario)
 
   // Ao entrar numa visão do calendário com o grupo fechado, ele abre para mostrar onde se está.
@@ -35,7 +22,7 @@ export function useGrupoCalendarioAberto(isNoCalendario: boolean) {
 
   function handleAlternar() {
     const novo = !isAberto
-    salvar(novo)
+    gravarPreferencia(CHAVE_GRUPO_CALENDARIO, String(novo))
     setIsAberto(novo)
   }
 

@@ -87,7 +87,7 @@ Antes, para usar uma categoria nova era preciso ir à aba Categorias e voltar.
 Escolhida entre três direções num protótipo (folha pautada, mesa de controle com barra lateral e fichas coloridas): a mistura das duas primeiras, na paleta violeta. Mudou só a camada visual; dados, regras, arrastar e atalhos ficaram iguais.
 
 - **Paleta** (tokens em `src/index.css`, mesmos nomes de antes): violeta elétrico #8B3DFF (`caneta`: ação, caixas marcadas, tela ativa), violeta profundo #4B16A8 (destaques miúdos, como "transferido para"), grafite #111019 (`tinta`) e papel branco. Atrasos usam o marca-texto lavanda.
-- **Barra lateral** grafite com as telas e, no Dia, o filtro por categoria (o estado continua na URL). Na Semana ela recolhe para só os ícones.
+- **Barra lateral** grafite com as telas. (Ajuste posterior de 01/11/2026: o filtro por categoria saiu e ela só recolhe quando o usuário manda, pelo botão ou Ctrl+B.)
 - **Folha**: Dia, Semana, Mês e Ano ficam numa folha branca com um traço grafite sob o cabeçalho; as telas de lista (Procedimentos, Notas, Categorias, Backup) têm o mesmo traço no cabeçalho.
 - **Card de grupo** vira uma ficha presa na folha: borda de cima na cor da categoria, sombra lavanda deslocada e barra de progresso violeta. Substitui a faixa lateral descrita em "Grupos de tarefas › Interface".
 - **Tarefa solta**: bolinha de cor junto do nome da categoria (no Mês, os chips mantêm a faixa à esquerda).
