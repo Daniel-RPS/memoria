@@ -137,10 +137,7 @@ describe('Grupos na visão do dia', () => {
     expect(await screen.findByText('Ficaram 2 tarefas pendentes ontem.')).toBeInTheDocument()
     await usuario.click(screen.getByRole('button', { name: 'Trazer para hoje' }))
 
-    // Transação de mover + copiar e o aviso: com a suíte em paralelo passa de 1 s.
-    expect(
-      await screen.findByText('1 tarefa movida e 1 item levado para hoje', {}, { timeout: 3000 }),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('1 tarefa movida e 1 item levado para hoje')).toBeInTheDocument()
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
     // Card e itens vêm de consultas diferentes: o item pode desenhar depois do card.
     expect(

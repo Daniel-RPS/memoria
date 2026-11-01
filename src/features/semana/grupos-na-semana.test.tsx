@@ -66,10 +66,7 @@ describe('Grupos nas visões de semana, mês e ano', () => {
       await screen.findByRole('menuitem', { name: 'Levar pendentes para amanhã' }),
     )
 
-    // A transação lê as séries e cadeias envolvidas: com a suíte em paralelo, passa de 1 s.
-    expect(
-      await screen.findByText('2 itens levados para o dia seguinte', {}, { timeout: 5000 }),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('2 itens levados para o dia seguinte')).toBeInTheDocument()
     await waitFor(async () => expect(await db.groupCards.count()).toBe(2))
 
     await usuario.keyboard('{Control>}z{/Control}')

@@ -1,8 +1,12 @@
 import { Blob as BlobDoNode, File as FileDoNode } from 'node:buffer'
 import 'fake-indexeddb/auto'
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
+
+// findBy/waitFor esperam 1 s por padrão: com a suíte em paralelo (ou a máquina ocupada), telas
+// inteiras com IndexedDB passam disso e o teste falha sem defeito nenhum. Vale para todos.
+configure({ asyncUtilTimeout: 5000 })
 
 // Sem `globals: true` no Vitest, a limpeza automática do Testing Library não é registrada.
 afterEach(cleanup)

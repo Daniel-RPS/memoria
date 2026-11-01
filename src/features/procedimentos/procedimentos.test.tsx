@@ -150,16 +150,13 @@ describe('Procedimentos', () => {
       'Jardim{Enter}',
     )
 
-    await waitFor(
-      async () => {
-        const [jardim] = await db.subcategories.toArray()
-        expect(await db.procedures.get(procedimento.id)).toMatchObject({
-          categoryId: casa.id,
-          subcategoryId: jardim?.id,
-        })
-      },
-      { timeout: 3000 },
-    )
+    await waitFor(async () => {
+      const [jardim] = await db.subcategories.toArray()
+      expect(await db.procedures.get(procedimento.id)).toMatchObject({
+        categoryId: casa.id,
+        subcategoryId: jardim?.id,
+      })
+    })
     expect(screen.getByRole('button', { name: 'Categoria' })).toHaveTextContent('Casa › Jardim')
   })
 

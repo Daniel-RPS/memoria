@@ -27,5 +27,8 @@ export default defineConfig({
     env: { TZ: 'America/Sao_Paulo' },
     // Telas inteiras com digitação passam de 5 s quando a suíte roda em paralelo.
     testTimeout: 15_000,
+    // Cada arquivo de tela sobe um jsdom inteiro: com um worker por núcleo eles disputam a CPU
+    // e esperas que levam 1 s viram 5 s. Metade dos núcleos deixa a suíte estável.
+    maxWorkers: '50%',
   },
 })

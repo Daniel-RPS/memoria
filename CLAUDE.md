@@ -149,6 +149,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 
 - IMPORTANTE: datas são data local `YYYY-MM-DD` (America/Sao_Paulo); NUNCA use `new Date("YYYY-MM-DD")` nem `toISOString()` para dia — geram UTC e deslocam um dia. Use `src/lib/datas.ts`
 - Testes rodam com `TZ=America/Sao_Paulo` (definido em `vite.config.ts`); sem `globals`, importe `describe/it/expect` de `vitest`
+- Testes de tela: `findBy`/`waitFor` esperam 5 s (`configure` em `src/test/setup.ts`) e o Vitest usa metade dos núcleos (`maxWorkers`); NÃO passe `timeout` menor num teste (encurta a espera e volta a falhar com a máquina ocupada)
 - Teste de tela: `renderizarApp(caminho)` (`src/test/`) monta rotas + layout reais (avisos incluídos)
 - date-fns 4 pt-BR: `EEE` = "quarta" e `MMM` = "out", sem ponto — confira antes de testar textos de data
 - Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro`, `lib/mover-grupos` e no repositório, e o gesto no Playwright (`e2e/`)
