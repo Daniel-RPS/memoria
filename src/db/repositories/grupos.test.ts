@@ -3,6 +3,7 @@ import Dexie from 'dexie'
 import { db, MemoriaDatabase } from '@/db/database'
 import { exportarDados, importarDados, versaoDoBanco } from '@/db/repositories/backup-repository'
 import {
+  adiarSelecao,
   colocarNoGrupo,
   contarPendenciasDeOntem,
   copiarGrupos,
@@ -63,7 +64,7 @@ describe('grupos: arrastar o card duplica', () => {
     const { card, comida } = await criarCasaDoExemplo()
 
     const resultado = await copiarGrupos([card.id], DIA_31)
-    expect(resultado.itensCopiados).toBe(1)
+    expect(resultado.itensLevados).toBe(1)
 
     // Dia 30: o card permanece, com "Fazer comida" transferido (não riscado, não pendente).
     expect(await cardsDoDia(DIA_30)).toEqual([
@@ -121,7 +122,7 @@ describe('grupos: arrastar o card duplica', () => {
 
     const resultado = await copiarGrupos([card.id], DIA_31)
 
-    expect(resultado.itensCopiados).toBe(0)
+    expect(resultado.itensLevados).toBe(0)
     expect(await db.groupCards.count()).toBe(1)
     expect(await cardsDoDia(DIA_30)).toEqual([{ titulo: 'Casa', itens: ['[x] Varrer'] }])
   })
@@ -204,7 +205,7 @@ describe('grupos: arrastar o card duplica', () => {
     expect(await contarPendenciasDeOntem(DIA_30)).toBe(2)
     const resultado = await trazerPendenciasDeOntem(DIA_30)
 
-    expect(resultado).toMatchObject({ tarefasMovidas: 1, itensCopiados: 1 })
+    expect(resultado).toMatchObject({ tarefasMovidas: 1, itensLevados: 1 })
     expect((await db.tasks.get(solta.id))?.data).toBe(DIA_30)
     expect(await cardsDoDia(DIA_30)).toEqual([
       { titulo: 'Casa', itens: ['[ ] Lavar roupa', '[ ] Fazer comida'] },
@@ -220,7 +221,7 @@ describe('grupos: arrastar o card duplica', () => {
 
     const resultado = await moverSelecao({ tarefas: [solta.id], grupos: [card.id] }, DIA_31)
 
-    expect(resultado).toMatchObject({ tarefasMovidas: 1, itensCopiados: 1 })
+    expect(resultado).toMatchObject({ tarefasMovidas: 1, itensLevados: 1 })
     expect(await db.groupCards.count()).toBe(2)
   })
 
@@ -308,6 +309,186 @@ describe('migração do modelo anterior (banco v3)', () => {
       status: 'concluido',
     })
     expect((await novo.tasks.toArray()).map((item) => item.id)).toEqual(['t'])
+    novo.close()
+    await Dexie.delete(nome)
+  })
+})
+
+const DIA_1 = '2026-11-01'
+const DIA_2 = '2026-11-02'
+const DIA_3 = '2026-11-03'
+
+/** Dias com card, para conferir que nenhum card fantasma ficou. */
+async function diasComCard() {
+  return (await db.groupCards.orderBy('data').toArray()).map((card) => card.data)
+}
+
+/** O item pendente do card do dia (a cópia que foi para lá). */
+async function pendenteDoDia(data: string, titulo: string) {
+  const card = (await db.groupCards.where('data').equals(data).first())!
+  return (await db.groupItems.where('cardId').equals(card.id).toArray()).find(
+    (item) => item.titulo === titulo && item.status === 'pendente',
+  )!
+}
+
+/** Tudo que há nas tabelas de grupos e tarefas, para comparar antes e depois do Desfazer. */
+async function retrato() {
+  const porId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id)
+  const semMomento = <T extends { id: string }>(lista: T[]) =>
+    lista.map((registro) => ({ ...registro, atualizadoEm: '' })).sort(porId)
+  return {
+    series: semMomento(await db.groupSeries.toArray()),
+    cards: semMomento(await db.groupCards.toArray()),
+    itens: semMomento(await db.groupItems.toArray()),
+    tarefas: semMomento(await db.tasks.toArray()),
+  }
+}
+
+describe('grupos: levar e trazer de volta', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((tabela) => tabela.clear()))
+  })
+
+  async function casaNoDia2() {
+    const card = await criarGrupo({ titulo: 'Casa', data: DIA_2 })
+    const janta = await criarItem(card.id, 'Fazer janta das crianças')
+    const banho = await criarItem(card.id, 'Dar banho')
+    return { card, janta, banho }
+  }
+
+  it('mover o grupo com 2 pendentes: os 2 vão juntos, em ordem, numa operação', async () => {
+    const { card } = await casaNoDia2()
+
+    const resultado = await moverSelecao({ grupos: [card.id] }, DIA_3)
+
+    expect(resultado.itensLevados).toBe(2)
+    expect(resultado.desfazer).toHaveLength(1)
+    expect(await cardsDoDia(DIA_3)).toEqual([
+      { titulo: 'Casa', itens: ['[ ] Fazer janta das crianças', '[ ] Dar banho'] },
+    ])
+    expect(await cardsDoDia(DIA_2)).toEqual([
+      { titulo: 'Casa', itens: ['[→] Fazer janta das crianças', '[→] Dar banho'] },
+    ])
+  })
+
+  it('ida e volta de um item (2 → 3 → 2): nada duplicado e nenhum card fantasma', async () => {
+    const { janta } = await casaNoDia2()
+    await moverSelecao({ itens: [janta.id] }, DIA_3)
+
+    const copia = await pendenteDoDia(DIA_3, janta.titulo)
+    const resultado = await moverSelecao({ itens: [copia.id] }, DIA_2)
+
+    expect(resultado.itensLevados).toBe(1)
+    expect(await cardsDoDia(DIA_2)).toEqual([
+      { titulo: 'Casa', itens: ['[ ] Fazer janta das crianças', '[ ] Dar banho'] },
+    ])
+    expect(await diasComCard()).toEqual([DIA_2])
+    const original = await db.groupItems.get(janta.id)
+    expect(original?.status).toBe('pendente')
+    expect(original?.transferidoParaCardId).toBeUndefined()
+  })
+
+  it('ida e volta do grupo inteiro: mesmo resultado', async () => {
+    const { card } = await casaNoDia2()
+    await moverSelecao({ grupos: [card.id] }, DIA_3)
+    const card3 = (await db.groupCards.where('data').equals(DIA_3).first())!
+
+    await moverSelecao({ grupos: [card3.id] }, DIA_2)
+
+    expect(await cardsDoDia(DIA_2)).toEqual([
+      { titulo: 'Casa', itens: ['[ ] Fazer janta das crianças', '[ ] Dar banho'] },
+    ])
+    expect(await diasComCard()).toEqual([DIA_2])
+  })
+
+  it('cadeia 30 → 31 → 1 → 2 e volta para 1: reativa no dia 1', async () => {
+    const card = await criarGrupo({ titulo: 'Casa', data: DIA_30 })
+    let atual = await criarItem(card.id, 'Fazer janta')
+    for (const dia of [DIA_31, DIA_1, DIA_2]) {
+      await moverSelecao({ itens: [atual.id] }, dia)
+      atual = await pendenteDoDia(dia, 'Fazer janta')
+    }
+
+    await moverSelecao({ itens: [atual.id] }, DIA_1)
+
+    expect(await cardsDoDia(DIA_1)).toEqual([{ titulo: 'Casa', itens: ['[ ] Fazer janta'] }])
+    expect(await cardsDoDia(DIA_31)).toEqual([{ titulo: 'Casa', itens: ['[→] Fazer janta'] }])
+    expect(await cardsDoDia(DIA_30)).toEqual([{ titulo: 'Casa', itens: ['[→] Fazer janta'] }])
+    expect(await diasComCard()).toEqual([DIA_30, DIA_31, DIA_1])
+    expect(await db.groupItems.count()).toBe(3)
+  })
+
+  it('card criado à mão que fica vazio não é apagado', async () => {
+    const { janta } = await casaNoDia2()
+    await criarGrupo({ titulo: 'Casa', data: DIA_3 })
+    await moverSelecao({ itens: [janta.id] }, DIA_3)
+
+    await moverSelecao({ itens: [(await pendenteDoDia(DIA_3, janta.titulo)).id] }, DIA_2)
+
+    expect(await cardsDoDia(DIA_3)).toEqual([{ titulo: 'Casa', itens: [] }])
+    expect(await diasComCard()).toEqual([DIA_2, DIA_3])
+  })
+
+  it('Desfazer restaura exatamente o estado anterior (ida e volta)', async () => {
+    const { card } = await casaNoDia2()
+    const solta = await criarTarefa({ titulo: 'Pagar conta', data: DIA_2 })
+    const inicial = await retrato()
+
+    const ida = await moverSelecao({ tarefas: [solta.id], grupos: [card.id] }, DIA_3)
+    const depoisDaIda = await retrato()
+    const card3 = (await db.groupCards.where('data').equals(DIA_3).first())!
+    const volta = await moverSelecao({ grupos: [card3.id] }, DIA_2)
+
+    await desfazerAcao(volta)
+    expect(await retrato()).toEqual(depoisDaIda)
+    await desfazerAcao(ida)
+    expect(await retrato()).toEqual(inicial)
+  })
+
+  it('Desfazer o adiar de cards em dias diferentes', async () => {
+    const card30 = await criarGrupo({ titulo: 'Casa', data: DIA_30 })
+    await criarItem(card30.id, 'Varrer')
+    const card2 = await criarGrupo({ titulo: 'Casa', data: DIA_2 })
+    await criarItem(card2.id, 'Lavar')
+    const inicial = await retrato()
+
+    const resultado = await adiarSelecao({ grupos: [card30.id, card2.id] }, DIA_31)
+    expect(resultado.itensLevados).toBe(2)
+    await desfazerAcao(resultado)
+
+    expect(await retrato()).toEqual(inicial)
+  })
+})
+
+describe('migração para o banco v6', () => {
+  it('card que só tem cópias de outro dia fica marcado como criado por transferência', async () => {
+    const nome = 'migracao-v6'
+    const v5 = new Dexie(nome)
+    v5.version(5).stores({
+      groupSeries: 'id, titulo, categoryId',
+      groupCards: 'id, seriesId, data, [seriesId+data]',
+      groupItems: 'id, cardId, status, origemItemId',
+    })
+    const base = { criadoEm: '', atualizadoEm: '' }
+    const card = { seriesId: 's', ordem: 1, arquivado: false, ...base }
+    await v5.table('groupCards').bulkAdd([
+      { id: 'manual', data: DIA_30, ...card },
+      { id: 'copia', data: DIA_31, ...card },
+      { id: 'vazio', data: DIA_1, ...card },
+    ])
+    const item = { ordem: 1, dataOriginal: DIA_30, ...base }
+    await v5.table('groupItems').bulkAdd([
+      { id: 'a', cardId: 'manual', titulo: 'A', status: 'transferido', ...item },
+      { id: 'b', cardId: 'copia', titulo: 'A', status: 'pendente', origemItemId: 'a', ...item },
+    ])
+    v5.close()
+
+    const novo = new MemoriaDatabase(nome)
+    await novo.open()
+
+    expect((await novo.groupCards.get('manual'))?.criadoPorTransferencia).toBe(false)
+    expect((await novo.groupCards.get('copia'))?.criadoPorTransferencia).toBe(true)
+    expect((await novo.groupCards.get('vazio'))?.criadoPorTransferencia).toBe(false)
     novo.close()
     await Dexie.delete(nome)
   })

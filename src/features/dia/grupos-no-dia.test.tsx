@@ -62,12 +62,12 @@ describe('Grupos na visão do dia', () => {
     renderizarApp(`/dia/${HOJE}`)
 
     await usuario.click(await screen.findByRole('button', { name: 'Mais ações para o grupo Casa' }))
-    await usuario.click(await screen.findByRole('menuitem', { name: 'Mover para outro dia…' }))
-    const dialogo = await screen.findByRole('dialog', { name: 'Mover “Casa” para outro dia' })
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Levar pendentes para…' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Levar pendentes de “Casa”' })
     await usuario.click(within(dialogo).getByRole('button', { name: 'Amanhã' }))
 
     await waitFor(async () => expect(await db.groupCards.count()).toBe(2))
-    expect(await screen.findByText('1 item copiado para amanhã')).toBeInTheDocument()
+    expect(await screen.findByText('1 item levado para amanhã')).toBeInTheDocument()
     const card = screen.getByRole('region', { name: 'Grupo Casa' })
     const transferido = await within(card).findByRole('link', {
       name: `transferido para ${diaCurto(AMANHA)}`,
@@ -93,11 +93,10 @@ describe('Grupos na visão do dia', () => {
     renderizarApp(`/dia/${HOJE}`)
 
     await usuario.click(await screen.findByRole('button', { name: 'Mais ações para o grupo Casa' }))
-    expect(await screen.findByRole('menuitem', { name: 'Adiar para amanhã' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('menuitem', { name: 'Mover para outro dia…' })).toHaveAttribute(
+    expect(
+      await screen.findByRole('menuitem', { name: 'Levar pendentes para amanhã' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('menuitem', { name: 'Levar pendentes para…' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -138,9 +137,7 @@ describe('Grupos na visão do dia', () => {
     expect(await screen.findByText('Ficaram 2 tarefas pendentes ontem.')).toBeInTheDocument()
     await usuario.click(screen.getByRole('button', { name: 'Trazer para hoje' }))
 
-    expect(
-      await screen.findByText('1 tarefa movida e 1 item copiado para hoje'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('1 tarefa movida e 1 item levado para hoje')).toBeInTheDocument()
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
     expect(
       within(card).getByRole('checkbox', { name: 'Concluir Fazer comida' }),
@@ -186,5 +183,18 @@ describe('Grupos na visão do dia', () => {
 
     expect(await screen.findByRole('region', { name: 'Grupo Casa' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Grupo Trabalho' })).not.toBeInTheDocument()
+  })
+
+  it('selecionando, clicar no cabeçalho marca o card inteiro', async () => {
+    const usuario = userEvent.setup()
+    await criarCasaDoExemplo()
+    renderizarApp(`/dia/${HOJE}`)
+
+    await usuario.click(await screen.findByRole('button', { name: 'Selecionar' }))
+    await usuario.click(screen.getByRole('button', { name: 'Casa' }))
+
+    expect(screen.getByRole('checkbox', { name: 'Selecionar grupo Casa' })).toBeChecked()
+    await usuario.click(screen.getByRole('button', { name: 'Casa' }))
+    expect(screen.getByRole('checkbox', { name: 'Selecionar grupo Casa' })).not.toBeChecked()
   })
 })

@@ -72,7 +72,16 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
         className={cn('absolute inset-y-0 left-0 w-1.5', isEncerrado && 'opacity-40')}
         style={{ backgroundColor: cor }}
       />
-      <div className="group/cabecalho relative flex min-h-12 items-center gap-1 pr-2 pl-1">
+      {/* Selecionando, o título e o fundo do cabeçalho marcam o card (todos os pendentes). */}
+      <div
+        onClick={(evento) => {
+          if (isSelecionavel && evento.target === evento.currentTarget) alternar(card.id)
+        }}
+        className={cn(
+          'group/cabecalho relative flex min-h-12 items-center gap-1 pr-2 pl-1',
+          isSelecionavel && 'cursor-pointer',
+        )}
+      >
         <span className="flex w-5 shrink-0 justify-center">{!isSelecionavel && alca}</span>
         {isSelecionavel ? (
           <Checkbox
@@ -103,12 +112,13 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
           <TituloEditavel
             titulo={serie.titulo}
             isEditando={isEditando}
-            onIniciarEdicao={() => setIsEditando(true)}
+            onIniciarEdicao={() => (isSelecionavel ? alternar(card.id) : setIsEditando(true))}
             onSalvar={(titulo) => void handleSalvarTitulo(titulo)}
             onCancelar={() => setIsEditando(false)}
             className={cn(
               'text-lg leading-tight font-extrabold tracking-[-0.01em] [font-stretch:85%]',
               isEncerrado && 'text-grafite',
+              isSelecionavel && 'cursor-pointer',
             )}
           />
           {!isEditando && total > 0 && (

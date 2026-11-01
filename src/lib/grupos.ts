@@ -81,9 +81,19 @@ export function diaCurto(data: DataLocal) {
   return format(deDataLocal(data), 'dd/MM')
 }
 
-/** "Copiar 1 item pendente para 31/10" (prévia do arrastar). */
-export function textoCopia(quantidade: number, destino: DataLocal) {
-  return `Copiar ${plural(quantidade, 'item pendente', 'itens pendentes')} para ${diaCurto(destino)}`
+/**
+ * Prévia do arrastar para outro dia: "Casa · 2 pendentes → 03/11" (card) ou
+ * "Fazer janta → 03/11" (item sozinho, sem `pendentes`).
+ */
+export function textoPreviaLevar(titulo: string, destino: DataLocal, pendentes?: number) {
+  const quantidade =
+    pendentes === undefined ? '' : ` · ${plural(pendentes, 'pendente', 'pendentes')}`
+  return `${titulo}${quantidade} → ${diaCurto(destino)}`
+}
+
+/** Ação de levar os pendentes um dia adiante (mesma regra de `destinoDoAdiamento`). */
+export function rotuloLevarAdiante(dataDoCard: DataLocal, hoje: DataLocal) {
+  return dataDoCard > hoje ? 'Levar pendentes para o dia seguinte' : 'Levar pendentes para amanhã'
 }
 
 /** Monta os cards (não arquivados, com série) com os itens ordenados. */

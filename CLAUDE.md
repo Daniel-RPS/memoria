@@ -9,7 +9,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - React Router 8.5 · Formulários: React Hook Form 7.91 + Zod 4.6
 - Dados: Dexie 4.4 + dexie-react-hooks (`useLiveQuery`) — IndexedDB, blobs para foto, desenho, áudio
 - Arrastar e soltar: @dnd-kit/core 6.3 + sortable 10 · Datas: date-fns 4.4 + locale `pt-BR`
-- Testes: Vitest 5 + Testing Library + fake-indexeddb · Lint: oxlint · Formatação: Prettier
+- Testes: Vitest 5 + Testing Library + fake-indexeddb · E2E: Playwright (`e2e/`) · Lint: oxlint · Formatação: Prettier
 - IMPORTANTE: só computador, uso pessoal, sem servidor nem banco externo (decidido em 30/10/2026). Celular, sync e compartilhamento estão FORA do escopo — não proponha sem o usuário pedir
 
 ## Comandos
@@ -17,6 +17,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `npm run dev` — app em `http://localhost:5173` (porta FIXA, `strictPort`: os dados ficam presos à origem)
 - `npm run build` — build de produção (`tsc -b` + Vite)
 - `npm test` — todos os testes · `npx vitest run <arquivo>` — um arquivo
+- `npm run e2e` — Playwright no navegador (sobe o Vite na porta 5190; capturas em `e2e/capturas/`, conferir ao mexer em arrasto)
 - `npm run lint` — oxlint · `npm run format` — Prettier
 - `npx shadcn@latest add <componente>` — adicionar componente shadcn
 
@@ -33,12 +34,13 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
 - Excluir categoria NUNCA apaga tarefas: só limpa `categoryId`/`subcategoryId`
 - IMPORTANTE: mover tarefa SOLTA = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
-- Ações de mover na UI passam por `useMoverTarefas` → `moverSelecao`/`adiarSelecao`/`trazerPendenciasDeOntem` (`group-repository`); aviso com "Desfazer" via `desfazerAcao`
+- Ações de mover na UI passam por `useMoverTarefas` → `moverSelecao`/`adiarSelecao`/`trazerPendenciasDeOntem` (`group-repository`); aviso com "Desfazer" via `desfazerAcao`; Ctrl+Z (`useAtalhoDesfazer` no `LayoutApp`) desfaz a última enquanto o aviso está na tela
 - Semana começa na segunda (`PRIMEIRO_DIA_DA_SEMANA` em `src/lib/semana.ts`); colunas do quadro em `src/lib/quadro.ts`
 - Grade de mês/ano e resumo por dia em `src/lib/calendario.ts`; período via `useTarefasDoPeriodo`
 - Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
 - Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
-- Banco Dexie na versão 5 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`); mudar índice = nova `version()`
+- Card da semana: o card inteiro arrasta o grupo (ponteiro); o cabeçalho é o ativador (foco/espaço). Área com `data-sem-arrasto` (itens, botão →) não arrasta o card; item só pela alça ⋮⋮ (`setActivatorNodeRef`). NÃO use `stopPropagation` no `onKeyDown`: bloqueia o Ctrl+Z global
+- Banco Dexie na versão 6 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`; v6: marca `criadoPorTransferencia`); mudar índice = nova `version()`
 - IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
 - Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
 - Anexo pertence ao `dono` {tipo, id} (tarefa, nota, procedimento, passo); `Step.anexos` não é usado — a fonte é `attachments`
@@ -50,7 +52,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
 - Grupos: `db/repositories/group-repository.ts` (cards, itens, copiar, desfazer, converter) e regras puras em `src/lib/grupos.ts`
 - IMPORTANTE: grupo NÃO é tarefa nem categoria. Itens são `GroupItem` (tabela própria); tarefas são só as soltas
-- IMPORTANTE: levar card/item a outro dia = COPIAR (`copiarItens`, uma transação): acha ou cria o card da MESMA série no destino, cria cópias pendentes (`origemItemId`, mesma `dataOriginal`) e marca os originais `transferido` (`transferidoParaCardId`). O card original NUNCA sai do lugar
+- IMPORTANTE: TODA regra de levar itens de grupo está em `src/lib/mover-grupos.ts` (`planejarLevarItens`, puro: estado → mudanças; `inverterMudancas` para o Desfazer). O repositório (`copiarItens`) só carrega o estado, grava numa transação e guarda o inverso em `ResultadoAcao.desfazer`. Nada de regra de movimentação em componente
+- Levar = copiar para o card da MESMA série no destino (cópia pendente com `origemItemId` e mesma `dataOriginal`; original `transferido` com `transferidoParaCardId`). O card original NUNCA sai do lugar
+- IMPORTANTE: se a cadeia `origemItemId` do item tem um ancestral `transferido` num card do destino, é VOLTA: reativa o ancestral e apaga a cópia (e as paradas do meio). Card com `criadoPorTransferencia` que perdeu itens e ficou sem pendente/feito é apagado; card criado à mão nunca
 - `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupCard.ordem`, `tabelaDoDia`); `ordem` de item é a posição dentro do card
 - Colocar tarefa no grupo / tirar item = conversão com o MESMO id (`colocarNoGrupo`/`tirarDoGrupo`); subtarefas, anotação e anexos da tarefa não passam para o item
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
@@ -63,7 +67,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Category { id, nome, cor } · Subcategory { id, categoryId, nome, cor? } (sem cor = variação da cor da categoria)
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
 - GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — liga os cards de dias diferentes; categoria só dá cor e filtro
-- GroupCard { id, seriesId, data, ordem, arquivado } — no máximo um por série e dia; encerrado é calculado (tem itens e nenhum pendente)
+- GroupCard { id, seriesId, data, ordem, arquivado, criadoPorTransferencia? } — no máximo um por série e dia; encerrado é calculado (tem itens e nenhum pendente)
 - GroupItem { id, cardId, titulo, ordem, status: pendente|concluido|transferido|arquivado, concluidoEm?, transferidoParaCardId?, origemItemId?, dataOriginal }
 - Subtask { id, taskId, titulo, concluida, ordem }
 - Procedure { id, titulo, categoryId?, descricao, secoes[] (cada uma com passos[] embutidos), camposVariaveis[], versao }
@@ -80,7 +84,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Dias pendentes = hoje − `dataOriginal`, exibido em toda pendente com `dataOriginal` < hoje; mover/adiar NÃO zera
 - Ações: trazer pendências de ontem para hoje, adiar para amanhã, mover para outro dia, mover várias selecionadas
 - Arquivar = tirar do calendário sem concluir
-- Card vive num dia. Arrastar/adiar/mover/trazer de ontem DUPLICA: o original fica (registro do dia) e só os PENDENTES vão para o card da série no destino (mescla se existir)
+- Card vive num dia. Arrastar/adiar/mover/trazer de ontem DUPLICA: o original fica (registro do dia) e só os PENDENTES vão juntos, em ordem e numa operação, para o card da série no destino (mescla se existir). Levar de volta a um dia onde o item está transferido DESFAZ a transferência (não duplica)
 - Sempre igual, para ser previsível: nada marcado = tudo vira transferido e a cópia leva tudo; tudo marcado (ou card vazio) = nada a copiar, ação bloqueada
 - Transferido: cinza, sem riscar, sem caixa, não conta como pendente nem feito; etiqueta "transferido para dd/MM" leva ao card de destino. Desmarcar no original não mexe na cópia
 - Progresso: ativo "3/4"; encerrado "3 feitos · 1 transferido". Mês/ano contam itens pendentes e feitos (transferidos não)
@@ -129,6 +133,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são ajustes pedidos pelo usuário.
 
 - Ajuste 30/10/2026: grupos de tarefas (cards por dia em séries; levar a outro dia duplica o card com os pendentes) — detalhes em `docs/proposta-inicial.md`
+- Ajuste 31/10/2026: arrastar o card leva o grupo inteiro (item só pela alça), menu → "Levar pendentes", volta desfaz a transferência sem card fantasma, Ctrl+Z
 
 ## Armadilhas
 
@@ -136,7 +141,8 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Testes rodam com `TZ=America/Sao_Paulo` (definido em `vite.config.ts`); sem `globals`, importe `describe/it/expect` de `vitest`
 - Teste de tela: `renderizarApp(caminho)` (`src/test/`) monta rotas + layout reais (avisos incluídos)
 - date-fns 4 pt-BR: `EEE` = "quarta" e `MMM` = "out", sem ponto — confira antes de testar textos de data
-- Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro` e no repositório
+- Arrastar não é testável no jsdom (sem posições): cubra a lógica em `lib/quadro`, `lib/mover-grupos` e no repositório, e o gesto no Playwright (`e2e/`)
+- E2E semeia dados importando os módulos do app pelo Vite (`await import('/src/db/...')` no `page.evaluate`) e fixa a data com `page.clock.setFixedTime`
 - Teste que navega: espere um elemento da página nova (o endereço muda antes da tela desenhar)
 - A área de avisos do Sonner é uma `region` ("Notifications"): filtre por nome ao contar regiões
 - Nos testes, `Blob`/`File` são os do Node e `URL.createObjectURL` é fixo (`src/test/setup.ts`): o Blob do jsdom vira objeto vazio no fake-indexeddb

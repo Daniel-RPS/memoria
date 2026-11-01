@@ -16,7 +16,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { reordenarTarefa, soltarTarefaNoDia } from '@/db/repositories/task-repository'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
-import { idDaEntrada, pendentesDo, textoCopia, type GrupoDoDia } from '@/lib/grupos'
+import { idDaEntrada, pendentesDo, textoPreviaLevar, type GrupoDoDia } from '@/lib/grupos'
 import { nomeDoDia } from '@/lib/mover'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
 import { CartaoGrupo } from '@/features/semana/components/cartao-grupo'
@@ -35,7 +35,7 @@ const DISTANCIA_PARA_ARRASTAR = 4
 
 const instrucoesLeitorDeTela = {
   draggable:
-    'Para mover, pressione espaço. Use as setas para trocar de posição ou de dia e espaço de novo para soltar. Esc cancela. Grupos são copiados: só os itens pendentes vão para o outro dia.',
+    'Para mover, pressione espaço. Use as setas para trocar de posição ou de dia e espaço de novo para soltar. Esc cancela. Grupos ficam no dia: só os itens pendentes vão para o outro dia.',
 }
 
 function colunasDe(semana: DiaDaSemana[]): Colunas {
@@ -44,8 +44,8 @@ function colunasDe(semana: DiaDaSemana[]): Colunas {
 
 /**
  * Sete colunas. Tarefa solta arrastada para outro dia é MOVIDA. Card arrastado para outro dia
- * é COPIADO: fica onde está e os itens pendentes vão para o card da mesma série no destino.
- * Um item arrastado sozinho também é copiado.
+ * fica onde está e os itens pendentes vão juntos para o card da mesma série no destino (ou
+ * voltam ao card de onde vieram). Um item arrastado pela alça vai sozinho.
  */
 export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemanaProps) {
   const { mover } = useMoverTarefas()
@@ -94,11 +94,13 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     return id.startsWith(PREFIXO_COLUNA) ? id.slice(PREFIXO_COLUNA.length) : colunaDe(colunas, id)
   }
 
-  /** Quantos itens iriam se o que está sendo arrastado fosse solto em outro dia. */
-  function itensACopiar(id: string) {
-    if (itemPorId.has(id)) return 1
+  /** "Casa · 2 pendentes → 03/11" ou "Fazer janta → 03/11"; vazio se nada iria. */
+  function previaDoLevar(id: string, destino: DataLocal) {
+    const item = itemPorId.get(id)
+    if (item) return textoPreviaLevar(item.item.titulo, destino)
     const grupo = grupoPorId.get(id)
-    return grupo ? pendentesDo(grupo).length : 0
+    const pendentes = grupo ? pendentesDo(grupo).length : 0
+    return grupo && pendentes > 0 ? textoPreviaLevar(grupo.serie.titulo, destino, pendentes) : ''
   }
 
   const anuncios: Announcements = {
@@ -107,7 +109,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       const dia = over ? colunaDoAlvo(String(over.id)) : undefined
       if (!dia) return ''
       const id = String(active.id)
-      if (itensACopiar(id) > 0 && dia !== origem) return `${textoCopia(itensACopiar(id), dia)}.`
+      if (dia !== origem && previaDoLevar(id, dia)) return `${previaDoLevar(id, dia)}.`
       return `${tituloDe(id)} sobre ${nomeDoDia(dia, hoje)}.`
     },
     onDragEnd: ({ active, over }) => {
@@ -183,7 +185,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   const tarefaAtiva = idAtivo ? tarefaPorId.get(idAtivo) : undefined
   const grupoAtivo = idAtivo ? grupoPorId.get(idAtivo) : undefined
   const itemAtivo = idAtivo ? itemPorId.get(idAtivo) : undefined
-  const isCopiando = idAtivo !== null && !tarefaAtiva && diaSobre !== null && diaSobre !== origem
+  const isLevando = idAtivo !== null && !tarefaAtiva && diaSobre !== null && diaSobre !== origem
 
   return (
     <DndContext
@@ -224,9 +226,9 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
             {itemAtivo.item.titulo}
           </div>
         )}
-        {isCopiando && idAtivo && (
+        {isLevando && idAtivo && (
           <p className="mt-1.5 w-max max-w-64 rounded-sm bg-tinta px-2 py-1 text-xs font-semibold text-papel shadow-md">
-            {textoCopia(itensACopiar(idAtivo), diaSobre)}
+            {previaDoLevar(idAtivo, diaSobre)}
           </p>
         )}
       </DragOverlay>

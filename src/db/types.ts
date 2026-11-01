@@ -56,6 +56,11 @@ export interface GroupCard extends EntidadeBase {
   ordem: number
   /** Fora do calendário. */
   arquivado: boolean
+  /**
+   * Nasceu para receber itens levados de outro dia. Se perder esses itens (a transferência
+   * foi desfeita) e ficar sem pendente nem feito, é apagado sozinho. Card criado à mão, não.
+   */
+  criadoPorTransferencia?: boolean
 }
 
 /** `transferido`: copiado para o card de outro dia; fica no original como registro. */

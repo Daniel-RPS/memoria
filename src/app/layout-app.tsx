@@ -1,6 +1,7 @@
 import { Link, Outlet, useMatch } from 'react-router'
 import { cn } from 'cn'
 import { Toaster } from '@/components/ui/sonner'
+import { useAtalhoDesfazer } from '@/hooks/use-mover-tarefas'
 import { hoje } from '@/lib/datas'
 
 interface LinkTelaProps {
@@ -27,6 +28,7 @@ function LinkTela({ para, isAtiva, children }: LinkTelaProps) {
 
 /** Moldura comum: nome do app e navegação entre as telas. */
 export function LayoutApp() {
+  useAtalhoDesfazer()
   const rotaDia = useMatch('/dia/:data')
   const rotaSemana = useMatch('/semana/:data')
   const rotaMes = useMatch('/mes/:data')

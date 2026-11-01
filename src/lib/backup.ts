@@ -43,6 +43,8 @@ const cardDeGrupo = z.object({
   data: dataLocal,
   ordem: z.number(),
   arquivado: z.boolean(),
+  // Banco v6; backups anteriores não têm.
+  criadoPorTransferencia: z.boolean().optional(),
 })
 
 const itemDeGrupo = z.object({

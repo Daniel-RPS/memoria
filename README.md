@@ -45,8 +45,13 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Na cópia, o item mostra "pendente desde 30/10"
 - ✅ Cards com o mesmo nome são a mesma **série**: se o destino já tem o card, os itens entram nele
 - ✅ Card com tudo marcado não pode ser levado; card sem nada marcado leva tudo (o original fica)
-- ✅ Arrastar um item sozinho, colocar uma tarefa solta no grupo e tirar um item do grupo
-- ✅ Adiar, mover para outro dia, seleção múltipla e trazer pendências de ontem também duplicam os cards
+- ✅ Na Semana, arrastar o card (cabeçalho ou qualquer área fora dos itens) leva **todos os pendentes juntos**; a alça ⋮⋮ de um item leva só aquele item
+- ✅ Enquanto arrasta, a prévia mostra "Casa · 2 pendentes → 03/11"
+- ✅ Botão → no card da Semana (e menu ⋯ no Dia): "Levar pendentes para amanhã" e "Levar pendentes para…"
+- ✅ Levar de volta para um dia onde o item ficou como transferido **desfaz a transferência**: o item de lá volta a pendente, sem duplicata; o card que nasceu da transferência e ficou sem itens some sozinho (card criado por você nunca some sozinho)
+- ✅ Toda movimentação mostra "2 itens levados para amanhã · Desfazer"; **Ctrl+Z** faz o mesmo enquanto o aviso está na tela
+- ✅ Colocar uma tarefa solta no grupo e tirar um item do grupo
+- ✅ Adiar, mover para outro dia, seleção múltipla e trazer pendências de ontem seguem a mesma regra; no modo Selecionar, clicar no cabeçalho do card marca o card inteiro
 - ✅ Arquivar um item ou o card inteiro
 
 ### Procedimentos
@@ -72,17 +77,18 @@ Legenda: ✅ pronto · 🔜 planejado
 
 ## Stack
 
-| Área              | Tecnologia                       |
-| ----------------- | -------------------------------- |
-| Interface         | React 19 + TypeScript 7 + Vite 8 |
-| Estilo            | Tailwind CSS 4 + shadcn/ui       |
-| Rotas             | React Router 8                   |
-| Formulários       | React Hook Form + Zod            |
-| Dados locais      | IndexedDB com Dexie 4            |
-| Arrastar e soltar | dnd-kit                          |
-| Datas             | date-fns 4 (pt-BR)               |
-| Testes            | Vitest + Testing Library         |
-| Qualidade         | oxlint + Prettier                |
+| Área                | Tecnologia                       |
+| ------------------- | -------------------------------- |
+| Interface           | React 19 + TypeScript 7 + Vite 8 |
+| Estilo              | Tailwind CSS 4 + shadcn/ui       |
+| Rotas               | React Router 8                   |
+| Formulários         | React Hook Form + Zod            |
+| Dados locais        | IndexedDB com Dexie 4            |
+| Arrastar e soltar   | dnd-kit                          |
+| Datas               | date-fns 4 (pt-BR)               |
+| Testes              | Vitest + Testing Library         |
+| Testes no navegador | Playwright                       |
+| Qualidade           | oxlint + Prettier                |
 
 Não há servidor nem banco externo: o app roda inteiro no navegador.
 
@@ -113,9 +119,11 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Na visão do dia, os botões de categoria filtram as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
 - Mover uma tarefa só muda o dia dela: nada é copiado ou apagado, e a contagem "pendente há N dias" continua contando desde o dia em que foi criada.
 - No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
-- Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje** (tarefas soltas vêm; itens de grupo são copiados).
+- Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje** (tarefas soltas vêm; itens de grupo são levados).
 - **+ Novo grupo**, ao lado de **Nova tarefa**, cria um card. Escreva os itens em **Adicionar item**.
-- Arrastar um card para outro dia (na Semana ou no Mês), ou usar **Adiar** e **Mover para outro dia…** no menu **⋯** do card, **copia** os itens pendentes para o card desse grupo no outro dia. O card original fica onde estava, como registro: os itens levados aparecem como "transferido para 31/10". Enquanto arrasta, o aviso diz quantos itens vão ("Copiar 1 item pendente para 31/10").
+- Arrastar um card para outro dia (na Semana ou no Mês), ou usar **Levar pendentes para amanhã** e **Levar pendentes para…** (botão → do card na Semana, menu **⋯** no Dia), leva **todos** os itens pendentes de uma vez para o card desse grupo no outro dia. O card original fica onde estava, como registro: os itens levados aparecem como "transferido para 03/11". Enquanto arrasta, a prévia mostra "Casa · 2 pendentes → 03/11".
+- Na Semana, para levar um item só, arraste pela alça **⋮⋮** que aparece à esquerda dele ao passar o mouse. Apertar no resto do item não arrasta nada.
+- Levou para o dia errado? Arraste de volta: o item volta a ser pendente no card de antes (nada duplicado) e o card que tinha sido criado para recebê-lo some, se ficou vazio. Ou use **Desfazer** no aviso / **Ctrl+Z**.
 - Tarefas soltas continuam sendo **movidas** (não copiadas).
 - Grupos com o mesmo nome são o mesmo grupo em dias diferentes: se o destino já tem o card "Casa", os itens entram nele. Renomear ou trocar a categoria do card vale para todos os dias.
 - Arraste uma tarefa solta para dentro de um card, ou um item para fora (vira tarefa solta). Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**. Subtarefas, anotação e anexos da tarefa não passam para o item.
@@ -136,12 +144,13 @@ Depois, abra no navegador **`http://localhost:5173`**.
 
 Outros comandos:
 
-| Comando          | O que faz                 |
-| ---------------- | ------------------------- |
-| `npm run build`  | Gera a versão de produção |
-| `npm test`       | Roda os testes            |
-| `npm run lint`   | Verifica o código         |
-| `npm run format` | Formata o código          |
+| Comando          | O que faz                                                                 |
+| ---------------- | ------------------------------------------------------------------------- |
+| `npm run build`  | Gera a versão de produção                                                 |
+| `npm test`       | Roda os testes                                                            |
+| `npm run e2e`    | Testes no navegador (Playwright, porta 5190; capturas em `e2e/capturas/`) |
+| `npm run lint`   | Verifica o código                                                         |
+| `npm run format` | Formata o código                                                          |
 
 ## Backup e restauração
 

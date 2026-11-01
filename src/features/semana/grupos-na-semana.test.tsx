@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
 import {
   copiarGrupos,
@@ -46,5 +47,32 @@ describe('Grupos nas visões de semana, mês e ano', () => {
       await screen.findByRole('listitem', { name: /, 1 concluída$|: 1 concluída$/ }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Grupo Casa, 1 pendentes/ })).toBeInTheDocument()
+  })
+
+  it('semana: menu → leva os pendentes para amanhã e Ctrl+Z desfaz', async () => {
+    const usuario = userEvent.setup()
+    const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
+    await criarItem(card.id, 'Fazer comida')
+    await criarItem(card.id, 'Lavar roupa')
+    renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
+
+    // Cada item pendente tem a própria alça; o card inteiro arrasta o grupo.
+    expect(
+      await screen.findByRole('button', { name: /^Arrastar Fazer comida\./ }),
+    ).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Levar pendentes de Casa' }))
+    await usuario.click(
+      await screen.findByRole('menuitem', { name: 'Levar pendentes para amanhã' }),
+    )
+
+    // A transação lê as séries e cadeias envolvidas: com a suíte em paralelo, passa de 1 s.
+    expect(
+      await screen.findByText('2 itens levados para o dia seguinte', {}, { timeout: 5000 }),
+    ).toBeInTheDocument()
+    await waitFor(async () => expect(await db.groupCards.count()).toBe(2))
+
+    await usuario.keyboard('{Control>}z{/Control}')
+    await waitFor(async () => expect(await db.groupCards.count()).toBe(1))
+    expect((await db.groupItems.toArray()).every((item) => item.status === 'pendente')).toBe(true)
   })
 })

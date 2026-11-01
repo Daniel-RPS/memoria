@@ -16,6 +16,12 @@ import { somarDias } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
 import { mesmoTituloDeSerie } from '@/lib/grupos'
 import { destinoDoAdiamento } from '@/lib/mover'
+import {
+  inverterMudancas,
+  planejarLevarItens,
+  type EstadoDosGrupos,
+  type MudancasDosGrupos,
+} from '@/lib/mover-grupos'
 
 /** Cards visíveis (não arquivados) de `inicio` a `fim`, as séries e os itens deles. */
 export async function listarGruposEntre(inicio: DataLocal, fim: DataLocal) {
@@ -105,7 +111,14 @@ export async function criarGrupo(dados: NovoGrupo): Promise<GroupCard> {
       throw new ErroDeValidacao(`Já existe o grupo “${serie.titulo}” neste dia.`)
     }
     if (existente) {
-      const reaberto = { ...existente, arquivado: false, ordem, atualizadoEm: momento }
+      // Reaberto à mão: passa a ser um card do usuário (não some sozinho).
+      const reaberto = {
+        ...existente,
+        arquivado: false,
+        criadoPorTransferencia: false,
+        ordem,
+        atualizadoEm: momento,
+      }
       await db.groupCards.put(reaberto)
       return reaberto
     }
@@ -228,116 +241,107 @@ export async function excluirGrupo(cardId: string) {
   })
 }
 
-/** O que uma cópia criou e mudou, para o "Desfazer". */
-export interface DesfazerCopia {
-  cardsCriados: string[]
-  cardsReabertos: string[]
-  itensCriados: string[]
-  /** Originais que viraram `transferido`. */
-  itensTransferidos: string[]
-}
-
-/** Resultado de mover tarefas soltas e copiar itens de grupo numa ação só. */
+/** Resultado de mover tarefas soltas e levar itens de grupo numa ação só. */
 export interface ResultadoAcao {
   tarefasMovidas: number
-  itensCopiados: number
+  /** Itens que ficaram pendentes no destino (copiados ou de volta ao card de antes). */
+  itensLevados: number
+  /** Dia e ordem das tarefas antes de mover. */
   anteriores: PosicaoAnterior[]
-  copia: DesfazerCopia
+  /** Mudanças que restauram os grupos, na ordem em que devem ser aplicadas. */
+  desfazer: MudancasDosGrupos[]
 }
 
 function acaoVazia(): ResultadoAcao {
+  return { tarefasMovidas: 0, itensLevados: 0, anteriores: [], desfazer: [] }
+}
+
+const TABELAS_DA_ACAO = [db.tasks, db.groupSeries, db.groupCards, db.groupItems]
+
+/**
+ * Lê os registros que levar `ids` para `destino` pode tocar (ver `EstadoDosGrupos`): todos os
+ * cards das séries envolvidas e do destino, os itens deles e as cadeias `origemItemId`.
+ */
+async function carregarEstado(ids: string[], destino: DataLocal): Promise<EstadoDosGrupos> {
+  const cards = new Map<string, GroupCard>()
+  const itens = new Map<string, GroupItem>()
+  const seriesLidas = new Set<string>()
+  const guardarItens = (lista: (GroupItem | undefined)[]) => {
+    for (const item of lista) if (item) itens.set(item.id, item)
+  }
+  guardarItens(await db.groupItems.bulkGet(ids))
+  for (const card of await db.groupCards.where('data').equals(destino).toArray()) {
+    cards.set(card.id, card)
+  }
+  // Vai alargando até fechar: séries dos cards, itens dos cards e elos das cadeias.
+  for (;;) {
+    const cardsFaltando = [...itens.values()]
+      .map((item) => item.cardId)
+      .filter((id) => !cards.has(id))
+    for (const card of await db.groupCards.bulkGet([...new Set(cardsFaltando)])) {
+      if (card) cards.set(card.id, card)
+    }
+    const seriesNovas = [...new Set([...cards.values()].map((card) => card.seriesId))].filter(
+      (id) => !seriesLidas.has(id),
+    )
+    for (const id of seriesNovas) seriesLidas.add(id)
+    for (const card of await db.groupCards.where('seriesId').anyOf(seriesNovas).toArray()) {
+      cards.set(card.id, card)
+    }
+    const antes = itens.size
+    guardarItens(
+      await db.groupItems
+        .where('cardId')
+        .anyOf([...cards.keys()])
+        .toArray(),
+    )
+    const pais = [...itens.values()].flatMap((item) => item.origemItemId ?? [])
+    guardarItens(await db.groupItems.bulkGet(pais.filter((id) => !itens.has(id))))
+    guardarItens(
+      await db.groupItems
+        .where('origemItemId')
+        .anyOf([...itens.keys()])
+        .toArray(),
+    )
+    const isFechado =
+      itens.size === antes && [...itens.values()].every((item) => cards.has(item.cardId))
+    if (isFechado && seriesNovas.length === 0) break
+  }
+  const series = await db.groupSeries.bulkGet([...seriesLidas])
   return {
-    tarefasMovidas: 0,
-    itensCopiados: 0,
-    anteriores: [],
-    copia: { cardsCriados: [], cardsReabertos: [], itensCriados: [], itensTransferidos: [] },
+    series: series.filter((serie): serie is GroupSeries => serie !== undefined),
+    cards: [...cards.values()],
+    itens: [...itens.values()],
   }
 }
 
-function juntar(...resultados: ResultadoAcao[]): ResultadoAcao {
-  const total = acaoVazia()
-  for (const resultado of resultados) {
-    total.tarefasMovidas += resultado.tarefasMovidas
-    total.itensCopiados += resultado.itensCopiados
-    total.anteriores.push(...resultado.anteriores)
-    total.copia.cardsCriados.push(...resultado.copia.cardsCriados)
-    total.copia.cardsReabertos.push(...resultado.copia.cardsReabertos)
-    total.copia.itensCriados.push(...resultado.copia.itensCriados)
-    total.copia.itensTransferidos.push(...resultado.copia.itensTransferidos)
-  }
-  return total
-}
-
-/** Card da série em `destino` que recebe as cópias: o que existe (mescla) ou um novo. */
-async function cardDeDestino(seriesId: string, destino: DataLocal, resultado: ResultadoAcao) {
-  const existente = await cardDaSerieNoDia(seriesId, destino)
-  if (existente && !existente.arquivado) return existente
-  if (existente) {
-    await db.groupCards.update(existente.id, { arquivado: false, atualizadoEm: agora() })
-    resultado.copia.cardsReabertos.push(existente.id)
-    return existente
-  }
-  const card = novoCard(seriesId, destino, (await maiorOrdemDoDia(destino)) + 1)
-  await db.groupCards.add(card)
-  resultado.copia.cardsCriados.push(card.id)
-  return card
+async function gravarMudancas({ gravar, apagar }: MudancasDosGrupos) {
+  await db.groupItems.bulkDelete(apagar.itens)
+  await db.groupCards.bulkDelete(apagar.cards)
+  await db.groupSeries.bulkDelete(apagar.series)
+  await db.groupSeries.bulkPut(gravar.series)
+  await db.groupCards.bulkPut(gravar.cards)
+  await db.groupItems.bulkPut(gravar.itens)
 }
 
 /**
- * Copia itens pendentes para o card da MESMA série em `destino` (mescla se existir, cria se
- * não). As cópias nascem pendentes, com a `dataOriginal` preservada e `origemItemId`; os
- * originais ficam no card de origem como `transferido`. Uma transação só.
+ * Leva itens pendentes para `destino` numa transação (regras em `planejarLevarItens`): copia
+ * para o card da MESMA série no destino ou, se o item veio de lá, desfaz a transferência.
  */
 export async function copiarItens(ids: string[], destino: DataLocal): Promise<ResultadoAcao> {
-  return db.transaction('rw', db.tasks, db.groupCards, db.groupItems, async () => {
-    const resultado = acaoVazia()
-    const itens = (await db.groupItems.bulkGet(ids)).filter(
-      (item): item is GroupItem => item?.status === 'pendente',
-    )
-    const cards = new Map(
-      (await db.groupCards.bulkGet([...new Set(itens.map((item) => item.cardId))]))
-        .filter((card): card is GroupCard => card !== undefined)
-        .map((card) => [card.id, card]),
-    )
-    const aCopiar = itens
-      .filter((item) => cards.get(item.cardId) && cards.get(item.cardId)!.data !== destino)
-      .sort((a, b) => {
-        const dataA = cards.get(a.cardId)!.data
-        const dataB = cards.get(b.cardId)!.data
-        return dataA === dataB ? a.ordem - b.ordem : dataA.localeCompare(dataB)
-      })
-    const momento = agora()
-
-    for (const seriesId of new Set(aCopiar.map((item) => cards.get(item.cardId)!.seriesId))) {
-      const daSerie = aCopiar.filter((item) => cards.get(item.cardId)!.seriesId === seriesId)
-      const alvo = await cardDeDestino(seriesId, destino, resultado)
-      const maiorOrdem = await maiorOrdemDoCard(alvo.id)
-      const copias: GroupItem[] = daSerie.map((original, indice) => ({
-        id: crypto.randomUUID(),
-        cardId: alvo.id,
-        titulo: original.titulo,
-        ordem: maiorOrdem + indice + 1,
-        status: 'pendente',
-        origemItemId: original.id,
-        dataOriginal: original.dataOriginal,
-        criadoEm: momento,
-        atualizadoEm: momento,
-      }))
-      await db.groupItems.bulkAdd(copias)
-      await Promise.all(
-        daSerie.map((original) =>
-          db.groupItems.update(original.id, {
-            status: 'transferido',
-            transferidoParaCardId: alvo.id,
-            atualizadoEm: momento,
-          }),
-        ),
-      )
-      resultado.copia.itensCriados.push(...copias.map((copia) => copia.id))
-      resultado.copia.itensTransferidos.push(...daSerie.map((original) => original.id))
+  return db.transaction('rw', TABELAS_DA_ACAO, async () => {
+    const estado = await carregarEstado(ids, destino)
+    const plano = planejarLevarItens(estado, ids, destino, {
+      momento: agora(),
+      novoId: () => crypto.randomUUID(),
+      maiorOrdemDoDestino: await maiorOrdemDoDia(destino),
+    })
+    await gravarMudancas(plano.mudancas)
+    return {
+      ...acaoVazia(),
+      itensLevados: plano.itensLevados,
+      desfazer: [inverterMudancas(estado, plano.mudancas)],
     }
-    resultado.itensCopiados = resultado.copia.itensCriados.length
-    return resultado
   })
 }
 
@@ -346,15 +350,12 @@ async function pendentesDosCards(cardIds: string[]) {
     .where('cardId')
     .anyOf(cardIds)
     .filter((item) => item.status === 'pendente')
-    .toArray()
+    .sortBy('ordem')
 }
 
-/**
- * Copia o card para `destino`: o original fica como está e o destino recebe os itens
- * pendentes. Card sem pendentes não tem o que copiar (nada acontece).
- */
+/** Leva os pendentes dos cards para `destino`; o card original fica como registro. */
 export async function copiarGrupos(cardIds: string[], destino: DataLocal) {
-  return db.transaction('rw', db.tasks, db.groupCards, db.groupItems, async () =>
+  return db.transaction('rw', TABELAS_DA_ACAO, async () =>
     copiarItens(
       (await pendentesDosCards(cardIds)).map((item) => item.id),
       destino,
@@ -362,7 +363,7 @@ export async function copiarGrupos(cardIds: string[], destino: DataLocal) {
   )
 }
 
-/** Copia itens (soltos ou de cards inteiros) um dia adiante (ver `destinoDoAdiamento`). */
+/** Leva itens (avulsos ou de cards inteiros) um dia adiante (ver `destinoDoAdiamento`). */
 async function adiarItensECards(itemIds: string[], cardIds: string[], hoje: DataLocal) {
   const itens = [
     ...(await pendentesDosCards(cardIds)),
@@ -379,9 +380,14 @@ async function adiarItensECards(itemIds: string[], cardIds: string[], hoje: Data
     const destino = destinoDoAdiamento(data, hoje)
     porDestino.set(destino, (porDestino.get(destino) ?? new Set()).add(item.id))
   }
-  const parciais: ResultadoAcao[] = []
-  for (const [destino, ids] of porDestino) parciais.push(await copiarItens([...ids], destino))
-  return juntar(...parciais)
+  const total = acaoVazia()
+  for (const [destino, ids] of porDestino) {
+    const parcial = await copiarItens([...ids], destino)
+    total.itensLevados += parcial.itensLevados
+    // Desfazer na ordem contrária à que foi feito.
+    total.desfazer.unshift(...parcial.desfazer)
+  }
+  return total
 }
 
 /** O que foi escolhido para mover: tarefas soltas, cards inteiros e itens avulsos. */
@@ -391,9 +397,7 @@ export interface Selecionados {
   itens?: string[]
 }
 
-const TABELAS_DA_ACAO = [db.tasks, db.groupCards, db.groupItems]
-
-/** Move as tarefas soltas e copia os itens pendentes (dos cards e avulsos) para `destino`. */
+/** Move as tarefas soltas e leva os itens pendentes (dos cards e avulsos) para `destino`. */
 export async function moverSelecao(
   { tarefas = [], grupos = [], itens = [] }: Selecionados,
   destino: DataLocal,
@@ -401,24 +405,20 @@ export async function moverSelecao(
   return db.transaction('rw', TABELAS_DA_ACAO, async () => {
     const movidas = await moverTarefas(tarefas, destino)
     const idsItens = [...(await pendentesDosCards(grupos)).map((item) => item.id), ...itens]
-    const copia = await copiarItens([...new Set(idsItens)], destino)
-    return {
-      ...copia,
-      tarefasMovidas: movidas.quantidade,
-      anteriores: movidas.anteriores,
-    }
+    const levados = await copiarItens([...new Set(idsItens)], destino)
+    return { ...levados, tarefasMovidas: movidas.quantidade, anteriores: movidas.anteriores }
   })
 }
 
-/** Adia um dia: tarefas soltas são movidas; itens pendentes dos cards são copiados. */
+/** Adia um dia: tarefas soltas são movidas; itens pendentes dos cards são levados. */
 export async function adiarSelecao(
   { tarefas = [], grupos = [], itens = [] }: Selecionados,
   hoje: DataLocal,
 ): Promise<ResultadoAcao> {
   return db.transaction('rw', TABELAS_DA_ACAO, async () => {
     const movidas = await adiarTarefas(tarefas, hoje)
-    const copia = await adiarItensECards(itens, grupos, hoje)
-    return { ...copia, tarefasMovidas: movidas.quantidade, anteriores: movidas.anteriores }
+    const levados = await adiarItensECards(itens, grupos, hoje)
+    return { ...levados, tarefasMovidas: movidas.quantidade, anteriores: movidas.anteriores }
   })
 }
 
@@ -441,7 +441,7 @@ export async function contarPendenciasDeOntem(hoje: DataLocal) {
   return tarefas.length + itens.length
 }
 
-/** Traz as tarefas soltas de ontem (move) e copia os pendentes dos cards de ontem para hoje. */
+/** Traz as tarefas soltas de ontem (move) e leva os pendentes dos cards de ontem para hoje. */
 export async function trazerPendenciasDeOntem(hoje: DataLocal): Promise<ResultadoAcao> {
   return db.transaction('rw', TABELAS_DA_ACAO, async () => {
     const tarefas = (await listarPendenciasDeOntem(hoje)).map((tarefa) => tarefa.id)
@@ -451,34 +451,13 @@ export async function trazerPendenciasDeOntem(hoje: DataLocal): Promise<Resultad
 }
 
 /**
- * Desfaz mover/adiar/trazer: as tarefas voltam; as cópias somem e os originais voltam a
- * pendentes. Card criado pela cópia some se ficar vazio; card reaberto volta a arquivado.
+ * Desfaz mover/adiar/trazer numa transação: as tarefas voltam ao dia e à ordem de antes e os
+ * cards, itens e séries tocados voltam exatamente como estavam (os criados somem).
  */
 export async function desfazerAcao(resultado: ResultadoAcao) {
-  const { copia } = resultado
-  await restaurarPosicoes(resultado.anteriores)
-  await db.transaction('rw', db.groupCards, db.groupItems, async () => {
-    const momento = agora()
-    await db.groupItems.bulkDelete(copia.itensCriados)
-    await Promise.all(
-      copia.itensTransferidos.map((id) =>
-        db.groupItems.update(id, {
-          status: 'pendente',
-          transferidoParaCardId: undefined,
-          atualizadoEm: momento,
-        }),
-      ),
-    )
-    for (const id of [...copia.cardsCriados, ...copia.cardsReabertos]) {
-      const restantes = await db.groupItems
-        .where('cardId')
-        .equals(id)
-        .filter((item) => item.status !== 'arquivado')
-        .count()
-      if (restantes > 0) continue
-      if (copia.cardsCriados.includes(id)) await db.groupCards.delete(id)
-      else await db.groupCards.update(id, { arquivado: true, atualizadoEm: momento })
-    }
+  await db.transaction('rw', TABELAS_DA_ACAO, async () => {
+    await restaurarPosicoes(resultado.anteriores)
+    for (const mudancas of resultado.desfazer) await gravarMudancas(mudancas)
   })
 }
 

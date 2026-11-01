@@ -7,7 +7,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react'
-import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
+import { DialogoLevarPendentes } from '@/components/dialogo-levar-pendentes'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { DataLocal } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
-import { pendentesDo, type GrupoDoDia } from '@/lib/grupos'
+import { pendentesDo, rotuloLevarAdiante, type GrupoDoDia } from '@/lib/grupos'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { SubmenuCategoria } from '@/features/dia/components/submenu-categoria'
 
@@ -39,13 +39,13 @@ interface MenuGrupoProps {
 }
 
 /**
- * Ações do card. Adiar e mover COPIAM: o card fica aqui e os itens pendentes vão para o card
- * da mesma série no outro dia. Sem pendentes, não há o que copiar.
+ * Ações do card. Levar pendentes: o card fica aqui e os itens pendentes vão para o card da
+ * mesma série no outro dia. Sem pendentes, não há o que levar.
  */
 export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
   const { card, serie } = grupo
   const { arquivarGrupo, excluirGrupo, definirCategoriaDoGrupo } = useAcoesGrupo()
-  const { mover, adiar } = useMoverTarefas()
+  const { adiar } = useMoverTarefas()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   const quantidadePendentes = pendentesDo(grupo).length
@@ -78,10 +78,10 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
             disabled={!isCopiavel}
             onSelect={() => void adiar([], { grupos: [card.id] })}
           >
-            <CalendarArrowUp /> {card.data > hoje ? 'Adiar um dia' : 'Adiar para amanhã'}
+            <CalendarArrowUp /> {rotuloLevarAdiante(card.data, hoje)}
           </DropdownMenuItem>
           <DropdownMenuItem disabled={!isCopiavel} onSelect={() => setIsEscolhendoDia(true)}>
-            <CalendarDays /> Mover para outro dia…
+            <CalendarDays /> Levar pendentes para…
           </DropdownMenuItem>
           {!isCopiavel && (
             <p className="px-2 py-1 text-xs text-grafite">Nenhum item pendente para levar.</p>
@@ -109,14 +109,11 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DialogoEscolherDia
+      <DialogoLevarPendentes
+        grupo={grupo}
+        hoje={hoje}
         isAberto={isEscolhendoDia}
         onMudarAberto={setIsEscolhendoDia}
-        titulo={`Mover “${serie.titulo}” para outro dia`}
-        descricao={`${quantidadePendentes === 1 ? 'O item pendente vai' : `Os ${quantidadePendentes} itens pendentes vão`} para o card “${serie.titulo}” do dia escolhido. Este card fica aqui como registro.`}
-        dataInicial={card.data}
-        hoje={hoje}
-        onEscolher={(destino) => void mover([], destino, { grupos: [card.id] })}
       />
 
       <AlertDialog open={isConfirmandoExclusao} onOpenChange={setIsConfirmandoExclusao}>

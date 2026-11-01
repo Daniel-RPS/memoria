@@ -87,6 +87,25 @@ export class MemoriaDatabase extends Dexie {
       tasks: 'id, data, [data+ordem], status, categoryId, dataOriginal, procedureId',
       groupInstances: null,
     })
+    // v6: `GroupCard.criadoPorTransferencia` (sem índice). Card que só tem cópias de outro dia
+    // nasceu de uma transferência.
+    this.version(6)
+      .stores({})
+      .upgrade(async (transacao) => {
+        const itens = (await transacao.table('groupItems').toArray()) as GroupItem[]
+        const itensPorCard = new Map<string, GroupItem[]>()
+        for (const item of itens) {
+          itensPorCard.set(item.cardId, [...(itensPorCard.get(item.cardId) ?? []), item])
+        }
+        await transacao
+          .table('groupCards')
+          .toCollection()
+          .modify((card: GroupCard) => {
+            const doCard = itensPorCard.get(card.id) ?? []
+            card.criadoPorTransferencia =
+              doCard.length > 0 && doCard.every((item) => item.origemItemId !== undefined)
+          })
+      })
   }
 }
 

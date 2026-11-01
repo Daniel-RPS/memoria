@@ -10,8 +10,8 @@ interface ItemGrupoSemanaProps {
 }
 
 /**
- * Card da semana na coluna do dia. O cabeçalho arrasta: no mesmo dia reordena; em outro dia
- * copia os pendentes (o card fica onde está).
+ * Card da semana na coluna do dia. Arrastar o card: no mesmo dia reordena; em outro dia leva
+ * os pendentes (o card fica onde está).
  */
 export function ItemGrupoSemana({ grupo, hoje }: ItemGrupoSemanaProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } =
@@ -22,7 +22,7 @@ export function ItemGrupoSemana({ grupo, hoje }: ItemGrupoSemanaProps) {
       <CartaoGrupo
         grupo={grupo}
         hoje={hoje}
-        cabecalho={{ ref: setActivatorNodeRef, attributes, listeners }}
+        arrasto={{ ref: setActivatorNodeRef, attributes, listeners }}
       />
     </li>
   )
