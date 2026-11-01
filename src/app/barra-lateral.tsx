@@ -11,6 +11,12 @@ import {
 } from 'lucide-react'
 import { Link, useMatch } from 'react-router'
 import { cn } from 'cn'
+import {
+  GrupoCalendario,
+  GrupoCalendarioRecolhido,
+  type VisaoDoCalendario,
+} from '@/app/grupo-calendario'
+import { useGrupoCalendarioAberto } from '@/app/use-grupo-calendario-aberto'
 import { hoje } from '@/lib/datas'
 
 interface LinkTelaProps {
@@ -63,7 +69,7 @@ export function BarraLateral({ isRecolhida, onAreaDaPagina }: BarraLateralProps)
     rotaDia?.params.data ?? rotaSemana?.params.data ?? rotaMes?.params.data ?? hoje()
   const anoAberto = rotaAno?.params.ano ?? dataAberta.slice(0, 4)
 
-  const telas = [
+  const visoes: VisaoDoCalendario[] = [
     { para: `/dia/${hoje()}`, icone: Sun, isAtiva: rotaDia !== null, nome: 'Dia' },
     {
       para: `/semana/${dataAberta}`,
@@ -73,6 +79,8 @@ export function BarraLateral({ isRecolhida, onAreaDaPagina }: BarraLateralProps)
     },
     { para: `/mes/${dataAberta}`, icone: Calendar, isAtiva: rotaMes !== null, nome: 'Mês' },
     { para: `/ano/${anoAberto}`, icone: CalendarRange, isAtiva: rotaAno !== null, nome: 'Ano' },
+  ]
+  const telas = [
     {
       para: '/procedimentos',
       icone: ListOrdered,
@@ -83,6 +91,9 @@ export function BarraLateral({ isRecolhida, onAreaDaPagina }: BarraLateralProps)
     { para: '/categorias', icone: Tags, isAtiva: isNasCategorias, nome: 'Categorias' },
     { para: '/backup', icone: HardDriveDownload, isAtiva: isNoBackup, nome: 'Backup' },
   ]
+  const { isAberto, handleAlternar } = useGrupoCalendarioAberto(
+    visoes.some((visao) => visao.isAtiva),
+  )
 
   return (
     // O fundo acompanha a página inteira; o conteúdo fica preso no topo ao rolar.
@@ -110,6 +121,11 @@ export function BarraLateral({ isRecolhida, onAreaDaPagina }: BarraLateralProps)
           )}
         </span>
         <nav aria-label="Telas" className="flex flex-col gap-0.5">
+          {isRecolhida ? (
+            <GrupoCalendarioRecolhido visoes={visoes} />
+          ) : (
+            <GrupoCalendario visoes={visoes} isAberto={isAberto} onAlternar={handleAlternar} />
+          )}
           {telas.map((tela) => (
             <LinkTela
               key={tela.nome}

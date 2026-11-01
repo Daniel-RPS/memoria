@@ -60,7 +60,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupCard.ordem`, `tabelaDoDia`); `ordem` de item é a posição dentro do card
 - Colocar tarefa no grupo / tirar item = conversão com o MESMO id (`colocarNoGrupo`/`tirarDoGrupo`); subtarefas, anotação e anexos da tarefa não passam para o item
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
-- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`). Moldura: `BarraLateral` (`src/app/barra-lateral.tsx`; recolhe para ícones na Semana); página que quer algo na barra usa `NaBarraLateral` (portal, estado continua na página), como o filtro do Dia
+- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`). Moldura: `BarraLateral` (`src/app/barra-lateral.tsx`; recolhe para ícones na Semana) com Dia/Semana/Mês/Ano no `GrupoCalendario` (`src/app/grupo-calendario.tsx`; recolhida = `GrupoCalendarioRecolhido`, menu) e aberto/fechado em `useGrupoCalendarioAberto` (localStorage; abre sozinho numa visão do calendário); página que quer algo na barra usa `NaBarraLateral` (portal, estado continua na página), como o filtro do Dia
 
 ## Modelo de dados (resumo)
 
@@ -132,6 +132,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 01/11/2026: Procedimentos remodelados (só título, categoria e etapas; banco v7, backup formato 4) — detalhes em `docs/proposta-inicial.md`
 - Ajuste 01/11/2026: categorias criadas e aplicadas ali mesmo (seletor único), aba Categorias com uso e ordem arrastável, card editável na Semana (banco v8, backup formato 5)
 - Ajuste 01/11/2026: nova interface "folha pautada + barra lateral" na paleta violeta (só camada visual): tokens, `BarraLateral` com o filtro do Dia, folhas com traço grafite, card como ficha, hoje circulado (`CirculoHoje`), menus por `data-slot` e `CabecalhoPagina` nas telas de lista — detalhes em `docs/proposta-inicial.md`
+- Ajuste 01/11/2026: grupo "Calendário" na barra lateral (variação "traço de caneta": traço violeta desliza pela linha-guia; só CSS, sem biblioteca de animação)
 
 ## Armadilhas
 
@@ -154,6 +155,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Hover de linha usa grupo nomeado `group/linha` (linhas aninhadas); não use `group` simples
 - Prévia no app: `.claude/launch.json` usa a porta 5180 — outra origem, então os dados de teste da prévia NÃO são os do usuário (5173)
 - `crypto.randomUUID`, gravação de áudio e PWA exigem contexto seguro: `localhost` ou `https` (no Laragon, só com SSL ativo)
+- Molas são curvas CSS `linear()` no `@theme` (`ease-mola`, `ease-mola-suave`); animação sempre com `motion-reduce:transition-none`. Indicador que desliza usa passos fixos (item `h-8` + vão = 34px)
 - Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta` #111019, `grafite` = cinza do texto secundário, `pauta`, `caneta` #8B3DFF, `violeta-profundo` #4B16A8 para destaques miúdos, `marca-texto` lavanda só para atrasos); componentes usam os tokens, nunca hex
 - Submenu Radix em teste: use teclado (`ArrowRight`, `Enter`); no jsdom o ponteiro fecha o submenu
 - E2E `corDaFaixa` lê a cor no PRIMEIRO `span[aria-hidden]` do card (no Dia e na Semana, a borda de cima da ficha): mantenha esse span primeiro ao mexer no card

@@ -106,8 +106,13 @@ function corDaFaixa(card: Locator) {
   })
 }
 
-function irPara(page: Page, tela: string) {
-  return page.getByRole('navigation', { name: 'Telas' }).getByRole('link', { name: tela }).click()
+/** Na Semana a barra fica recolhida: Dia, Mês e Ano estão no menu do ícone "Calendário". */
+async function irPara(page: Page, tela: string) {
+  const navegacao = page.getByRole('navigation', { name: 'Telas' })
+  const link = navegacao.getByRole('link', { name: tela, exact: true })
+  if (await link.isVisible()) return link.click()
+  await navegacao.getByRole('button', { name: /^Calendário/ }).click()
+  await page.getByRole('menuitem', { name: tela, exact: true }).click()
 }
 
 test.beforeEach(async ({ page }) => {
