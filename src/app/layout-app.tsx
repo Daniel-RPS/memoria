@@ -15,11 +15,12 @@ export function LayoutApp() {
   const rotaAno = useMatch('/ano/:ano')
   const isNoMesOuAno = rotaMes !== null || rotaAno !== null
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
+  const isNoDia = useMatch('/dia/:data') !== null
   const largura = isNaSemana
     ? 'max-w-[96rem]'
     : isNoMesOuAno
       ? 'max-w-6xl'
-      : isNosProcedimentos
+      : isNosProcedimentos || isNoDia
         ? 'max-w-3xl'
         : 'max-w-2xl'
 

@@ -61,13 +61,13 @@ export function FolhaDoDia({ data, hoje, filtro }: FolhaDoDiaProps) {
         <section aria-label="Tarefas do dia">
           {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
           {entradas.length > 0 && !selecao.isSelecionando && (
-            <div className="mt-6 -mb-3 flex justify-end">
+            <div className="mt-2 -mb-1 flex justify-end">
               <Button variant="ghost" size="sm" className="text-grafite" onClick={selecao.iniciar}>
                 <CheckSquare /> Selecionar
               </Button>
             </div>
           )}
-          <div className="mt-6 rounded-md border border-pauta bg-papel">
+          <div className="mt-2">
             {isVazio && (
               <p className="border-b border-pauta px-4 py-3 text-grafite">{mensagemVazia()}</p>
             )}

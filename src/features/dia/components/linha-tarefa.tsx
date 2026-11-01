@@ -68,13 +68,6 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
 
   return (
     <div className="relative border-b border-pauta">
-      {classificacao && (
-        <span
-          aria-hidden
-          className="absolute inset-y-1 left-0 w-1 rounded-r-sm"
-          style={{ backgroundColor: classificacao.cor }}
-        />
-      )}
       <div
         className={cn(
           'group/linha flex min-h-12 items-center gap-2 pr-2 pl-1',
@@ -94,7 +87,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
             checked={isConcluida}
             onCheckedChange={(marcada) => void definirConclusao(tarefa.id, marcada === true)}
             aria-label={isConcluida ? `Desmarcar ${tarefa.titulo}` : `Concluir ${tarefa.titulo}`}
-            className="size-5 rounded-[4px] border-2 border-tinta/70 data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
+            className="size-5 rounded-[4px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
           />
         )}
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-1">
@@ -118,12 +111,19 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
             />
           )}
           {dias !== null && !isEditando && (
-            <span className="bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)] px-1 text-sm whitespace-nowrap">
+            <span className="rounded-[3px] bg-marca-texto px-1.5 text-sm font-medium whitespace-nowrap text-violeta-profundo">
               {textoDiasPendente(dias)}
             </span>
           )}
           {classificacao && !isEditando && (
-            <span className="text-sm whitespace-nowrap text-grafite">{classificacao.rotulo}</span>
+            <span className="flex items-center gap-1.5 text-sm whitespace-nowrap text-grafite">
+              <span
+                aria-hidden
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: classificacao.cor }}
+              />
+              {classificacao.rotulo}
+            </span>
           )}
           {progresso && !isEditando && (
             <BotaoProgresso

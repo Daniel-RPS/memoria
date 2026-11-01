@@ -20,8 +20,7 @@ interface LinhaItemProps {
   alca?: ReactNode
 }
 
-const MARCA_TEXTO =
-  'bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)]'
+const MARCA_TEXTO = 'rounded-[3px] bg-marca-texto font-medium text-violeta-profundo'
 
 /**
  * Item de um card. Pendente: caixa e "pendente desde". Feito: riscado. Transferido: seta no
@@ -66,7 +65,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
           checked={isConcluido}
           onCheckedChange={(marcada) => void definirConclusaoItem(item.id, marcada === true)}
           aria-label={isConcluido ? `Desmarcar ${item.titulo}` : `Concluir ${item.titulo}`}
-          className="size-5 rounded-[4px] border-2 border-tinta/70 data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
+          className="size-5 rounded-[4px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
         />
       )}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pl-1">
@@ -83,7 +82,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
           />
         )}
         {isAtrasado && !isEditando && (
-          <span className={cn(MARCA_TEXTO, 'px-1 text-sm whitespace-nowrap')}>
+          <span className={cn(MARCA_TEXTO, 'px-1.5 text-sm whitespace-nowrap')}>
             pendente desde {diaCurto(item.dataOriginal)}
           </span>
         )}
@@ -91,7 +90,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
           (dataDestino ? (
             <Link
               to={`/dia/${dataDestino}`}
-              className="rounded-sm text-sm whitespace-nowrap text-grafite underline decoration-pauta underline-offset-2 hover:text-caneta hover:decoration-caneta focus-visible:outline-2 focus-visible:outline-caneta"
+              className="rounded-sm text-sm whitespace-nowrap text-violeta-profundo underline decoration-violeta-profundo/30 underline-offset-2 hover:text-caneta hover:decoration-caneta focus-visible:outline-2 focus-visible:outline-caneta"
             >
               transferido para {diaCurto(dataDestino)}
             </Link>

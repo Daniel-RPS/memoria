@@ -38,11 +38,7 @@ export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: Grupo
         Concluídas ({quantidade})
       </button>
       {!isRecolhido && (
-        <ul
-          id="lista-concluidas"
-          aria-label="Concluídas"
-          className="mt-2 rounded-md border border-pauta bg-papel/60"
-        >
+        <ul id="lista-concluidas" aria-label="Concluídas" className="mt-2 border-t border-pauta">
           {concluidas.map((tarefa) => (
             <li key={tarefa.id}>
               <LinhaTarefa

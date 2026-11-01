@@ -2,6 +2,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
+import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
 import { deDataLocal, nomeRelativo, somarDias } from '@/lib/datas'
@@ -27,10 +28,13 @@ export function CabecalhoDia({ data, hoje }: CabecalhoDiaProps) {
   const paraDia = (destino: DataLocal) => ({ pathname: `/dia/${destino}`, search })
 
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b-2 border-tinta pb-4">
       <h1 className="flex items-end gap-4">
         <span
-          className="text-[6rem] leading-[0.78] font-extrabold tracking-[-0.04em] tabular-nums [font-stretch:75%]"
+          className={cn(
+            'text-[6rem] leading-[0.78] font-extrabold tracking-[-0.04em] tabular-nums [font-stretch:75%]',
+            isHoje && 'text-caneta',
+          )}
           aria-hidden
         >
           {format(dia, 'd')}

@@ -131,7 +131,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 31/10/2026: arrastar o card leva o grupo inteiro (item só pela alça), menu → "Levar pendentes", volta desfaz a transferência sem card fantasma, Ctrl+Z
 - Ajuste 01/11/2026: Procedimentos remodelados (só título, categoria e etapas; banco v7, backup formato 4) — detalhes em `docs/proposta-inicial.md`
 - Ajuste 01/11/2026: categorias criadas e aplicadas ali mesmo (seletor único), aba Categorias com uso e ordem arrastável, card editável na Semana (banco v8, backup formato 5)
-- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Feitas: fase 0 (valores dos tokens) e fase 1 (barra lateral com telas e o filtro do Dia)
+- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Feitas: fase 0 (valores dos tokens) , fase 1 (barra lateral com telas e o filtro do Dia) e fase 2 (Dia: folha com cabeçalho, card como ficha, bolinha de categoria no lugar da faixa)
 
 ## Armadilhas
 
@@ -156,3 +156,4 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - `crypto.randomUUID`, gravação de áudio e PWA exigem contexto seguro: `localhost` ou `https` (no Laragon, só com SSL ativo)
 - Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta` #111019, `grafite` = cinza do texto secundário, `pauta`, `caneta` #8B3DFF, `violeta-profundo` #4B16A8 para destaques miúdos, `marca-texto` lavanda só para atrasos); componentes usam os tokens, nunca hex
 - Submenu Radix em teste: use teclado (`ArrowRight`, `Enter`); no jsdom o ponteiro fecha o submenu
+- E2E `corDaFaixa` lê a cor no PRIMEIRO `span[aria-hidden]` do card (Dia: borda de cima da ficha; Semana: faixa lateral): mantenha esse span primeiro ao mexer no card

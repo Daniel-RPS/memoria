@@ -17,16 +17,14 @@ export function AvisoPendenciasOntem({ hoje }: AvisoPendenciasOntemProps) {
   return (
     <div
       role="status"
-      className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-pauta border-l-4 border-l-marca-texto bg-papel px-4 py-2.5"
+      className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-md bg-marca-texto px-4 py-2.5"
     >
-      <p>
+      <p className="text-violeta-profundo">
         {quantidade === 1
           ? 'Ficou 1 tarefa pendente ontem.'
           : `Ficaram ${quantidade} tarefas pendentes ontem.`}
       </p>
-      <Button variant="outline" onClick={() => void trazerDeOntem()}>
-        Trazer para hoje
-      </Button>
+      <Button onClick={() => void trazerDeOntem()}>Trazer para hoje</Button>
     </div>
   )
 }

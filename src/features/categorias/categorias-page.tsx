@@ -15,7 +15,7 @@ export function CategoriasPage() {
     <>
       <h1 className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">Categorias</h1>
       <p className="mt-2 max-w-prose text-grafite">
-        A cor de cada categoria aparece na faixa à esquerda das tarefas e dos grupos. Arraste pela
+        A cor de cada categoria marca as tarefas, os grupos e os procedimentos dela. Arraste pela
         alça ⋮⋮ para mudar a ordem: ela vale em todo o app.
       </p>
 

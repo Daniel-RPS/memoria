@@ -31,9 +31,9 @@ interface CardGrupoProps {
 }
 
 /**
- * Card de um grupo no dia: faixa da categoria, título, progresso, recolher e itens.
- * A linha de baixo do cabeçalho enche na cor da categoria conforme os itens saem do dia
- * (feitos ou transferidos). Encerrado fica discreto: é o registro do que aconteceu no dia.
+ * Card de um grupo no dia, como uma ficha presa na folha: borda de cima na cor da categoria,
+ * título, progresso, recolher e itens. A barra sob o cabeçalho enche conforme os itens saem
+ * do dia (feitos ou transferidos). Encerrado fica discreto: é o registro do que aconteceu.
  */
 export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   const { card, serie } = grupo
@@ -65,11 +65,19 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   return (
     <section
       aria-label={`Grupo ${serie.titulo}`}
-      className={cn('relative border-b border-pauta', isSelecionado && 'bg-accent')}
+      className={cn(
+        'relative my-3 rounded-md border border-pauta bg-papel',
+        isEncerrado ? 'shadow-none' : 'shadow-[3px_3px_0_var(--marca-texto)]',
+        isSelecionado && 'bg-accent',
+      )}
     >
+      {/* Borda de cima da ficha, na cor da categoria. */}
       <span
         aria-hidden
-        className={cn('absolute inset-y-0 left-0 w-1.5', isEncerrado && 'opacity-40')}
+        className={cn(
+          'absolute -inset-x-px -top-px h-[3px] rounded-t-md',
+          isEncerrado && 'opacity-40',
+        )}
         style={{ backgroundColor: cor }}
       />
       {/* Selecionando, o título e o fundo do cabeçalho marcam o card (todos os pendentes). */}
@@ -78,7 +86,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
           if (isSelecionavel && evento.target === evento.currentTarget) alternar(card.id)
         }}
         className={cn(
-          'group/cabecalho relative flex min-h-12 items-center gap-1 pr-2 pl-1',
+          'group/cabecalho relative flex min-h-12 items-center gap-1 pt-1 pr-2 pb-1.5 pl-1',
           isSelecionavel && 'cursor-pointer',
         )}
       >
@@ -130,24 +138,34 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
             <span className="text-sm text-grafite italic">encerrado</span>
           )}
           {!isEditando && classificacao && (
-            <span className="text-sm whitespace-nowrap text-grafite">{classificacao.rotulo}</span>
+            <span className="flex items-center gap-1.5 self-center text-sm whitespace-nowrap text-grafite">
+              <span
+                aria-hidden
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: cor }}
+              />
+              {classificacao.rotulo}
+            </span>
           )}
         </div>
         {!isSelecionavel && (
           <MenuGrupo grupo={grupo} hoje={hoje} onRenomear={() => setIsEditando(true)} />
         )}
-        <span aria-hidden className="absolute right-0 bottom-0 left-1.5 h-0.5 bg-pauta/60">
+        <span
+          aria-hidden
+          className="absolute right-3 bottom-0 left-3 h-[3px] overflow-hidden rounded-full bg-pauta"
+        >
           <span
             className={cn(
-              'block h-full transition-[width] duration-300 motion-reduce:transition-none',
+              'block h-full rounded-full bg-caneta transition-[width] duration-300 motion-reduce:transition-none',
               isEncerrado && 'opacity-40',
             )}
-            style={{ width: `${fracao * 100}%`, backgroundColor: cor }}
+            style={{ width: `${fracao * 100}%` }}
           />
         </span>
       </div>
 
-      <div id={idItens} hidden={isRecolhido} className="bg-nevoa/40 pl-6">
+      <div id={idItens} hidden={isRecolhido} className="pl-6">
         {pendentes ?? (
           <ul aria-label={`Itens de ${serie.titulo}`}>
             {grupo.itens

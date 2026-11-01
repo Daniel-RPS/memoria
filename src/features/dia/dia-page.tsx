@@ -18,9 +18,12 @@ export function DiaPage() {
 
   return (
     <ContextoCategorias.Provider value={categorias}>
-      <CabecalhoDia data={data} hoje={dataHoje} />
       <FiltroCategorias filtro={filtro} onMudar={definirFiltro} />
-      <FolhaDoDia key={data} data={data} hoje={dataHoje} filtro={filtro} />
+      {/* A folha: cabeçalho com o número do dia e, abaixo do traço, as linhas pautadas. */}
+      <div className="rounded-lg border border-pauta bg-papel px-4 pt-6 pb-8 sm:px-8">
+        <CabecalhoDia data={data} hoje={dataHoje} />
+        <FolhaDoDia key={data} data={data} hoje={dataHoje} filtro={filtro} />
+      </div>
     </ContextoCategorias.Provider>
   )
 }
