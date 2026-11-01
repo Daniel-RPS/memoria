@@ -22,7 +22,7 @@ export function ItemGrupoSemana({ grupo, hoje }: ItemGrupoSemanaProps) {
       <CartaoGrupo
         grupo={grupo}
         hoje={hoje}
-        arrasto={{ ref: setActivatorNodeRef, attributes, listeners }}
+        arrasto={{ ativador: setActivatorNodeRef, attributes, listeners }}
       />
     </li>
   )

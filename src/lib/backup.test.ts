@@ -158,6 +158,32 @@ describe('lerBackup', () => {
     expect(tabelas.attachments.map((anexo) => anexo.id)).toEqual(['a2'])
   })
 
+  it('backup do formato 4, sem ordem de categorias, recebe a ordem ao ler', () => {
+    const antigo = backupVazio()
+    const base = { criadoEm: '1', atualizadoEm: '1' }
+    const arquivo = {
+      ...antigo,
+      formato: 4,
+      tabelas: {
+        ...antigo.tabelas,
+        categories: [
+          { ...base, id: 'b', nome: 'Trabalho', cor: '#000000' },
+          { ...base, id: 'a', nome: 'Casa', cor: '#000000' },
+        ],
+        subcategories: [{ ...base, id: 's', categoryId: 'a', nome: 'Jardim' }],
+      },
+    }
+    const resultado = lerBackup(JSON.stringify(arquivo), VERSAO_BANCO)
+    expect(resultado.isValido).toBe(true)
+    if (!resultado.isValido) return
+    const { categories, subcategories } = resultado.backup.tabelas
+    expect(categories.map(({ id, ordem }) => ({ id, ordem }))).toEqual([
+      { id: 'b', ordem: 2 },
+      { id: 'a', ordem: 1 },
+    ])
+    expect(subcategories[0].ordem).toBe(1)
+  })
+
   it('recusa o que não é JSON', () => {
     const resultado = lerBackup('isto não é json', VERSAO_BANCO)
     expect(resultado).toMatchObject({ isValido: false })
@@ -228,6 +254,7 @@ describe('textos do backup', () => {
       id: 'c',
       nome: 'Casa',
       cor: '#000000',
+      ordem: 1,
       criadoEm: '',
       atualizadoEm: '',
     })

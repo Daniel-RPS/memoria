@@ -1,20 +1,28 @@
 import { z } from 'zod'
 import type { Attachment, DataLocal, Dono, TipoDono } from '@/db/types'
+import { preencherOrdem } from '@/lib/categorias'
 import { converterGruposAntigos } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 4
+export const FORMATO_ATUAL = 5
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
 const id = z.string().min(1)
 const base = { id, criadoEm: texto, atualizadoEm: texto }
 
-const categoria = z.object({ ...base, nome: texto, cor: texto })
-const subcategoria = z.object({ ...base, categoryId: id, nome: texto, cor: texto.optional() })
+// `ordem` desde o formato 5; antes, é preenchida ao ler (`preencherOrdem`).
+const categoria = z.object({ ...base, nome: texto, cor: texto, ordem: z.number().optional() })
+const subcategoria = z.object({
+  ...base,
+  categoryId: id,
+  nome: texto,
+  cor: texto.optional(),
+  ordem: z.number().optional(),
+})
 
 const tarefa = z.object({
   ...base,
@@ -71,6 +79,8 @@ const procedimento = z.object({
   ...base,
   titulo: texto,
   categoryId: texto.optional(),
+  // Formato 5.
+  subcategoryId: texto.optional(),
   etapas: z.array(z.object({ id, texto, ordem: z.number() })),
 })
 
@@ -131,8 +141,14 @@ export const esquemaBackup = z.object({
     })
     .transform(({ groupInstances, tasks, notes, attachments, ...tabelas }) => {
       const { cards, itens, soltas } = converterGruposAntigos(groupInstances ?? [], tasks)
+      const { categorias, subcategorias } = preencherOrdem(
+        tabelas.categories,
+        tabelas.subcategories,
+      )
       return {
         ...tabelas,
+        categories: categorias,
+        subcategories: subcategorias,
         notes: notes.flatMap(({ dono: donoDaNota, ...nota }) => {
           if (!donoDaNota) return [nota]
           return isDonoAtual(donoDaNota) ? [{ ...nota, dono: donoDaNota }] : []

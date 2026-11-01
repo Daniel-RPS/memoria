@@ -32,11 +32,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal, Task } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { useGruposDoDia } from '@/features/dia/hooks/contexto-extras'
-import { SubmenuCategoria } from '@/features/dia/components/submenu-categoria'
 
 interface MenuTarefaProps {
   tarefa: Task
@@ -60,6 +60,7 @@ export function MenuTarefa({
   const { arquivarTarefa, excluirTarefa, definirCategoria, colocarNoGrupo } = useAcoesTarefa()
   const gruposDoDia = useGruposDoDia()
   const { mover, adiar } = useMoverTarefas()
+  const [isMenuAberto, setIsMenuAberto] = useState(false)
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   const isPendente = tarefa.status === 'pendente'
@@ -75,7 +76,7 @@ export function MenuTarefa({
   return (
     <>
       {/* modal={false}: evita o body travado ao abrir o diálogo de exclusão a partir do menu. */}
-      <DropdownMenu modal={false}>
+      <DropdownMenu open={isMenuAberto} onOpenChange={setIsMenuAberto} modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -88,6 +89,9 @@ export function MenuTarefa({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
+          collisionPadding={8}
+          // Botão pequeno: o menu tem largura própria, não a do botão.
+          className="w-auto min-w-52"
           onCloseAutoFocus={(evento) => {
             if (!isAbrindoCampoRef.current) return
             evento.preventDefault()
@@ -115,6 +119,7 @@ export function MenuTarefa({
           <SubmenuCategoria
             atual={tarefa}
             onEscolher={(categoria) => void definirCategoria(tarefa.id, categoria)}
+            onFechar={() => setIsMenuAberto(false)}
           />
           {isPendente && gruposDoDia.length > 0 && (
             <DropdownMenuSub>

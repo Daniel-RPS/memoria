@@ -2,7 +2,7 @@ import type { Subtask, Task } from '@/db/types'
 import { useAcoesSubtarefa } from '@/features/dia/hooks/use-acoes-subtarefa'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { ItemSubtarefa } from '@/features/dia/components/item-subtarefa'
-import { ListaOrdenavel } from '@/features/dia/components/lista-ordenavel'
+import { ListaOrdenavel } from '@/components/lista-ordenavel'
 
 interface ListaSubtarefasProps {
   tarefa: Task

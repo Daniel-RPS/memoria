@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { Subtask } from '@/db/types'
 import { useAcoesSubtarefa } from '@/features/dia/hooks/use-acoes-subtarefa'
-import { AlcaArrastar } from '@/features/dia/components/alca-arrastar'
+import { AlcaArrastar } from '@/components/alca-arrastar'
 import { TituloEditavel } from '@/components/titulo-editavel'
 
 interface ItemSubtarefaProps {

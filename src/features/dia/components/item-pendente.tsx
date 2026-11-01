@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
 import type { DataLocal, Subtask, Task } from '@/db/types'
-import { AlcaArrastar } from '@/features/dia/components/alca-arrastar'
+import { AlcaArrastar } from '@/components/alca-arrastar'
 import { LinhaTarefa } from '@/features/dia/components/linha-tarefa'
 
 interface ItemPendenteProps {

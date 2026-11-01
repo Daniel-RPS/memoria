@@ -16,9 +16,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 
-interface ItemComTitulo {
-  id: string
-  titulo: string
+/** Tarefas e itens têm `titulo`; categorias têm `nome`. Usado nos anúncios do leitor de tela. */
+type ItemComTitulo = { id: string; titulo: string } | { id: string; nome: string }
+
+function textoDe(item: ItemComTitulo) {
+  return 'titulo' in item ? item.titulo : item.nome
 }
 
 interface ListaOrdenavelProps<T extends ItemComTitulo> {
@@ -64,7 +66,10 @@ export function ListaOrdenavel<T extends ItemComTitulo>({
 
   const porId = new Map(itens.map((item) => [item.id, item]))
   const ids = idsOtimistas ?? itens.map((item) => item.id)
-  const tituloDe = (id: string | number) => porId.get(String(id))?.titulo ?? 'item'
+  const tituloDe = (id: string | number) => {
+    const item = porId.get(String(id))
+    return item ? textoDe(item) : 'item'
+  }
   const posicaoDe = (id: string | number) => ids.indexOf(String(id)) + 1
 
   const anuncios: Announcements = {

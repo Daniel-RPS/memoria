@@ -56,6 +56,9 @@ export function MenuItemGrupo({ item, data, hoje, onRenomear }: MenuItemGrupoPro
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
+          collisionPadding={8}
+          // Botão pequeno: o menu tem largura própria, não a do botão.
+          className="w-auto min-w-52"
           onCloseAutoFocus={(evento) => {
             if (!isAbrindoCampoRef.current) return
             evento.preventDefault()

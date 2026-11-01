@@ -28,7 +28,7 @@ import { idDaEntrada, pendentesDo, type EntradaDoDia, type GrupoDoDia } from '@/
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
-import { AlcaArrastar } from '@/features/dia/components/alca-arrastar'
+import { AlcaArrastar } from '@/components/alca-arrastar'
 import { CardGrupo } from '@/features/dia/components/card-grupo'
 import { ItemPendente } from '@/features/dia/components/item-pendente'
 import { LinhaItem } from '@/features/dia/components/linha-item'

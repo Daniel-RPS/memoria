@@ -30,17 +30,19 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `src/db/` schema Dexie (`database.ts`), tipos (`types.ts`) e repositórios — IMPORTANTE: componentes NUNCA acessam o Dexie direto, só via repositórios/hooks
 - `src/lib/` regras puras (`datas`, `tarefas`, `esquemas` Zod) — testáveis sem UI
 - Toda escrita passa por repositório (isola o Dexie da UI)
-- Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` na UI; reuse, não duplique
+- Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` (`src/components/`) na UI; reuse, não duplique
 - Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
-- Excluir categoria NUNCA apaga tarefas: só limpa `categoryId`/`subcategoryId`
+- Excluir categoria NUNCA apaga tarefas, grupos nem procedimentos: só limpa `categoryId`/`subcategoryId` (excluir subcategoria só limpa `subcategoryId`)
+- Categoria/subcategoria: regras em `category-repository` (nome válido e único no nível, `ordem`, reordenar, uso) e puras em `lib/categorias.ts`; ordem do usuário vale em todo o app (`montarCategorias`)
+- Escolher categoria SEMPRE pelo seletor único `src/components/seletor-categoria/` (`SubmenuCategoria` no menu ⋯, `CampoCategoria` em formulário); ele cria categoria/subcategoria ali mesmo e já aplica. Menu que o contém é controlado (`open`) para o seletor fechar após criar
 - IMPORTANTE: mover tarefa SOLTA = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
 - Ações de mover na UI passam por `useMoverTarefas` → `moverSelecao`/`adiarSelecao`/`trazerPendenciasDeOntem` (`group-repository`); aviso com "Desfazer" via `desfazerAcao`; Ctrl+Z (`useAtalhoDesfazer` no `LayoutApp`) desfaz a última enquanto o aviso está na tela
 - Semana começa na segunda (`PRIMEIRO_DIA_DA_SEMANA` em `src/lib/semana.ts`); colunas do quadro em `src/lib/quadro.ts`
 - Grade de mês/ano e resumo por dia em `src/lib/calendario.ts`; período via `useTarefasDoPeriodo`
 - Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
 - Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
-- Card da semana: o card inteiro arrasta o grupo (ponteiro); o cabeçalho é o ativador (foco/espaço). Área com `data-sem-arrasto` (itens, botão →) não arrasta o card; item só pela alça ⋮⋮ (`setActivatorNodeRef`). NÃO use `stopPropagation` no `onKeyDown`: bloqueia o Ctrl+Z global
-- Banco Dexie na versão 7 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`; v6: marca `criadoPorTransferencia`; v7: procedimento vira etapas via `lib/migracao-procedimentos.ts`, apaga `procedureVersions`/`executions`, `tasks.procedureId` e anexos/notas de procedimento/passo); mudar índice = nova `version()`
+- Card da semana: mesmo `MenuGrupo` e `MenuItemGrupo` do Dia. O card inteiro arrasta o grupo (ponteiro); a alça ⋮⋮ do cabeçalho é o ativador (foco/espaço). Área com `data-sem-arrasto` (itens, menu ⋯, título em edição) não arrasta o card; item só pela alça ⋮⋮ (`useSortable`, alvo de soltar só para itens do mesmo card: solto no card reordena, em outro dia leva). NÃO use `stopPropagation` no `onKeyDown` do card: bloqueia o Ctrl+Z global (só formulários dentro de menu param as teclas)
+- Banco Dexie na versão 8 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`; v6: marca `criadoPorTransferencia`; v7: procedimento vira etapas via `lib/migracao-procedimentos.ts`, apaga `procedureVersions`/`executions`, `tasks.procedureId` e anexos/notas de procedimento/passo; v8: `ordem` em categorias/subcategorias via `preencherOrdem`); mudar índice = nova `version()`
 - IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
 - Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
 - Anexo pertence ao `dono` {tipo, id} (`task` ou `note`); procedimento não tem anexo nem anotação
@@ -48,7 +50,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Anotação de tarefa = Note com `dono`; notas avulsas (página Notas) não têm dono
 - Painel de anexos reutilizável: `src/components/anexos/painel-anexos.tsx`; links SÓ http/https (`esquemaLink`)
 - Texto editado com gravação atrasada: use `useSalvarComAtraso` (grava o pendente ao sair da tela)
-- Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de criação (estável); paleta em `src/lib/cores.ts`
+- Cor de subcategoria sem cor própria = `variacaoCor` pela ordem de CRIAÇÃO (estável, reordenar não muda); paleta em `src/lib/cores.ts`
 - Nome repetido: repositório lança `ErroDeValidacao`, que `CampoNovoItem` mostra como erro do campo
 - Grupos: `db/repositories/group-repository.ts` (cards, itens, copiar, desfazer, converter) e regras puras em `src/lib/grupos.ts`
 - IMPORTANTE: grupo NÃO é tarefa nem categoria. Itens são `GroupItem` (tabela própria); tarefas são só as soltas
@@ -64,13 +66,13 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 
 - Toda entidade: `id` (`crypto.randomUUID()`), `criadoEm`, `atualizadoEm`; NUNCA ids autoincrementais (deixam aberta uma sync futura)
 - Alterar índices = nova `version()` no Dexie, NUNCA editar a versão existente
-- Category { id, nome, cor } · Subcategory { id, categoryId, nome, cor? } (sem cor = variação da cor da categoria)
+- Category { id, nome, cor, ordem } · Subcategory { id, categoryId, nome, cor?, ordem } (sem cor = variação da cor da categoria)
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
 - GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — liga os cards de dias diferentes; categoria só dá cor e filtro
 - GroupCard { id, seriesId, data, ordem, arquivado, criadoPorTransferencia? } — no máximo um por série e dia; encerrado é calculado (tem itens e nenhum pendente)
 - GroupItem { id, cardId, titulo, ordem, status: pendente|concluido|transferido|arquivado, concluidoEm?, transferidoParaCardId?, origemItemId?, dataOriginal }
 - Subtask { id, taskId, titulo, concluida, ordem }
-- Procedure { id, titulo, categoryId?, etapas: [{ id, texto, ordem }] } — etapas embutidas, sem tabela; `ordem` = posição (0, 1, 2…), regravada a cada salvamento (`numerarEtapas`)
+- Procedure { id, titulo, categoryId?, subcategoryId?, etapas: [{ id, texto, ordem }] } — etapas embutidas, sem tabela; `ordem` = posição (0, 1, 2…), regravada a cada salvamento (`numerarEtapas`)
 - Note, Attachment (foto, desenho, áudio, link) ligados a tarefa ou nota
 
 ## Regras de negócio
@@ -88,7 +90,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Tarefa solta continua sendo MOVIDA (não duplica), inclusive com subtarefas
 - Arquivar card = arquivar os pendentes (sai do calendário se não sobrar feito/transferido); excluir card apaga os itens e a série que ficar sem card
 - "+ Novo grupo" (ao lado de "+ Nova tarefa", no Dia e na Semana) com nome de série existente reusa a série; já existindo no dia, `ErroDeValidacao`
-- Procedimento = título, categoria e etapas numeradas pela posição; SÓ isso (sem execução, versões, campos variáveis, anexos ou ligação com o calendário — removidos em 01/11/2026, não reintroduza sem o usuário pedir)
+- Procedimento = título, categoria (e subcategoria) e etapas numeradas pela posição; SÓ isso (sem execução, versões, campos variáveis, anexos ou ligação com o calendário — removidos em 01/11/2026, não reintroduza sem o usuário pedir)
 - Lista de procedimentos: um bloco por categoria (`agruparPorCategoria`), "Sem categoria" no fim; busca por título e texto das etapas (`buscarProcedimentos`, `src/lib/procedimentos.ts`)
 - Novo procedimento grava ao clicar "Criar procedimento"; na página dele a edição grava sozinha (`useSalvarComAtraso` + `salvarProcedimento` com a lista inteira de etapas); excluir pede confirmação
 - NUNCA crie campo de senha no app
@@ -128,6 +130,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 30/10/2026: grupos de tarefas (cards por dia em séries; levar a outro dia duplica o card com os pendentes) — detalhes em `docs/proposta-inicial.md`
 - Ajuste 31/10/2026: arrastar o card leva o grupo inteiro (item só pela alça), menu → "Levar pendentes", volta desfaz a transferência sem card fantasma, Ctrl+Z
 - Ajuste 01/11/2026: Procedimentos remodelados (só título, categoria e etapas; banco v7, backup formato 4) — detalhes em `docs/proposta-inicial.md`
+- Ajuste 01/11/2026: categorias criadas e aplicadas ali mesmo (seletor único), aba Categorias com uso e ordem arrastável, card editável na Semana (banco v8, backup formato 5)
 
 ## Armadilhas
 
@@ -143,7 +146,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Canvas, câmera, microfone e `createImageBitmap` não existem no jsdom: verifique desenho, foto e áudio no navegador
 - Testes têm tsconfig próprio (`tsconfig.test.json`, com tipos do Node); o app não enxerga tipos do Node
 - `userEvent.type`: `{` é tecla especial; para digitar `{{campo}}` escreva `'{{{{campo}}'`
-- Playwright `getByLabel('Etapa 1')` casa por trecho (pega "Excluir etapa 1"): use `{ exact: true }`
+- Playwright `getByLabel('Etapa 1')` / `getByRole(..., { name })` casam por trecho (pega "Excluir etapa 1", "Mover Trabalho"): use `{ exact: true }`
 - `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
 - Campo de criar item: use `CampoNovoItem`; ele limpa ANTES do `await` para não apagar o que o usuário já digitou

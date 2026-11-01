@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
-import { criarCategoria } from '@/db/repositories/category-repository'
+import { criarCategoria, reordenarCategoria } from '@/db/repositories/category-repository'
 import { criarProcedimento } from '@/db/repositories/procedure-repository'
 import { renderizarApp } from '@/test/renderizar-app'
 
@@ -134,5 +134,45 @@ describe('Procedimentos', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/procedimentos'))
     expect(await db.procedures.count()).toBe(0)
+  })
+
+  it('o seletor de categoria cria uma subcategoria ali mesmo e ela fica aplicada', async () => {
+    const usuario = userEvent.setup()
+    const casa = await criarCategoria({ nome: 'Casa' })
+    const procedimento = await criarProcedimento({ titulo: 'Regar', categoryId: '', etapas: [] })
+    renderizarApp(`/procedimentos/${procedimento.id}`)
+
+    await usuario.click(await screen.findByRole('button', { name: 'Categoria' }))
+    ;(await screen.findByRole('menuitem', { name: 'Nova subcategoria em Casa' })).focus()
+    await usuario.keyboard('{Enter}')
+    await usuario.type(
+      await screen.findByRole('textbox', { name: 'Nova subcategoria' }),
+      'Jardim{Enter}',
+    )
+
+    await waitFor(
+      async () => {
+        const [jardim] = await db.subcategories.toArray()
+        expect(await db.procedures.get(procedimento.id)).toMatchObject({
+          categoryId: casa.id,
+          subcategoryId: jardim?.id,
+        })
+      },
+      { timeout: 3000 },
+    )
+    expect(screen.getByRole('button', { name: 'Categoria' })).toHaveTextContent('Casa › Jardim')
+  })
+
+  it('os blocos seguem a ordem das categorias definida pelo usuário', async () => {
+    const casa = await criarCategoria({ nome: 'Casa' })
+    const trabalho = await criarCategoria({ nome: 'Trabalho' })
+    await reordenarCategoria([trabalho.id, casa.id], trabalho.id)
+    await criarProcedimento({ titulo: 'Relatório', categoryId: trabalho.id, etapas: [] })
+    await criarProcedimento({ titulo: 'Regar', categoryId: casa.id, etapas: [] })
+    renderizarApp('/procedimentos')
+
+    await screen.findByRole('link', { name: /Regar/ })
+    const blocos = screen.getAllByRole('heading', { level: 2 }).map((titulo) => titulo.textContent)
+    expect(blocos).toEqual(['Trabalho1', 'Casa1'])
   })
 })

@@ -1,16 +1,9 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { useCategorias } from '@/hooks/use-categorias'
+import { CampoCategoria } from '@/components/seletor-categoria/campo-categoria'
 import {
   esquemaProcedimento,
   type DadosProcedimento,
@@ -30,9 +23,6 @@ interface FormularioProcedimentoProps {
   rodape?: ReactNode
 }
 
-/** Radix Select não aceita valor vazio; este representa "sem categoria". */
-const SEM_CATEGORIA = 'sem-categoria'
-
 /** Título, categoria e etapas. */
 export function FormularioProcedimento({
   valoresIniciais,
@@ -41,7 +31,6 @@ export function FormularioProcedimento({
   situacao,
   rodape,
 }: FormularioProcedimentoProps) {
-  const { categorias } = useCategorias()
   const formulario = useForm<ValoresProcedimento, unknown, DadosProcedimento>({
     resolver: zodResolver(esquemaProcedimento),
     defaultValues: valoresIniciais,
@@ -51,9 +40,11 @@ export function FormularioProcedimento({
     register,
     control,
     subscribe,
+    setValue,
     handleSubmit,
     formState: { errors },
   } = formulario
+  const subcategoryId = useWatch({ control, name: 'subcategoryId' })
 
   const onAlterarRef = useRef(onAlterar)
   useEffect(() => {
@@ -105,27 +96,19 @@ export function FormularioProcedimento({
                 control={control}
                 name="categoryId"
                 render={({ field }) => (
-                  <Select
-                    value={field.value || SEM_CATEGORIA}
-                    onValueChange={(valor) => field.onChange(valor === SEM_CATEGORIA ? '' : valor)}
-                  >
-                    <SelectTrigger id="categoria" className="w-full bg-papel">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={SEM_CATEGORIA}>Sem categoria</SelectItem>
-                      {categorias.map((categoria) => (
-                        <SelectItem key={categoria.id} value={categoria.id}>
-                          <span
-                            aria-hidden
-                            className="size-2.5 rounded-full"
-                            style={{ backgroundColor: categoria.cor }}
-                          />
-                          {categoria.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CampoCategoria
+                    id="categoria"
+                    atual={{
+                      categoryId: field.value || undefined,
+                      subcategoryId: subcategoryId || undefined,
+                    }}
+                    onEscolher={(categoria) => {
+                      setValue('subcategoryId', categoria.subcategoryId ?? '', {
+                        shouldDirty: true,
+                      })
+                      field.onChange(categoria.categoryId ?? '')
+                    }}
+                  />
                 )}
               />
             </Field>

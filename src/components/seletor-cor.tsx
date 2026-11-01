@@ -1,7 +1,7 @@
-import { Check } from 'lucide-react'
 import { cn } from 'cn'
+import { PaletaCores } from '@/components/paleta-cores'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { PALETA_CATEGORIAS } from '@/lib/cores'
+import { nomeDaCor } from '@/lib/cores'
 
 interface SeletorCorProps {
   /** Cor exibida agora (própria ou automática). */
@@ -14,10 +14,6 @@ interface SeletorCorProps {
   /** Se informado, mostra a opção de voltar à variação automática. */
   onUsarAutomatica?: () => void
   tamanho?: 'normal' | 'pequeno'
-}
-
-function nomeDaCor(hex: string) {
-  return PALETA_CATEGORIAS.find((cor) => cor.hex === hex)?.nome ?? 'personalizada'
 }
 
 /** Amostra de cor que abre a paleta. */
@@ -42,26 +38,11 @@ export function SeletorCor({
         style={{ backgroundColor: cor }}
       />
       <PopoverContent align="start" className="w-auto p-3">
-        <div role="radiogroup" aria-label={`Cor de ${nomeItem}`} className="grid grid-cols-6 gap-2">
-          {PALETA_CATEGORIAS.map((opcao) => {
-            const isSelecionada = !isAutomatica && opcao.hex === cor
-            return (
-              <button
-                key={opcao.hex}
-                type="button"
-                role="radio"
-                aria-checked={isSelecionada}
-                aria-label={opcao.nome}
-                title={opcao.nome}
-                onClick={() => onEscolher(opcao.hex)}
-                className="flex size-7 items-center justify-center rounded-full text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta"
-                style={{ backgroundColor: opcao.hex }}
-              >
-                {isSelecionada && <Check className="size-4" aria-hidden />}
-              </button>
-            )
-          })}
-        </div>
+        <PaletaCores
+          rotulo={`Cor de ${nomeItem}`}
+          selecionada={isAutomatica ? undefined : cor}
+          onEscolher={onEscolher}
+        />
         {onUsarAutomatica && (
           <button
             type="button"

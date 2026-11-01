@@ -6,7 +6,13 @@ import {
   importarDados,
   versaoDoBanco,
 } from '@/db/repositories/backup-repository'
-import { criarCategoria, criarSubcategoria } from '@/db/repositories/category-repository'
+import {
+  criarCategoria,
+  criarSubcategoria,
+  listarCategorias,
+  reordenarCategoria,
+  reordenarSubcategoria,
+} from '@/db/repositories/category-repository'
 import { criarProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
 import { criarSubtarefa } from '@/db/repositories/subtask-repository'
 import { criarTarefa, moverTarefas } from '@/db/repositories/task-repository'
@@ -91,6 +97,33 @@ describe('backup', () => {
     ])
   })
 
+  it('exporta e importa a ordem das categorias e a subcategoria do procedimento', async () => {
+    const casa = await criarCategoria({ nome: 'Casa' })
+    const trabalho = await criarCategoria({ nome: 'Trabalho' })
+    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
+    const contas = await criarSubcategoria({ categoryId: casa.id, nome: 'Contas' })
+    await reordenarCategoria([trabalho.id, casa.id], trabalho.id)
+    await reordenarSubcategoria([contas.id, jardim.id], contas.id)
+    await criarProcedimento({
+      titulo: 'Adubar',
+      categoryId: casa.id,
+      subcategoryId: jardim.id,
+      etapas: [],
+    })
+    const arquivo = JSON.stringify(await exportarDados())
+    expect(JSON.parse(arquivo).tabelas.categories[0]).toHaveProperty('ordem')
+
+    await Promise.all(db.tables.map((tabela) => tabela.clear()))
+    const leitura = lerBackup(arquivo, versaoDoBanco())
+    if (!leitura.isValido) throw new Error(leitura.mensagem)
+    await importarDados(leitura.backup)
+
+    const categorias = await listarCategorias()
+    expect(categorias.map((categoria) => categoria.nome)).toEqual(['Trabalho', 'Casa'])
+    expect(categorias[1].subcategorias.map((sub) => sub.nome)).toEqual(['Contas', 'Jardim'])
+    expect((await db.procedures.toArray())[0]).toMatchObject({ subcategoryId: jardim.id })
+  })
+
   it('importar substitui: o que não está no backup some', async () => {
     await criarTarefa({ titulo: 'Do backup', data: '2026-10-30' })
     const backup = await exportarDados()
@@ -106,8 +139,8 @@ describe('backup', () => {
     const backup = await exportarDados()
     // Dois registros com o mesmo id fazem o bulkAdd falhar depois de limpar as tabelas.
     backup.tabelas.categories.push(
-      { id: 'repetido', nome: 'A', cor: '#000000', criadoEm: '', atualizadoEm: '' },
-      { id: 'repetido', nome: 'B', cor: '#000000', criadoEm: '', atualizadoEm: '' },
+      { id: 'repetido', nome: 'A', cor: '#000000', ordem: 1, criadoEm: '', atualizadoEm: '' },
+      { id: 'repetido', nome: 'B', cor: '#000000', ordem: 2, criadoEm: '', atualizadoEm: '' },
     )
     backup.tabelas.tasks = []
 

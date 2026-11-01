@@ -11,6 +11,8 @@ export interface EntidadeBase {
 export interface Category extends EntidadeBase {
   nome: string
   cor: string
+  /** Posição definida pelo usuário (aceita decimais); vale em todo o app. */
+  ordem: number
 }
 
 export interface Subcategory extends EntidadeBase {
@@ -18,6 +20,8 @@ export interface Subcategory extends EntidadeBase {
   nome: string
   /** Sem cor própria, a interface usa uma variação da cor da categoria. */
   cor?: string
+  /** Posição dentro da categoria (aceita decimais). */
+  ordem: number
 }
 
 export type TaskStatus = 'pendente' | 'concluida' | 'arquivada'
@@ -97,6 +101,7 @@ export interface Etapa {
 export interface Procedure extends EntidadeBase {
   titulo: string
   categoryId?: string
+  subcategoryId?: string
   etapas: Etapa[]
 }
 

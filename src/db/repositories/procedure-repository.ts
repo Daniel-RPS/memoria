@@ -14,20 +14,23 @@ export function obterProcedimento(id: string) {
 
 /** O que muda ao gravar: a `ordem` de cada etapa é a posição recebida. */
 function camposGravados(dados: DadosProcedimento) {
+  const categoryId = dados.categoryId || undefined
   return {
     titulo: dados.titulo.trim(),
-    categoryId: dados.categoryId || undefined,
+    categoryId,
+    subcategoryId: categoryId ? dados.subcategoryId || undefined : undefined,
     etapas: numerarEtapas(dados.etapas),
   }
 }
 
 export async function criarProcedimento(dados: DadosProcedimento): Promise<Procedure> {
   const momento = agora()
-  const { categoryId, ...campos } = camposGravados(dados)
+  const { categoryId, subcategoryId, ...campos } = camposGravados(dados)
   const procedimento: Procedure = {
     id: crypto.randomUUID(),
     ...campos,
     ...(categoryId ? { categoryId } : {}),
+    ...(subcategoryId ? { subcategoryId } : {}),
     criadoEm: momento,
     atualizadoEm: momento,
   }
@@ -35,7 +38,7 @@ export async function criarProcedimento(dados: DadosProcedimento): Promise<Proce
   return procedimento
 }
 
-/** Grava título, categoria e etapas (a lista inteira, na ordem da tela). */
+/** Grava título, categoria, subcategoria e etapas (a lista inteira, na ordem da tela). */
 export async function salvarProcedimento(id: string, dados: DadosProcedimento) {
   const atualizados = await db.procedures.update(id, {
     ...camposGravados(dados),

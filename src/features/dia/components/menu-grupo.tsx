@@ -26,11 +26,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { pendentesDo, rotuloLevarAdiante, type GrupoDoDia } from '@/lib/grupos'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
-import { SubmenuCategoria } from '@/features/dia/components/submenu-categoria'
 
 interface MenuGrupoProps {
   grupo: GrupoDoDia
@@ -46,6 +46,7 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
   const { card, serie } = grupo
   const { arquivarGrupo, excluirGrupo, definirCategoriaDoGrupo } = useAcoesGrupo()
   const { adiar } = useMoverTarefas()
+  const [isMenuAberto, setIsMenuAberto] = useState(false)
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   const quantidadePendentes = pendentesDo(grupo).length
@@ -55,7 +56,7 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
 
   return (
     <>
-      <DropdownMenu modal={false}>
+      <DropdownMenu open={isMenuAberto} onOpenChange={setIsMenuAberto} modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -68,6 +69,9 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
+          collisionPadding={8}
+          // Botão pequeno: o menu tem largura própria, não a do botão.
+          className="w-auto min-w-52"
           onCloseAutoFocus={(evento) => {
             if (!isAbrindoCampoRef.current) return
             evento.preventDefault()
@@ -98,6 +102,7 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
           <SubmenuCategoria
             atual={serie}
             onEscolher={(categoria) => void definirCategoriaDoGrupo(serie.id, categoria)}
+            onFechar={() => setIsMenuAberto(false)}
           />
           <DropdownMenuItem onSelect={() => void arquivarGrupo(card.id)}>
             <Archive /> Arquivar

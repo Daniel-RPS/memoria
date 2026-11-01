@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router'
 import { cn } from 'cn'
+import { CampoNovoGrupo } from '@/components/campo-novo-grupo'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { criarGrupo } from '@/db/repositories/group-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
@@ -109,11 +110,10 @@ export function ColunaDia({
           tamanho="compacto"
           onCriar={(titulo) => criarTarefa({ titulo, data })}
         />
-        <CampoNovoItem
-          rotulo="Novo grupo"
+        <CampoNovoGrupo
           nomeAcessivel={`Novo grupo em ${nomeCurto}`}
           tamanho="compacto"
-          onCriar={(titulo) => criarGrupo({ titulo, data })}
+          onCriar={(dados) => criarGrupo({ ...dados, data })}
         />
       </div>
       {quantidadeConcluidas > 0 && (

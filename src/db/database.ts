@@ -11,6 +11,7 @@ import type {
   Subtask,
   Task,
 } from '@/db/types'
+import { preencherOrdem } from '@/lib/categorias'
 import { converterGruposAntigos, type CardAntigo, type TarefaAntiga } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo, type ProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 
@@ -125,6 +126,18 @@ export class MemoriaDatabase extends Dexie {
           registro.dono?.tipo === 'procedure' || registro.dono?.tipo === 'step'
         await transacao.table('notes').filter(isDonoRemovido).delete()
         await transacao.table('attachments').filter(isDonoRemovido).delete()
+      })
+    // v8: categorias e subcategorias ganham `ordem` (sem índice; ordenadas em memória).
+    // As existentes ficam na ordem mostrada antes: categorias por nome, subcategorias por criação.
+    this.version(8)
+      .stores({})
+      .upgrade(async (transacao) => {
+        const { categorias, subcategorias } = preencherOrdem(
+          await transacao.table('categories').toArray(),
+          await transacao.table('subcategories').toArray(),
+        )
+        await transacao.table('categories').bulkPut(categorias)
+        await transacao.table('subcategories').bulkPut(subcategorias)
       })
   }
 }

@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas. Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
@@ -19,6 +19,8 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Indicação de há quantos dias uma tarefa está pendente
 - ✅ Subtarefas com progresso (ex.: "2 de 5"), reordenáveis e abertas logo abaixo da tarefa
 - ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
+- ✅ Criar e aplicar categoria ou subcategoria ali mesmo, no seletor de categoria (menu ⋯ do card e da tarefa, "+ Novo grupo" e editor de procedimento)
+- ✅ Ordem das categorias e subcategorias definida por você, arrastando; vale em todo o app
 - ✅ Filtro por categoria e subcategoria na visão do dia
 - ✅ Visão de semana (segunda a domingo)
 - ✅ Grupos de tarefas: um card (ex.: "Casa") com itens; levar a outro dia cria uma cópia só com os pendentes e o card original fica como registro
@@ -47,7 +49,8 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Card com tudo marcado não pode ser levado; card sem nada marcado leva tudo (o original fica)
 - ✅ Na Semana, arrastar o card (cabeçalho ou qualquer área fora dos itens) leva **todos os pendentes juntos**; a alça ⋮⋮ de um item leva só aquele item
 - ✅ Enquanto arrasta, a prévia mostra "Casa · 2 pendentes → 03/11"
-- ✅ Botão → no card da Semana (e menu ⋯ no Dia): "Levar pendentes para amanhã" e "Levar pendentes para…"
+- ✅ Menu ⋯ do card igual no Dia e na Semana: "Levar pendentes para amanhã", "Levar pendentes para…", Renomear, Categoria, Arquivar e Excluir
+- ✅ Na Semana, o card se edita ali mesmo: clicar no título renomeia; "+ Adicionar item"; clicar no item renomeia; menu ⋯ do item exclui; a alça ⋮⋮ reordena dentro do card
 - ✅ Levar de volta para um dia onde o item ficou como transferido **desfaz a transferência**: o item de lá volta a pendente, sem duplicata; o card que nasceu da transferência e ficou sem itens some sozinho (card criado por você nunca some sozinho)
 - ✅ Toda movimentação mostra "2 itens levados para amanhã · Desfazer"; **Ctrl+Z** faz o mesmo enquanto o aviso está na tela
 - ✅ Colocar uma tarefa solta no grupo e tirar um item do grupo
@@ -109,19 +112,21 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Arraste pela alça à esquerda para reordenar. Pelo teclado: foque a alça, tecle espaço, use as setas e espaço de novo.
 - O menu **⋯** de cada tarefa tem Renomear, Adicionar subtarefa, Categoria, Arquivar e Excluir.
 - Clique no progresso ("2 de 5") para abrir ou fechar as subtarefas. Concluir todas as subtarefas não conclui a tarefa: você decide.
-- Em **Categorias**, crie categorias e subcategorias e clique na bolinha de cor para trocar a cor. Excluir uma categoria não apaga as tarefas: elas só ficam sem categoria.
+- Em **Categorias**, crie a categoria no topo (nome e cor) e as subcategorias embaixo de cada uma. Clique no nome para renomear e na bolinha para trocar a cor. Cada categoria mostra quantos itens a usam ("4 tarefas · 2 grupos · 1 procedimento"). Arraste pela alça ⋮⋮ para mudar a ordem, que vale em todo o app. Excluir pede confirmação e não apaga nada além da categoria: os itens ficam "Sem categoria" (ou, ao excluir uma subcategoria, só perdem a subcategoria).
+- Não precisa sair da tela para usar uma categoria nova: em **Categoria ›** (menu ⋯), ao lado de **Novo grupo** ou no campo **Categoria** do procedimento, use **+ Nova categoria** ou **+ Nova subcategoria** (aparece ao passar o mouse sobre a categoria). Enter cria e já aplica ao item; Esc volta.
+- Tudo se atualiza sozinho em todas as telas, inclusive em outra aba do navegador aberta no app.
 - Na visão do dia, os botões de categoria filtram as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
 - Mover uma tarefa só muda o dia dela: nada é copiado ou apagado, e a contagem "pendente há N dias" continua contando desde o dia em que foi criada.
 - No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
 - Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje** (tarefas soltas vêm; itens de grupo são levados).
 - **+ Novo grupo**, ao lado de **Nova tarefa**, cria um card. Escreva os itens em **Adicionar item**.
-- Arrastar um card para outro dia (na Semana ou no Mês), ou usar **Levar pendentes para amanhã** e **Levar pendentes para…** (botão → do card na Semana, menu **⋯** no Dia), leva **todos** os itens pendentes de uma vez para o card desse grupo no outro dia. O card original fica onde estava, como registro: os itens levados aparecem como "transferido para 03/11". Enquanto arrasta, a prévia mostra "Casa · 2 pendentes → 03/11".
-- Na Semana, para levar um item só, arraste pela alça **⋮⋮** que aparece à esquerda dele ao passar o mouse. Apertar no resto do item não arrasta nada.
+- Arrastar um card para outro dia (na Semana ou no Mês), ou usar **Levar pendentes para amanhã** e **Levar pendentes para…** (menu **⋯** do card, no Dia e na Semana), leva **todos** os itens pendentes de uma vez para o card desse grupo no outro dia. O card original fica onde estava, como registro: os itens levados aparecem como "transferido para 03/11". Enquanto arrasta, a prévia mostra "Casa · 2 pendentes → 03/11".
+- Na Semana, para levar um item só, arraste pela alça **⋮⋮** que aparece à esquerda dele ao passar o mouse; solto no próprio card, ele só muda de posição. Apertar no resto do item não arrasta nada.
 - Levou para o dia errado? Arraste de volta: o item volta a ser pendente no card de antes (nada duplicado) e o card que tinha sido criado para recebê-lo some, se ficou vazio. Ou use **Desfazer** no aviso / **Ctrl+Z**.
 - Tarefas soltas continuam sendo **movidas** (não copiadas).
 - Grupos com o mesmo nome são o mesmo grupo em dias diferentes: se o destino já tem o card "Casa", os itens entram nele. Renomear ou trocar a categoria do card vale para todos os dias.
 - Arraste uma tarefa solta para dentro de um card, ou um item para fora (vira tarefa solta). Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**. Subtarefas, anotação e anexos da tarefa não passam para o item.
-- Em **Procedimentos**, **Novo procedimento** pede título, categoria e etapas (**Adicionar etapa** quantas vezes quiser). Depois de criado, clique nele na lista para ver e editar: o texto das etapas se edita ali mesmo e tudo grava sozinho ("Salvo"). A lixeira exclui a etapa e a numeração se ajusta.
+- Em **Procedimentos**, **Novo procedimento** pede título, categoria (e subcategoria, se quiser) e etapas (**Adicionar etapa** quantas vezes quiser). Depois de criado, clique nele na lista para ver e editar: o texto das etapas se edita ali mesmo e tudo grava sozinho ("Salvo"). A lixeira exclui a etapa e a numeração se ajusta.
 - Em **Mês**, cada dia mostra até 3 pendentes (atrasadas com marca-texto) e o resto como "+N". Arraste uma tarefa para outro dia; pelo teclado, foque a tarefa, tecle espaço, use as setas (lados = um dia, cima/baixo = uma semana) e espaço de novo.
 - Em **Ano**, o tom de cada dia indica quantas tarefas há, e um ponto amarelo marca pendência atrasada. Clique no mês ou no dia para abrir.
 - Em **Notas**, **Nova nota** abre uma página que se salva sozinha enquanto você escreve.

@@ -1,4 +1,4 @@
-import { CampoNovoItem } from '@/components/campo-novo-item'
+import { CampoNovoGrupo } from '@/components/campo-novo-grupo'
 import type { DataLocal } from '@/db/types'
 import type { FiltroCategoria } from '@/lib/categorias'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
@@ -16,16 +16,13 @@ export function NovoGrupo({ data, filtro }: NovoGrupoProps) {
   return (
     <div className="flex items-center pl-1">
       <div className="min-w-0 flex-1 pl-2">
-        <CampoNovoItem
-          rotulo="Novo grupo"
-          onCriar={(titulo) =>
-            criarGrupo({
-              titulo,
-              data,
-              categoryId: filtro.categoriaId,
-              subcategoryId: filtro.subcategoriaId,
-            })
-          }
+        <CampoNovoGrupo
+          key={`${filtro.categoriaId}/${filtro.subcategoriaId}`}
+          categoriaInicial={{
+            categoryId: filtro.categoriaId,
+            subcategoryId: filtro.subcategoriaId,
+          }}
+          onCriar={(dados) => criarGrupo({ ...dados, data })}
         />
       </div>
     </div>

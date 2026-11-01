@@ -156,7 +156,7 @@ test('arrastar pela alça do item leva só ele; trazer de volta não duplica', a
   await capturar(page, '2-item-antes')
 
   const alca = coluna(page, COLUNA_2).getByRole('button', {
-    name: `Arrastar ${JANTA}. Espaço para levar só este item a outro dia.`,
+    name: `Arrastar ${JANTA}. Espaço para mudar a posição ou levar só este item a outro dia.`,
   })
   await arrastar(page, alca, coluna(page, COLUNA_3), async () => {
     await expect(page.getByText(`${JANTA} → 03/11`, { exact: true })).toBeVisible()
@@ -201,4 +201,24 @@ test('Ctrl+Z desfaz o arrasto do card', async ({ page }) => {
   await expect(page.getByText('2 itens levados para amanhã')).toHaveCount(0)
   await capturar(page, '3-desfazer-depois')
   expect(await lerBanco(page)).toEqual([{ data: SEGUNDA, itens: [`[ ] ${JANTA}`, `[ ] ${BANHO}`] }])
+})
+
+test('a alça do item, solta no próprio card, só muda a posição dele', async ({ page }) => {
+  const itens = itensDoCard(coluna(page, COLUNA_2))
+  await itens.filter({ hasText: BANHO }).hover()
+  await capturar(page, '4-reordenar-antes')
+  const alca = coluna(page, COLUNA_2).getByRole('button', {
+    name: new RegExp(`^Arrastar ${BANHO}`),
+  })
+  const de = (await alca.boundingBox())!
+  const alvo = (await itens.filter({ hasText: JANTA }).boundingBox())!
+  await page.mouse.move(de.x + de.width / 2, de.y + de.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(de.x + de.width / 2, de.y - 6, { steps: 4 })
+  await page.mouse.move(de.x + de.width / 2, alvo.y + 2, { steps: 12 })
+  await page.mouse.up()
+
+  await expect(itens).toHaveText([BANHO, JANTA])
+  await capturar(page, '4-reordenar-depois')
+  expect(await lerBanco(page)).toEqual([{ data: SEGUNDA, itens: [`[ ] ${BANHO}`, `[ ] ${JANTA}`] }])
 })

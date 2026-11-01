@@ -8,6 +8,7 @@ import {
   criarItem,
   definirConclusaoItem,
 } from '@/db/repositories/group-repository'
+import { criarCategoria } from '@/db/repositories/category-repository'
 import { hoje, somarDias } from '@/lib/datas'
 import { inicioDaSemana } from '@/lib/semana'
 import { renderizarApp } from '@/test/renderizar-app'
@@ -60,7 +61,7 @@ describe('Grupos nas visões de semana, mês e ano', () => {
     expect(
       await screen.findByRole('button', { name: /^Arrastar Fazer comida\./ }),
     ).toBeInTheDocument()
-    await usuario.click(screen.getByRole('button', { name: 'Levar pendentes de Casa' }))
+    await usuario.click(screen.getByRole('button', { name: 'Mais ações para o grupo Casa' }))
     await usuario.click(
       await screen.findByRole('menuitem', { name: 'Levar pendentes para amanhã' }),
     )
@@ -74,5 +75,51 @@ describe('Grupos nas visões de semana, mês e ano', () => {
     await usuario.keyboard('{Control>}z{/Control}')
     await waitFor(async () => expect(await db.groupCards.count()).toBe(1))
     expect((await db.groupItems.toArray()).every((item) => item.status === 'pendente')).toBe(true)
+  })
+
+  it('semana: renomeia o card e adiciona, renomeia e exclui itens ali mesmo', async () => {
+    const usuario = userEvent.setup()
+    const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
+    await criarItem(card.id, 'Varrer')
+    renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
+
+    await usuario.click(await screen.findByRole('button', { name: 'Casa' }))
+    const titulo = screen.getByRole('textbox', { name: 'Nome da tarefa' })
+    await usuario.clear(titulo)
+    await usuario.type(titulo, 'Lar{Enter}')
+    await waitFor(async () => expect((await db.groupSeries.toArray())[0].titulo).toBe('Lar'))
+
+    await usuario.type(
+      await screen.findByRole('textbox', { name: 'Adicionar item em Lar' }),
+      'Lavar louça{Enter}',
+    )
+    const itens = await screen.findByRole('list', { name: 'Itens de Lar' })
+    await usuario.click(await within(itens).findByRole('button', { name: 'Lavar louça' }))
+    const campoItem = screen.getByRole('textbox', { name: 'Nome da tarefa' })
+    await usuario.clear(campoItem)
+    await usuario.type(campoItem, 'Lavar a louça{Enter}')
+    expect(await within(itens).findByRole('button', { name: 'Lavar a louça' })).toBeInTheDocument()
+
+    await usuario.click(within(itens).getByRole('button', { name: 'Mais ações para Varrer' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Excluir' }))
+    await waitFor(async () =>
+      expect((await db.groupItems.toArray()).map((item) => item.titulo)).toEqual(['Lavar a louça']),
+    )
+  })
+
+  it('semana: "Novo grupo" já nasce na categoria escolhida ao lado', async () => {
+    const usuario = userEvent.setup()
+    const casa = await criarCategoria({ nome: 'Casa' })
+    renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
+    const [campo] = await screen.findAllByRole('textbox', { name: /^Novo grupo em / })
+    const [botaoCategoria] = screen.getAllByRole('button', {
+      name: /^Categoria do novo grupo em .*: Sem categoria$/,
+    })
+
+    await usuario.click(botaoCategoria)
+    await usuario.click(await screen.findByRole('menuitemradio', { name: 'Casa' }))
+    await usuario.type(campo, 'Faxina{Enter}')
+
+    await waitFor(async () => expect((await db.groupSeries.toArray())[0]?.categoryId).toBe(casa.id))
   })
 })

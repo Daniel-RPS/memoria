@@ -69,3 +69,15 @@ A primeira versão (seções, passos, subpassos, código, alertas, campos variá
 - Modelo: `Procedure { id, titulo, categoryId?, etapas: [{ id, texto, ordem }], criadoEm, atualizadoEm }`.
 - Banco v7 converte os existentes (título e categoria mantidos; passos de todas as seções viram etapas na ordem, cada subpasso logo após o seu passo) e apaga versões, execuções, o vínculo das tarefas e os anexos/anotações de procedimento e de passo.
 - Backup formato 4. Backups até o formato 3 são convertidos do mesmo jeito ao importar.
+
+## Categorias sem sair da tela (ajuste de 01/11/2026)
+
+Antes, para usar uma categoria nova era preciso ir à aba Categorias e voltar.
+
+- **Seletor único** (`src/components/seletor-categoria/`): "Sem categoria", as categorias com a bolinha de cor e as subcategorias recuadas, na ordem do usuário. "+ Nova categoria" (nome e paleta) e "+ Nova subcategoria" (nome; cor opcional, sem cor = tom da categoria) abrem um formulário ali mesmo: Enter cria, Esc volta. O que for criado já fica aplicado ao item e o menu fecha. Nome vazio ou repetido no mesmo nível (sem diferenciar maiúsculas e acentos) aparece como erro do campo.
+- Usado no menu ⋯ do card (Dia e Semana) e da tarefa, ao lado de "+ Novo grupo" e no editor de procedimento (no lugar do `<select>`). O filtro do Dia continua com os botões, só que na ordem do usuário.
+- **Aba Categorias**: criar no topo (nome e cor); abaixo, a lista com cor, nome editável, uso ("4 tarefas · 2 grupos · 1 procedimento"), subcategorias recuadas com "+ Nova subcategoria" e excluir com confirmação que diz o que acontece (itens ficam "Sem categoria" ou só perdem a subcategoria; nada mais é apagado). Ordem arrastando, das categorias e das subcategorias dentro da categoria.
+- **Card na Semana** com as mesmas ações do Dia: o mesmo menu ⋯, renomear clicando no título, "+ Adicionar item", renomear o item clicando nele, excluir pelo menu ⋯ do item e reordenar pela alça ⋮⋮ (solto no próprio card muda a posição; em outro dia, leva o item, como antes).
+- **Sincronizado**: todas as telas leem com `useLiveQuery`, então qualquer mudança aparece na hora, também em outra aba aberta no app.
+- **Modelo**: `Category { id, nome, cor, ordem }`, `Subcategory { id, categoryId, nome, cor?, ordem }` e `Procedure` ganha `subcategoryId?`. Banco v8 preenche `ordem` das existentes (categorias por nome, subcategorias pela criação, a ordem mostrada antes). Backup formato 5 inclui `ordem`; nos anteriores ela é preenchida ao importar.
+- O tom automático da subcategoria continua pela ordem de **criação**: reordenar não troca as cores.

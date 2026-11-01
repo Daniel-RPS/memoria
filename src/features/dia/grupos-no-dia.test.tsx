@@ -174,6 +174,7 @@ describe('Grupos na visão do dia', () => {
       id: 'casa',
       nome: 'Limpeza',
       cor: '#2f8f5b',
+      ordem: 1,
       criadoEm: '',
       atualizadoEm: '',
     })
@@ -196,5 +197,33 @@ describe('Grupos na visão do dia', () => {
     expect(screen.getByRole('checkbox', { name: 'Selecionar grupo Casa' })).toBeChecked()
     await usuario.click(screen.getByRole('button', { name: 'Casa' }))
     expect(screen.getByRole('checkbox', { name: 'Selecionar grupo Casa' })).not.toBeChecked()
+  })
+
+  it('menu ⋯ › Categoria › Nova categoria cria, aplica ao card e fecha o menu', async () => {
+    const usuario = userEvent.setup()
+    await criarGrupo({ titulo: 'Casa', data: HOJE })
+    renderizarApp(`/dia/${HOJE}`)
+
+    await usuario.click(await screen.findByRole('button', { name: 'Mais ações para o grupo Casa' }))
+    // Submenu Radix no jsdom: pelo teclado.
+    ;(await screen.findByRole('menuitem', { name: 'Categoria' })).focus()
+    await usuario.keyboard('{ArrowRight}')
+    ;(await screen.findByRole('menuitem', { name: 'Nova categoria' })).focus()
+    await usuario.keyboard('{Enter}')
+    const campo = await screen.findByRole('textbox', { name: 'Nova categoria' })
+    await usuario.type(campo, '   {Enter}')
+    expect(await screen.findByText('Escreva um nome.')).toBeInTheDocument()
+    await usuario.clear(campo)
+    await usuario.type(campo, 'Trabalho{Enter}')
+
+    await waitFor(async () => {
+      const [categoria] = await db.categories.toArray()
+      const [serie] = await db.groupSeries.toArray()
+      expect(categoria?.nome).toBe('Trabalho')
+      expect(serie.categoryId).toBe(categoria?.id)
+    })
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    const card = screen.getByRole('region', { name: 'Grupo Casa' })
+    expect(await within(card).findByText('Trabalho')).toBeInTheDocument()
   })
 })

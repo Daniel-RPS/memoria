@@ -14,6 +14,18 @@ export const PALETA_CATEGORIAS = [
   { nome: 'Grafite', hex: '#5e6b7a' },
 ] as const
 
+/** Primeira cor da paleta ainda não usada; se todas estiverem em uso, recomeça. */
+export function proximaCor(categoriasExistentes: { cor: string }[]) {
+  const usadas = new Set(categoriasExistentes.map((categoria) => categoria.cor))
+  const livre = PALETA_CATEGORIAS.find((cor) => !usadas.has(cor.hex))
+  return (livre ?? PALETA_CATEGORIAS[categoriasExistentes.length % PALETA_CATEGORIAS.length]).hex
+}
+
+/** Nome da cor da paleta (ex.: "Azul") ou "personalizada". */
+export function nomeDaCor(hex: string) {
+  return PALETA_CATEGORIAS.find((cor) => cor.hex === hex)?.nome ?? 'personalizada'
+}
+
 export const COR_PADRAO_CATEGORIA = PALETA_CATEGORIAS[6].hex
 
 const PADRAO_HEX = /^#[0-9a-f]{6}$/i

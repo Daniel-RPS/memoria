@@ -12,14 +12,15 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { reordenarItem } from '@/db/repositories/group-repository'
 import { reordenarTarefa, soltarTarefaNoDia } from '@/db/repositories/task-repository'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { idDaEntrada, pendentesDo, textoPreviaLevar, type GrupoDoDia } from '@/lib/grupos'
 import { nomeDoDia } from '@/lib/mover'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
-import { CartaoGrupo } from '@/features/semana/components/cartao-grupo'
+import { CartaoGrupo, type DadosArrastoItem } from '@/features/semana/components/cartao-grupo'
 import { ColunaDia, PREFIXO_COLUNA } from '@/features/semana/components/coluna-dia'
 import { CartaoTarefa } from '@/features/semana/components/cartao-tarefa'
 import type { DiaDaSemana } from '@/features/semana/hooks/use-tarefas-da-semana'
@@ -45,7 +46,7 @@ function colunasDe(semana: DiaDaSemana[]): Colunas {
 /**
  * Sete colunas. Tarefa solta arrastada para outro dia é MOVIDA. Card arrastado para outro dia
  * fica onde está e os itens pendentes vão juntos para o card da mesma série no destino (ou
- * voltam ao card de onde vieram). Um item arrastado pela alça vai sozinho.
+ * voltam ao card de onde vieram). Um item arrastado pela alça vai sozinho (ou, solto no próprio card, muda de posição).
  */
 export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemanaProps) {
   const { mover } = useMoverTarefas()
@@ -91,7 +92,18 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     'tarefa'
 
   function colunaDoAlvo(id: string) {
-    return id.startsWith(PREFIXO_COLUNA) ? id.slice(PREFIXO_COLUNA.length) : colunaDe(colunas, id)
+    if (id.startsWith(PREFIXO_COLUNA)) return id.slice(PREFIXO_COLUNA.length)
+    // Itens de card só são alvo quando outro item do mesmo card está sendo arrastado.
+    return colunaDe(colunas, id) ?? itemPorId.get(id)?.data
+  }
+
+  /** Item solto sobre outro item do mesmo card: só muda a posição dentro do card. */
+  function reordenarNoCard(id: string, idAlvo: string, cardId: string) {
+    const grupo = grupoPorId.get(cardId)
+    if (!grupo || id === idAlvo) return
+    const ids = pendentesDo(grupo).map((item) => item.id)
+    const novaOrdem = arrayMove(ids, ids.indexOf(id), ids.indexOf(idAlvo))
+    void reordenarItem(novaOrdem, id)
   }
 
   /** "Casa · 2 pendentes → 03/11" ou "Fazer janta → 03/11"; vazio se nada iria. */
@@ -110,6 +122,9 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       if (!dia) return ''
       const id = String(active.id)
       if (dia !== origem && previaDoLevar(id, dia)) return `${previaDoLevar(id, dia)}.`
+      if (itemPorId.has(String(over?.id))) {
+        return `${tituloDe(id)} sobre ${tituloDe(String(over?.id))}, no mesmo card.`
+      }
       return `${tituloDe(id)} sobre ${nomeDoDia(dia, hoje)}.`
     },
     onDragEnd: ({ active, over }) => {
@@ -153,7 +168,13 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     const destino = colunaDoAlvo(String(over.id))
     if (!destino) return
     if (itemPorId.has(id)) {
-      if (destino !== diaDeOrigem) void mover([], destino, { itens: [id] })
+      const cardDoItem = (active.data.current as Partial<DadosArrastoItem> | undefined)?.cardId
+      const cardDoAlvo = (over.data.current as Partial<DadosArrastoItem> | undefined)?.cardId
+      if (cardDoItem && cardDoItem === cardDoAlvo && itemPorId.has(String(over.id))) {
+        reordenarNoCard(id, String(over.id), cardDoItem)
+      } else if (destino !== diaDeOrigem) {
+        void mover([], destino, { itens: [id] })
+      }
       return
     }
     if (grupoPorId.has(id) && destino !== diaDeOrigem) {

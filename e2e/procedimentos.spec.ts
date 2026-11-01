@@ -53,8 +53,8 @@ test('criar, editar e excluir um procedimento', async ({ page }) => {
   // Criar: título, categoria e 3 etapas.
   await page.getByRole('link', { name: 'Novo procedimento' }).click()
   await page.getByLabel('Título').fill('Trocar o filtro de água')
-  await page.getByRole('combobox', { name: 'Categoria' }).click()
-  await page.getByRole('option', { name: 'Casa' }).click()
+  await page.getByRole('button', { name: 'Categoria' }).click()
+  await page.getByRole('menuitemradio', { name: 'Casa' }).click()
   for (const texto of ['Fechar o registro', 'Abrir a tampa do filtro', 'Encaixar o refil novo']) {
     await page.getByRole('button', { name: 'Adicionar etapa' }).click()
     await page.keyboard.type(texto)

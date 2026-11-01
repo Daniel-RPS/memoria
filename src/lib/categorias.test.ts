@@ -5,17 +5,35 @@ import {
   corDaSubcategoria,
   filtrarPorCategoria,
   montarCategorias,
+  preencherOrdem,
+  somarUso,
+  textoDoUso,
 } from '@/lib/categorias'
 import { isCorValida, PALETA_CATEGORIAS, variacaoCor } from '@/lib/cores'
 
 const base = { atualizadoEm: '' }
-const casa: Category = { ...base, id: 'casa', nome: 'Casa', cor: '#3366c2', criadoEm: '1' }
-const trabalho: Category = { ...base, id: 'trab', nome: 'trabalho', cor: '#c8402f', criadoEm: '2' }
+const casa: Category = {
+  ...base,
+  id: 'casa',
+  nome: 'Casa',
+  cor: '#3366c2',
+  ordem: 1,
+  criadoEm: '1',
+}
+const trabalho: Category = {
+  ...base,
+  id: 'trab',
+  nome: 'trabalho',
+  cor: '#c8402f',
+  ordem: 2,
+  criadoEm: '2',
+}
 const jardim: Subcategory = {
   ...base,
   id: 'jardim',
   categoryId: 'casa',
   nome: 'Jardim',
+  ordem: 1,
   criadoEm: '3',
 }
 const cozinha: Subcategory = {
@@ -23,6 +41,7 @@ const cozinha: Subcategory = {
   id: 'cozinha',
   categoryId: 'casa',
   nome: 'Cozinha',
+  ordem: 2,
   criadoEm: '4',
 }
 const contas: Subcategory = {
@@ -31,6 +50,7 @@ const contas: Subcategory = {
   categoryId: 'casa',
   nome: 'Contas',
   cor: '#2f8a57',
+  ordem: 3,
   criadoEm: '5',
 }
 
@@ -57,7 +77,7 @@ describe('variacaoCor', () => {
 })
 
 describe('montarCategorias e cores de subcategoria', () => {
-  it('ordena categorias por nome sem diferenciar maiúsculas e subcategorias por criação', () => {
+  it('ordena categorias e subcategorias pela ordem do usuário', () => {
     expect(arvore.map((categoria) => categoria.nome)).toEqual(['Casa', 'trabalho'])
     expect(arvore[0].subcategorias.map((sub) => sub.nome)).toEqual(['Jardim', 'Cozinha', 'Contas'])
   })
@@ -66,6 +86,22 @@ describe('montarCategorias e cores de subcategoria', () => {
     expect(corDaSubcategoria(arvore[0], 'jardim')).toBe(variacaoCor('#3366c2', 0))
     expect(corDaSubcategoria(arvore[0], 'cozinha')).toBe(variacaoCor('#3366c2', 1))
     expect(corDaSubcategoria(arvore[0], 'contas')).toBe('#2f8a57')
+  })
+
+  it('a ordem do usuário vale mesmo contra o nome, e reordenar não troca os tons', () => {
+    const invertida = montarCategorias(
+      [
+        { ...casa, ordem: 5 },
+        { ...trabalho, ordem: 1 },
+      ],
+      [
+        { ...jardim, ordem: 9 },
+        { ...cozinha, ordem: 1 },
+      ],
+    )
+    expect(invertida.map((categoria) => categoria.nome)).toEqual(['trabalho', 'Casa'])
+    expect(invertida[1].subcategorias.map((sub) => sub.nome)).toEqual(['Cozinha', 'Jardim'])
+    expect(corDaSubcategoria(invertida[1], 'jardim')).toBe(variacaoCor('#3366c2', 0))
   })
 })
 
@@ -112,5 +148,50 @@ describe('filtrarPorCategoria', () => {
         (t) => t.id,
       ),
     ).toEqual(['1'])
+  })
+})
+
+describe('preencherOrdem', () => {
+  const semOrdem = <T extends { ordem: number }>({ ordem: _ordem, ...resto }: T) => resto
+
+  it('categorias por nome e subcategorias por criação, sem perder dados', () => {
+    const { categorias, subcategorias } = preencherOrdem(
+      [semOrdem(trabalho), semOrdem(casa)],
+      [semOrdem(contas), semOrdem(jardim), semOrdem(cozinha)],
+    )
+    expect(categorias).toEqual([
+      { ...trabalho, ordem: 2 },
+      { ...casa, ordem: 1 },
+    ])
+    expect(subcategorias).toEqual(
+      expect.arrayContaining([
+        { ...jardim, ordem: 1 },
+        { ...cozinha, ordem: 2 },
+        { ...contas, ordem: 3 },
+      ]),
+    )
+    expect(subcategorias).toHaveLength(3)
+  })
+
+  it('mantém quem já tem ordem e põe os outros depois', () => {
+    const { categorias } = preencherOrdem([{ ...trabalho, ordem: 7 }, semOrdem(casa)], [])
+    expect(categorias.map((categoria) => categoria.ordem)).toEqual([7, 8])
+  })
+})
+
+describe('uso das categorias', () => {
+  it('soma tarefas, grupos e procedimentos por categoria', () => {
+    const uso = somarUso({
+      tarefas: ['casa', 'casa', 'trab'],
+      grupos: ['casa'],
+      procedimentos: ['trab'],
+    })
+    expect(uso.get('casa')).toEqual({ tarefas: 2, grupos: 1, procedimentos: 0 })
+    expect(uso.get('trab')).toEqual({ tarefas: 1, grupos: 0, procedimentos: 1 })
+    expect(textoDoUso(uso.get('casa')!)).toBe('2 tarefas · 1 grupo')
+    expect(textoDoUso({ tarefas: 4, grupos: 2, procedimentos: 1 })).toBe(
+      '4 tarefas · 2 grupos · 1 procedimento',
+    )
+    expect(textoDoUso({ tarefas: 0, grupos: 0, procedimentos: 0 })).toBe('Sem uso')
   })
 })
