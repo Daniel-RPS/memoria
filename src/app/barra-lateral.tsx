@@ -20,6 +20,8 @@ import {
   type VisaoDoCalendario,
 } from '@/app/grupo-calendario'
 import { useGrupoCalendarioAberto } from '@/app/use-grupo-calendario-aberto'
+import logoMemoria from '@/assets/logo-memoria.png'
+import simboloMemoria from '@/assets/simbolo-memoria.png'
 import { hoje } from '@/lib/datas'
 
 interface LinkTelaProps {
@@ -61,6 +63,43 @@ function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, children }: LinkTe
         </span>
       </Link>
     </DicaDaBarra>
+  )
+}
+
+/**
+ * Logo completa (expandida) ou só o símbolo (recolhida). O símbolo abre a logo completa, então a
+ * moldura estreita com a mesma mola da barra, cortando o nome, e o símbolo quadrado surge por
+ * cima no mesmo lugar. Só a imagem visível é anunciada como "MemorIA".
+ */
+function LogoDaBarra({ isRecolhida }: { isRecolhida: boolean }) {
+  return (
+    <span
+      className={cn(
+        // Expandida: largura da logo a h-8 (proporção 864×218 do arquivo recortado).
+        'relative block h-8 shrink-0 overflow-hidden transition-[width]',
+        TRANSICAO_DA_BARRA,
+        isRecolhida ? 'w-8' : 'w-[calc(var(--spacing)*8*864/218)]',
+      )}
+    >
+      <img
+        src={logoMemoria}
+        alt={isRecolhida ? '' : 'MemorIA'}
+        aria-hidden={isRecolhida || undefined}
+        className={cn(
+          'h-8 w-auto max-w-none transition-opacity duration-200 motion-reduce:transition-none',
+          isRecolhida && 'opacity-0',
+        )}
+      />
+      <img
+        src={simboloMemoria}
+        alt={isRecolhida ? 'MemorIA' : ''}
+        aria-hidden={!isRecolhida || undefined}
+        className={cn(
+          'absolute inset-y-0 left-0 size-8 transition-opacity duration-200 motion-reduce:transition-none',
+          !isRecolhida && 'opacity-0',
+        )}
+      />
+    </span>
   )
 }
 
@@ -128,17 +167,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
             isRecolhida ? 'flex-col gap-3' : 'justify-between pl-2',
           )}
         >
-          <span className="text-lg font-extrabold tracking-[-0.03em] whitespace-nowrap text-papel">
-            {isRecolhida ? (
-              <span title="MemorIA">
-                M<span className="text-caneta">.</span>
-              </span>
-            ) : (
-              <>
-                Memor<span className="text-caneta">IA</span>
-              </>
-            )}
-          </span>
+          <LogoDaBarra isRecolhida={isRecolhida} />
           <DicaDaBarra texto={isRecolhida ? 'Expandir menu' : 'Recolher menu'}>
             <button
               type="button"
