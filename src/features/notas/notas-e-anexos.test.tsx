@@ -156,10 +156,13 @@ describe('Anotação e anexos da tarefa', () => {
     await waitFor(() => expect(anotacao).toHaveFocus())
     await usuario.type(anotacao, 'Protocolo 12345')
 
+    // Gravação atrasada (400 ms) + IndexedDB + redesenho: com a suíte em paralelo passa de 1 s.
     expect(
-      await screen.findByRole('button', {
-        name: 'Anotação e anexos de Ligar para o banco: tem anotação',
-      }),
+      await screen.findByRole(
+        'button',
+        { name: 'Anotação e anexos de Ligar para o banco: tem anotação' },
+        { timeout: 3000 },
+      ),
     ).toBeInTheDocument()
     const [nota] = await db.notes.toArray()
     expect(nota).toMatchObject({

@@ -101,7 +101,9 @@ export function SeletorCategoria({ atual, onEscolher, onFechar }: SeletorCategor
   return (
     <>
       <DropdownMenuRadioGroup value={valorDe(atual)} onValueChange={handleEscolher}>
-        <DropdownMenuRadioItem value={SEM_CATEGORIA}>Sem categoria</DropdownMenuRadioItem>
+        <DropdownMenuRadioItem value={SEM_CATEGORIA} className="text-grafite">
+          Sem categoria
+        </DropdownMenuRadioItem>
         {categorias.length > 0 && <DropdownMenuSeparator />}
         {categorias.map((categoria) => (
           <DropdownMenuGroup key={categoria.id} className="group/categoria">
@@ -138,6 +140,7 @@ export function SeletorCategoria({ atual, onEscolher, onFechar }: SeletorCategor
           evento.preventDefault()
           setCriando({ tipo: 'categoria' })
         }}
+        className="text-violeta-profundo [&_svg]:text-violeta-profundo"
       >
         <Plus /> Nova categoria
       </DropdownMenuItem>

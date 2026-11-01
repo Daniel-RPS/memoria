@@ -87,3 +87,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Superfícies que flutuam (menus ⋯, submenus, seletor de categoria, popovers e selects):
+ * borda de papel e sombra lavanda deslocada, como a ficha presa na folha. Por `data-slot` e
+ * fora de camada para valer sobre as classes de src/components/ui/ sem editá-las (sobrevive
+ * a um novo `shadcn add`).
+ */
+:is(
+  [data-slot='dropdown-menu-content'],
+  [data-slot='dropdown-menu-sub-content'],
+  [data-slot='popover-content'],
+  [data-slot='select-content']
+) {
+  border: 1px solid var(--pauta);
+  box-shadow: 4px 4px 0 var(--marca-texto);
+}
+
+/* Opção escolhida num menu: ✓ na cor da caneta e o nome um pouco mais forte. */
+:is(
+    [data-slot='dropdown-menu-radio-item-indicator'],
+    [data-slot='dropdown-menu-checkbox-item-indicator']
+  )
+  svg {
+  color: var(--caneta);
+}
+[data-slot='dropdown-menu-radio-item'][data-state='checked'] {
+  font-weight: 500;
+}

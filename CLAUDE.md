@@ -131,7 +131,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 31/10/2026: arrastar o card leva o grupo inteiro (item só pela alça), menu → "Levar pendentes", volta desfaz a transferência sem card fantasma, Ctrl+Z
 - Ajuste 01/11/2026: Procedimentos remodelados (só título, categoria e etapas; banco v7, backup formato 4) — detalhes em `docs/proposta-inicial.md`
 - Ajuste 01/11/2026: categorias criadas e aplicadas ali mesmo (seletor único), aba Categorias com uso e ordem arrastável, card editável na Semana (banco v8, backup formato 5)
-- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Feitas: fase 0 (valores dos tokens), fase 1 (barra lateral com telas e o filtro do Dia), fase 2 (Dia: folha com cabeçalho, card como ficha, bolinha de categoria no lugar da faixa) e fase 3 (Semana: folha única, hoje circulado, tarefas como linhas, card como ficha)
+- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Feitas: fase 0 (valores dos tokens), fase 1 (barra lateral com telas e o filtro do Dia), fase 2 (Dia: folha com cabeçalho, card como ficha, bolinha de categoria no lugar da faixa), fase 3 (Semana: folha única, hoje circulado, tarefas como linhas, card como ficha) e fase 4 (menus e seletor: borda e sombra lavanda)
 
 ## Armadilhas
 
@@ -148,7 +148,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Testes têm tsconfig próprio (`tsconfig.test.json`, com tipos do Node); o app não enxerga tipos do Node
 - `userEvent.type`: `{` é tecla especial; para digitar `{{campo}}` escreva `'{{{{campo}}'`
 - Playwright `getByLabel('Etapa 1')` / `getByRole(..., { name })` casam por trecho (pega "Excluir etapa 1", "Mover Trabalho"): use `{ exact: true }`
-- `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier
+- `src/components/ui/` é gerado pelo shadcn: não editar à mão sem motivo; ignorado pelo oxlint e Prettier. O visual de menus/popovers/selects (borda, sombra lavanda, ✓ violeta) vem de regras por `data-slot` no fim de `src/index.css`
 - shadcn importa `cn` do pacote `cn` (oficial do shadcn), não de `@/lib/utils`
 - Campo de criar item: use `CampoNovoItem`; ele limpa ANTES do `await` para não apagar o que o usuário já digitou
 - Hover de linha usa grupo nomeado `group/linha` (linhas aninhadas); não use `group` simples
