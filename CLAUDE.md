@@ -60,7 +60,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - `ordem` do dia é uma escala só para tarefas soltas e cards (`GroupCard.ordem`, `tabelaDoDia`); `ordem` de item é a posição dentro do card
 - Colocar tarefa no grupo / tirar item = conversão com o MESMO id (`colocarNoGrupo`/`tirarDoGrupo`); subtarefas, anotação e anexos da tarefa não passam para o item
 - Leitura reativa com `useLiveQuery` dentro de hooks da feature; não há store global
-- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`)
+- Rotas em `src/app/router.tsx` dentro de `LayoutApp`; data e filtro ficam na URL (`/dia/YYYY-MM-DD?categoria=&sub=`). Moldura: `BarraLateral` (`src/app/barra-lateral.tsx`; recolhe para ícones na Semana); página que quer algo na barra usa `NaBarraLateral` (portal, estado continua na página), como o filtro do Dia
 
 ## Modelo de dados (resumo)
 
@@ -131,7 +131,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 31/10/2026: arrastar o card leva o grupo inteiro (item só pela alça), menu → "Levar pendentes", volta desfaz a transferência sem card fantasma, Ctrl+Z
 - Ajuste 01/11/2026: Procedimentos remodelados (só título, categoria e etapas; banco v7, backup formato 4) — detalhes em `docs/proposta-inicial.md`
 - Ajuste 01/11/2026: categorias criadas e aplicadas ali mesmo (seletor único), aba Categorias com uso e ordem arrastável, card editável na Semana (banco v8, backup formato 5)
-- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Fase 0 feita: só os valores dos tokens
+- Ajuste 01/11/2026 (em andamento): nova interface "folha pautada + barra lateral" na paleta violeta, uma fase por tela. Feitas: fase 0 (valores dos tokens) e fase 1 (barra lateral com telas e o filtro do Dia)
 
 ## Armadilhas
 

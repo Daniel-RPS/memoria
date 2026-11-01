@@ -4,7 +4,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Em andamento: nova interface na paleta violeta (cores já aplicadas; moldura e telas a seguir). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Em andamento: nova interface na paleta violeta (cores e barra lateral prontas; telas a seguir). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
@@ -115,7 +115,7 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Em **Categorias**, crie a categoria no topo (nome e cor) e as subcategorias embaixo de cada uma. Clique no nome para renomear e na bolinha para trocar a cor. Cada categoria mostra quantos itens a usam ("4 tarefas · 2 grupos · 1 procedimento"). Arraste pela alça ⋮⋮ para mudar a ordem, que vale em todo o app. Excluir pede confirmação e não apaga nada além da categoria: os itens ficam "Sem categoria" (ou, ao excluir uma subcategoria, só perdem a subcategoria).
 - Não precisa sair da tela para usar uma categoria nova: em **Categoria ›** (menu ⋯), ao lado de **Novo grupo** ou no campo **Categoria** do procedimento, use **+ Nova categoria** ou **+ Nova subcategoria** (aparece ao passar o mouse sobre a categoria). Enter cria e já aplica ao item; Esc volta.
 - Tudo se atualiza sozinho em todas as telas, inclusive em outra aba do navegador aberta no app.
-- Na visão do dia, os botões de categoria filtram as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
+- Na visão do dia, a lista de categorias na barra lateral filtra as tarefas. Com um filtro ativo, a tarefa nova já nasce naquela categoria.
 - Mover uma tarefa só muda o dia dela: nada é copiado ou apagado, e a contagem "pendente há N dias" continua contando desde o dia em que foi criada.
 - No menu **⋯**: **Adiar para amanhã** e **Mover para outro dia…**. Para várias de uma vez, use **Selecionar** acima da lista. Depois de mover, o aviso no rodapé tem **Desfazer**.
 - Quando sobra algo pendente ontem, a página de hoje oferece **Trazer para hoje** (tarefas soltas vêm; itens de grupo são levados).
