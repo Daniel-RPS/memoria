@@ -1,5 +1,6 @@
 import { ListaOrdenavel } from '@/components/lista-ordenavel'
 import { FormularioNovaCategoria } from '@/components/seletor-categoria/formulario-nova-categoria'
+import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { useAcoesCategoria } from '@/hooks/use-acoes-categoria'
 import { useCategorias } from '@/hooks/use-categorias'
 import { proximaCor } from '@/lib/cores'
@@ -13,11 +14,10 @@ export function CategoriasPage() {
 
   return (
     <>
-      <h1 className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">Categorias</h1>
-      <p className="mt-2 max-w-prose text-grafite">
-        A cor de cada categoria marca as tarefas, os grupos e os procedimentos dela. Arraste pela
-        alça ⋮⋮ para mudar a ordem: ela vale em todo o app.
-      </p>
+      <CabecalhoPagina
+        titulo="Categorias"
+        descricao="A cor de cada categoria marca as tarefas, os grupos e os procedimentos dela. Arraste pela alça ⋮⋮ para mudar a ordem: ela vale em todo o app."
+      />
 
       <section
         aria-label="Criar categoria"

@@ -84,7 +84,7 @@ export function FormularioProcedimento({
               aria-invalid={errors.titulo ? true : undefined}
               placeholder="Título do procedimento"
               autoComplete="off"
-              className="h-auto border-transparent bg-transparent px-1 py-1 text-4xl font-extrabold tracking-[-0.02em] shadow-none [font-stretch:80%] hover:border-pauta md:text-4xl"
+              className="h-auto border-transparent bg-transparent px-1 py-1 text-4xl font-extrabold tracking-[-0.02em] shadow-none [font-stretch:80%] placeholder:text-grafite/55 hover:border-pauta md:text-4xl"
             />
             <FieldError errors={[errors.titulo]} />
           </Field>

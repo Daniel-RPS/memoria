@@ -2,6 +2,7 @@ import { Plus, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { useCategorias } from '@/hooks/use-categorias'
 import { agruparPorCategoria, buscarProcedimentos } from '@/lib/procedimentos'
 import { ListaProcedimentos } from '@/features/procedimentos/components/lista-procedimentos'
@@ -22,16 +23,16 @@ export function ProcedimentosPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">
-          Procedimentos
-        </h1>
-        <Button asChild>
-          <Link to="/procedimentos/novo">
-            <Plus /> Novo procedimento
-          </Link>
-        </Button>
-      </div>
+      <CabecalhoPagina
+        titulo="Procedimentos"
+        acao={
+          <Button asChild>
+            <Link to="/procedimentos/novo">
+              <Plus /> Novo procedimento
+            </Link>
+          </Button>
+        }
+      />
 
       <label className="relative mt-8 block">
         <span className="sr-only">Buscar procedimentos</span>

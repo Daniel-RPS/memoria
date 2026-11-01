@@ -4,6 +4,7 @@ import { Paperclip, Plus, Search } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { criarNota } from '@/db/repositories/note-repository'
 import { descreverQuantidade } from '@/lib/anexos'
 import { buscarNotas, tituloDaNota } from '@/lib/notas'
@@ -25,15 +26,15 @@ export function NotasPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">Notas</h1>
-        <Button onClick={() => void handleNova()}>
-          <Plus /> Nova nota
-        </Button>
-      </div>
-      <p className="mt-2 max-w-prose text-grafite">
-        Texto livre com fotos, desenhos, áudios e links. Salva sozinha enquanto você escreve.
-      </p>
+      <CabecalhoPagina
+        titulo="Notas"
+        descricao="Texto livre com fotos, desenhos, áudios e links. Salva sozinha enquanto você escreve."
+        acao={
+          <Button onClick={() => void handleNova()}>
+            <Plus /> Nova nota
+          </Button>
+        }
+      />
 
       {notas.length > 0 && (
         <label className="relative mt-8 block">
