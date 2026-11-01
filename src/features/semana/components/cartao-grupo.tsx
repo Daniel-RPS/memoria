@@ -90,17 +90,22 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
         }
       }}
       className={cn(
-        'relative rounded-sm border border-pauta bg-papel text-[0.9375rem]',
+        'relative my-1.5 rounded-md border border-pauta bg-papel text-[0.9375rem]',
+        !isEncerrado && 'shadow-[3px_3px_0_var(--marca-texto)]',
         isArrastavel && 'cursor-grab touch-none active:cursor-grabbing',
         isSobreposto && 'rotate-1 cursor-grabbing shadow-lg ring-2 ring-caneta/40',
       )}
     >
+      {/* Borda de cima da ficha, na cor da categoria. */}
       <span
         aria-hidden
-        className={cn('absolute inset-y-0 left-0 w-1 rounded-l-sm', isEncerrado && 'opacity-40')}
+        className={cn(
+          'absolute -inset-x-px -top-px h-[3px] rounded-t-md',
+          isEncerrado && 'opacity-40',
+        )}
         style={{ backgroundColor: classificacao?.cor ?? 'var(--grafite)' }}
       />
-      <div className="group/cabecalho flex items-start gap-1 border-b border-pauta pr-1 pl-1.5">
+      <div className="group/cabecalho flex items-start gap-1 border-b border-dashed border-pauta pt-0.5 pr-1 pl-1.5">
         {/* A alça é o ativador do teclado (foco e espaço); o ponteiro arrasta de qualquer lugar. */}
         {isArrastavel ? (
           <span
@@ -141,7 +146,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
             )}
           </div>
           {!isEditando && textoProgresso && (
-            <span className="text-xs whitespace-nowrap text-grafite tabular-nums">
+            <span className="text-xs text-grafite tabular-nums">
               {isEncerrado && !isSobreposto ? `${textoProgresso} · encerrado` : textoProgresso}
             </span>
           )}
@@ -153,7 +158,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
         )}
       </div>
       {(grupo.itens.length > 0 || !isSobreposto) && (
-        <div data-sem-arrasto="" className="cursor-auto bg-nevoa/40 py-0.5">
+        <div data-sem-arrasto="" className="cursor-auto py-0.5">
           {grupo.itens.length > 0 && (
             <SortableContext
               id={`${PREFIXO_ITENS}${card.id}`}
@@ -285,7 +290,7 @@ function LinhaItem({
           checked={isConcluido}
           onCheckedChange={(marcada) => void definirConclusaoItem(item.id, marcada === true)}
           aria-label={isConcluido ? `Desmarcar ${item.titulo}` : `Concluir ${item.titulo}`}
-          className="mt-1 size-4 rounded-[3px] border-[1.5px] border-tinta/70 data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
+          className="mt-1 size-4 rounded-[3px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
         />
       )}
       <span
@@ -311,7 +316,7 @@ function LinhaItem({
           item.titulo
         )}
         {isAtrasado && !isEditando && (
-          <span className="ml-1.5 bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)] px-0.5 text-xs whitespace-nowrap no-underline">
+          <span className="ml-1.5 rounded-[3px] bg-marca-texto px-1 text-xs font-medium whitespace-nowrap text-violeta-profundo no-underline">
             desde {diaCurto(item.dataOriginal)}
           </span>
         )}

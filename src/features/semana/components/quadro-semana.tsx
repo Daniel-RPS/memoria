@@ -218,7 +218,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       onDragCancel={handleDragCancel}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
-      <div className="mt-8 grid grid-cols-1 overflow-hidden rounded-md border border-pauta bg-papel xl:grid-cols-7">
+      <div className="mt-5 grid grid-cols-1 border-t-2 border-tinta xl:grid-cols-7">
         {semana.map((dia) => (
           <ColunaDia
             key={dia.data}

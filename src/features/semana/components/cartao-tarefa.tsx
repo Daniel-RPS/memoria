@@ -15,7 +15,7 @@ interface CartaoTarefaProps {
   isSobreposto?: boolean
 }
 
-/** Tarefa compacta da semana: faixa da categoria, caixa de seleção, título e sinais. */
+/** Tarefa compacta da semana: uma linha da pauta com caixa, título e sinais (atraso, categoria). */
 export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoTarefaProps) {
   const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
   const dias = diasPendente(tarefa, hoje)
@@ -24,22 +24,15 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
   return (
     <div
       className={cn(
-        'relative flex items-start gap-2 rounded-sm border border-pauta bg-papel py-1.5 pr-2 pl-2.5 text-[0.9375rem]',
-        isSobreposto && 'rotate-1 shadow-lg ring-2 ring-caneta/40',
+        'relative flex items-start gap-2 border-b border-pauta py-2 pr-1 pl-1 text-[0.9375rem] hover:bg-accent/60',
+        isSobreposto && 'rotate-1 rounded-sm border bg-papel shadow-lg ring-2 ring-caneta/40',
       )}
     >
-      {classificacao && (
-        <span
-          aria-hidden
-          className="absolute inset-y-1 left-0 w-1 rounded-r-sm"
-          style={{ backgroundColor: classificacao.cor }}
-        />
-      )}
       <Checkbox
         checked={false}
         onCheckedChange={() => void definirConclusao(tarefa.id, true)}
         aria-label={`Concluir ${tarefa.titulo}`}
-        className="mt-0.5 size-4 rounded-[3px] border-[1.5px] border-tinta/70"
+        className="mt-0.5 size-4 rounded-[3px] border-[1.5px] border-tinta/45 bg-papel"
       />
       <div className="min-w-0 flex-1">
         <Link
@@ -51,12 +44,21 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
         {(dias !== null || progresso || classificacao) && (
           <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-grafite">
             {dias !== null && (
-              <span className="bg-[linear-gradient(transparent_12%,var(--marca-texto)_12%,var(--marca-texto)_88%,transparent_88%)] px-0.5 text-tinta">
+              <span className="rounded-[3px] bg-marca-texto px-1 font-medium text-violeta-profundo">
                 há {dias} {dias === 1 ? 'dia' : 'dias'}
               </span>
             )}
             {progresso && <span className="tabular-nums">{textoProgresso(progresso)}</span>}
-            {classificacao && <span>{classificacao.rotulo}</span>}
+            {classificacao && (
+              <span className="flex items-center gap-1">
+                <span
+                  aria-hidden
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: classificacao.cor }}
+                />
+                {classificacao.rotulo}
+              </span>
+            )}
           </p>
         )}
       </div>

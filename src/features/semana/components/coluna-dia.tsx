@@ -19,6 +19,25 @@ export const PREFIXO_COLUNA = 'dia:'
 
 const SEM_SUBTAREFAS: Subtask[] = []
 
+/** Volta à mão em torno do número de hoje, como quem circula a data na agenda. */
+function CirculoHoje() {
+  return (
+    <svg
+      viewBox="0 0 60 44"
+      aria-hidden
+      className="pointer-events-none absolute -inset-x-3 -inset-y-2 h-[calc(100%+1rem)] w-[calc(100%+1.5rem)] text-caneta"
+    >
+      <path
+        d="M8 22c0-11 13-18 26-17 13 1 22 9 20 19-2 11-17 16-30 14C11 36 3 28 9 15"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 interface ColunaDiaProps {
   data: DataLocal
   hoje: DataLocal
@@ -51,26 +70,27 @@ export function ColunaDia({
       aria-label={nomeCompleto}
       className={cn(
         'flex min-w-0 flex-col border-b border-pauta xl:border-b-0 xl:border-l xl:first:border-l-0',
-        isHoje && 'bg-accent/40',
+        isHoje && 'bg-marca-texto/40',
       )}
     >
       <h2 className="px-3 pt-3 pb-2">
         <Link
           to={`/dia/${data}`}
-          className="group flex items-baseline gap-2 rounded-sm focus-visible:outline-2 focus-visible:outline-caneta"
+          className="group flex items-end justify-between gap-2 rounded-sm focus-visible:outline-2 focus-visible:outline-caneta"
         >
-          <span className="text-sm text-grafite capitalize">
-            {format(dia, 'EEE', { locale: ptBR })}
+          <span className="flex flex-col text-sm leading-tight">
+            <span className="text-grafite capitalize">{format(dia, 'EEE', { locale: ptBR })}</span>
+            {isHoje && <span className="font-medium text-violeta-profundo">hoje</span>}
           </span>
           <span
             className={cn(
-              'text-3xl leading-none font-extrabold tabular-nums [font-stretch:75%] group-hover:text-caneta',
+              'relative text-4xl leading-none font-extrabold tabular-nums [font-stretch:75%] group-hover:text-caneta',
               isHoje && 'text-caneta',
             )}
           >
             {format(dia, 'd')}
+            {isHoje && <CirculoHoje />}
           </span>
-          {isHoje && <span className="text-sm text-caneta">hoje</span>}
         </Link>
       </h2>
 
@@ -83,7 +103,7 @@ export function ColunaDia({
           ref={setNodeRef}
           aria-label={`Pendentes de ${nomeCompleto}`}
           className={cn(
-            'flex min-h-16 flex-1 flex-col gap-1.5 px-2 pb-2 transition-colors',
+            'flex min-h-16 flex-1 flex-col px-2 pb-2 transition-colors',
             isOver && 'bg-accent',
           )}
         >
