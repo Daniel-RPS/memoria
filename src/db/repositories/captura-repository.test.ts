@@ -1,12 +1,27 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from '@/db/database'
-import { capturar, desfazerCaptura } from '@/db/repositories/captura-repository'
+import {
+  capturar,
+  desfazerCaptura,
+  type ResultadoCaptura,
+} from '@/db/repositories/captura-repository'
 import { criarCategoria, criarSubcategoria } from '@/db/repositories/category-repository'
 import { arquivarGrupo, criarGrupo, criarItem } from '@/db/repositories/group-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { ErroDeValidacao } from '@/lib/erros'
 
+const HOJE = '2026-11-02'
 const AMANHA = '2026-11-03'
+
+/** Id da tarefa ou do card criado/usado. */
+function idDe(resultado: ResultadoCaptura) {
+  return resultado.tipo === 'tarefa' ? resultado.id : resultado.cardId
+}
+
+async function itensDoCard(cardId: string) {
+  const itens = await db.groupItems.where('cardId').equals(cardId).sortBy('ordem')
+  return itens.map((item) => item.titulo)
+}
 
 describe('captura rápida (repositório)', () => {
   beforeEach(async () => {
@@ -26,7 +41,7 @@ describe('captura rápida (repositório)', () => {
       subcategoryId: jardim.id,
     })
 
-    expect(await db.tasks.get(resultado.id)).toMatchObject({
+    expect(await db.tasks.get(idDe(resultado))).toMatchObject({
       titulo: 'Podar a roseira',
       data: AMANHA,
       dataOriginal: AMANHA,
@@ -50,7 +65,7 @@ describe('captura rápida (repositório)', () => {
     })
     const anexos = await db.attachments.toArray()
     expect(anexos.map((anexo) => anexo.tipo).sort()).toEqual(['foto', 'link'])
-    expect(anexos.every((anexo) => anexo.dono.id === resultado.id)).toBe(true)
+    expect(anexos.every((anexo) => anexo.dono.id === idDe(resultado))).toBe(true)
 
     await desfazerCaptura(resultado)
     expect(await db.tasks.count()).toBe(0)
@@ -68,13 +83,13 @@ describe('captura rápida (repositório)', () => {
       itens: [{ titulo: 'Café' }, { titulo: '  ' }, { titulo: 'Pão' }, { titulo: 'Leite' }],
     })
 
-    const card = await db.groupCards.get(resultado.id)
+    const card = await db.groupCards.get(idDe(resultado))
     expect(card).toMatchObject({ data: AMANHA, arquivado: false })
     expect(await db.groupSeries.get(card!.seriesId)).toMatchObject({
       titulo: 'Mercado',
       categoryId: casa.id,
     })
-    const itens = await db.groupItems.where('cardId').equals(resultado.id).sortBy('ordem')
+    const itens = await db.groupItems.where('cardId').equals(idDe(resultado)).sortBy('ordem')
     expect(itens.map((item) => [item.titulo, item.status, item.dataOriginal])).toEqual([
       ['Café', 'pendente', AMANHA],
       ['Pão', 'pendente', AMANHA],
@@ -106,10 +121,49 @@ describe('captura rápida (repositório)', () => {
       data: AMANHA,
       itens: [{ titulo: 'Café' }],
     })
-    expect(resultado).toMatchObject({ id: antigo.id, isCardReaberto: true })
+    expect(resultado).toMatchObject({ cardId: antigo.id, card: 'reaberto' })
 
     await desfazerCaptura(resultado)
     expect(await db.groupCards.get(antigo.id)).toMatchObject({ arquivado: true })
     expect((await db.groupItems.toArray()).map((item) => item.id)).toEqual([velho.id])
+  })
+
+  it('"Em grupo…": o texto e as linhas a mais viram itens no card que já existe no dia', async () => {
+    const casa = await criarGrupo({ titulo: 'Casa', data: HOJE })
+    await criarItem(casa.id, 'Varrer')
+
+    const resultado = await capturar({
+      tipo: 'em-grupo',
+      titulo: 'Fazer lasanha',
+      data: HOJE,
+      seriesId: casa.seriesId,
+      itens: [{ titulo: 'Lavar a louça' }, { titulo: '' }],
+    })
+
+    expect(resultado).toMatchObject({ tipo: 'em-grupo', cardId: casa.id, card: 'existente' })
+    expect(await db.groupCards.count()).toBe(1)
+    expect(await itensDoCard(casa.id)).toEqual(['Varrer', 'Fazer lasanha', 'Lavar a louça'])
+
+    await desfazerCaptura(resultado)
+    expect(await itensDoCard(casa.id)).toEqual(['Varrer'])
+    expect(await db.groupCards.get(casa.id)).toBeDefined()
+  })
+
+  it('"Em grupo…" num dia sem card cria o card da série; desfazer tira o card e mantém a série', async () => {
+    const casa = await criarGrupo({ titulo: 'Casa', data: HOJE })
+
+    const resultado = await capturar({
+      tipo: 'em-grupo',
+      titulo: 'Fazer lasanha',
+      data: AMANHA,
+      seriesId: casa.seriesId,
+    })
+
+    expect(resultado).toMatchObject({ card: 'criado', data: AMANHA })
+    expect(await itensDoCard(idDe(resultado))).toEqual(['Fazer lasanha'])
+
+    await desfazerCaptura(resultado)
+    expect((await db.groupCards.toArray()).map((card) => card.id)).toEqual([casa.id])
+    expect(await db.groupSeries.count()).toBe(1)
   })
 })

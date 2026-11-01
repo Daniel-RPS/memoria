@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
-import { montarGrupos } from '@/lib/grupos'
+import { filtrarSeries, montarGrupos, ordenarParaEscolher } from '@/lib/grupos'
 import { contarProximosDias, montarAtrasadas, textoHaDias } from '@/lib/inicio'
 
 const HOJE = '2026-11-02'
@@ -86,5 +86,44 @@ describe('Próximos 7 dias', () => {
       { data: '2026-11-08', pendentes: 0 },
       { data: '2026-11-09', pendentes: 1 },
     ])
+  })
+})
+
+describe('Em grupo…: escolher o grupo', () => {
+  function serie(id: string, titulo: string, atualizadoEm: string): GroupSeries {
+    return { id, titulo, criadoEm: '', atualizadoEm }
+  }
+
+  const series = [
+    serie('casa', 'Casa', '2026-10-01T10:00:00Z'),
+    serie('mercado', 'Mercado', '2026-10-05T10:00:00Z'),
+    serie('estudo', 'Estudo', '2026-10-01T10:00:00Z'),
+  ]
+  const cards = [
+    { ...card('c-casa', HOJE), seriesId: 'casa', atualizadoEm: '2026-10-20T10:00:00Z' },
+    { ...card('c-merc', '2026-11-01'), seriesId: 'mercado', atualizadoEm: '2026-10-06T10:00:00Z' },
+    {
+      ...card('c-est', HOJE),
+      seriesId: 'estudo',
+      arquivado: true,
+      atualizadoEm: '2026-10-02T10:00:00Z',
+    },
+  ]
+  const itens = [{ cardId: 'c-merc', atualizadoEm: '2026-10-30T10:00:00Z' }]
+
+  it('usados recentemente primeiro (card ou item mexido por último) e card visível no dia', () => {
+    const lista = ordenarParaEscolher(series, cards, itens, HOJE)
+    expect(lista.map(({ serie, temCardNoDia }) => `${serie.titulo}:${temCardNoDia}`)).toEqual([
+      'Mercado:false',
+      'Casa:true',
+      'Estudo:false',
+    ])
+  })
+
+  it('busca sem diferenciar acento e maiúscula', () => {
+    const lista = ordenarParaEscolher(series, cards, itens, HOJE)
+    expect(filtrarSeries(lista, 'MERC').map(({ serie }) => serie.id)).toEqual(['mercado'])
+    expect(filtrarSeries(lista, 'estúdo').map(({ serie }) => serie.id)).toEqual(['estudo'])
+    expect(filtrarSeries(lista, '  ')).toHaveLength(3)
   })
 })

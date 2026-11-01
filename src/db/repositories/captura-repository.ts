@@ -2,11 +2,10 @@ import { db } from '@/db/database'
 import type { DataLocal } from '@/db/types'
 import { adicionarAnexo } from '@/db/repositories/attachment-repository'
 import {
+  adicionarItensNaSerie,
   criarGrupo,
-  criarItem,
-  excluirGrupo,
-  excluirItem,
-  arquivarGrupo,
+  desfazerItensAdicionados,
+  type ItensAdicionados,
 } from '@/db/repositories/group-repository'
 import { criarTarefa, excluirTarefa } from '@/db/repositories/task-repository'
 import { itensPreenchidos, type TipoCaptura } from '@/lib/captura'
@@ -17,74 +16,75 @@ export type AnexoDaCaptura =
 
 export interface NovaCaptura {
   tipo: TipoCaptura
+  /** Título da tarefa ou do grupo novo; em "Em grupo…", o primeiro item. */
   titulo: string
   data: DataLocal
   categoryId?: string
   subcategoryId?: string
-  /** Só do grupo. */
+  /** Série escolhida em "Em grupo…". */
+  seriesId?: string
+  /** Itens do grupo novo ou itens a mais em "Em grupo…". */
   itens?: { titulo: string }[]
   /** Só da tarefa. */
   anexos?: AnexoDaCaptura[]
 }
 
-export interface ResultadoCaptura {
-  tipo: TipoCaptura
-  /** Id da tarefa ou do card. */
-  id: string
-  data: DataLocal
-  /** Itens criados agora (grupo). */
-  idsItens: string[]
-  /** Card que já existia arquivado e foi reaberto: desfazer só tira o que entrou agora. */
-  isCardReaberto: boolean
-}
+export type ResultadoCaptura =
+  | { tipo: 'tarefa'; id: string; data: DataLocal }
+  | ({ tipo: 'grupo' | 'em-grupo' } & ItensAdicionados)
 
 /**
- * Cria pela captura rápida: tarefa solta (com anexos) ou card de grupo com os itens, numa
- * transação. Grupo com nome de série existente reusa a série (regra de `criarGrupo`).
+ * Cria pela captura rápida, numa transação: tarefa solta (com anexos), grupo novo com itens
+ * (nome de série existente reusa a série, regra de `criarGrupo`) ou itens num grupo que já
+ * existe (`adicionarItensNaSerie`).
  */
 export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
   const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
+  const itens = itensPreenchidos(dados.itens ?? [])
   if (dados.tipo === 'tarefa') {
     return db.transaction('rw', db.tasks, db.groupCards, db.attachments, async () => {
       const tarefa = await criarTarefa({ titulo: dados.titulo, data: dados.data, ...categoria })
       for (const anexo of dados.anexos ?? []) {
         await adicionarAnexo({ dono: { tipo: 'task', id: tarefa.id }, ...anexo })
       }
-      return {
-        tipo: 'tarefa',
-        id: tarefa.id,
-        data: tarefa.data,
-        idsItens: [],
-        isCardReaberto: false,
-      }
+      return { tipo: 'tarefa', id: tarefa.id, data: tarefa.data }
     })
+  }
+  if (dados.tipo === 'em-grupo') {
+    if (!dados.seriesId) throw new Error('Escolha o grupo.')
+    const adicionados = await adicionarItensNaSerie(dados.seriesId, dados.data, [
+      dados.titulo,
+      ...itens,
+    ])
+    return { tipo: 'em-grupo', ...adicionados }
   }
   return db.transaction(
     'rw',
     [db.tasks, db.groupSeries, db.groupCards, db.groupItems],
     async () => {
       const card = await criarGrupo({ titulo: dados.titulo, data: dados.data, ...categoria })
-      const idsItens: string[] = []
-      for (const titulo of itensPreenchidos(dados.itens ?? [])) {
-        idsItens.push((await criarItem(card.id, titulo)).id)
+      const isReaberto = card.criadoEm !== card.atualizadoEm
+      if (itens.length === 0) {
+        return {
+          tipo: 'grupo',
+          cardId: card.id,
+          seriesId: card.seriesId,
+          data: card.data,
+          idsItens: [],
+          card: isReaberto ? 'reaberto' : 'criado',
+        }
       }
-      return {
-        tipo: 'grupo',
-        id: card.id,
-        data: card.data,
-        idsItens,
-        isCardReaberto: card.criadoEm !== card.atualizadoEm,
-      }
+      const adicionados = await adicionarItensNaSerie(card.seriesId, card.data, itens)
+      return { ...adicionados, tipo: 'grupo', card: isReaberto ? 'reaberto' : 'criado' }
     },
   )
 }
 
-/** Desfaz a captura: apaga a tarefa (e anexos) ou o card novo; card reaberto volta a arquivado. */
+/**
+ * Desfaz a captura: apaga a tarefa (e anexos) ou os itens; card criado agora some, card
+ * reaberto volta a arquivado e card que já existia fica.
+ */
 export async function desfazerCaptura(resultado: ResultadoCaptura) {
   if (resultado.tipo === 'tarefa') return excluirTarefa(resultado.id)
-  if (!resultado.isCardReaberto) return excluirGrupo(resultado.id)
-  await db.transaction('rw', db.groupCards, db.groupItems, async () => {
-    for (const id of resultado.idsItens) await excluirItem(id)
-    await arquivarGrupo(resultado.id)
-  })
+  await desfazerItensAdicionados(resultado)
 }

@@ -140,54 +140,6 @@ export function nivelDeIntensidade(
   return 4
 }
 
-export interface Sequencias {
-  /** Dias seguidos com conclusões até hoje (ou até ontem, se hoje ainda está vazio). */
-  atual: number
-  maior: number
-}
-
-/** Sequências de dias com pelo menos uma conclusão, de `inicio` a `hoje`. */
-export function calcularSequencias(
-  contagem: Map<DataLocal, number>,
-  inicio: DataLocal,
-  hoje: DataLocal,
-): Sequencias {
-  const temConclusao = (data: DataLocal) => (contagem.get(data) ?? 0) > 0
-  let maior = 0
-  let corrente = 0
-  for (let data = inicio; data <= hoje; data = somarDias(data, 1)) {
-    corrente = temConclusao(data) ? corrente + 1 : 0
-    maior = Math.max(maior, corrente)
-  }
-  let atual = 0
-  let data = temConclusao(hoje) ? hoje : somarDias(hoje, -1)
-  while (data >= inicio && temConclusao(data)) {
-    atual += 1
-    data = somarDias(data, -1)
-  }
-  return { atual, maior }
-}
-
-/** Dia com mais conclusões no período; no empate, o mais recente. */
-export function diaMaisProdutivo(
-  contagem: Map<DataLocal, number>,
-  inicio: DataLocal,
-  fim: DataLocal,
-): { data: DataLocal; quantidade: number } | null {
-  let melhor: { data: DataLocal; quantidade: number } | null = null
-  for (const [data, quantidade] of contagem) {
-    if (data < inicio || data > fim || quantidade === 0) continue
-    if (
-      !melhor ||
-      quantidade > melhor.quantidade ||
-      (quantidade === melhor.quantidade && data > melhor.data)
-    ) {
-      melhor = { data, quantidade }
-    }
-  }
-  return melhor
-}
-
 /** Total de conclusões no período. */
 export function totalNoPeriodo(
   contagem: Map<DataLocal, number>,

@@ -3,9 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { carregarConclusoes } from '@/db/repositories/estatisticas-repository'
 import type { DataLocal } from '@/db/types'
 import {
-  calcularSequencias,
   contarPorDia,
-  diaMaisProdutivo,
   faixasDeIntensidade,
   montarSemanasDoMapa,
   periodoDoMapa,
@@ -30,9 +28,7 @@ export function useMapaDeConclusoes(hoje: DataLocal, categoryId?: string) {
       contagem,
       faixas: faixasDeIntensidade(valores),
       total: totalNoPeriodo(contagem, inicio, fim),
-      sequencias: calcularSequencias(contagem, inicio, hoje),
-      maisProdutivo: diaMaisProdutivo(contagem, inicio, fim),
       isCarregando: conclusoes === undefined,
     }
-  }, [conclusoes, categoryId, semanas, inicio, fim, hoje])
+  }, [conclusoes, categoryId, semanas, inicio, fim])
 }

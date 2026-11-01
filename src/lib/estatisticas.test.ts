@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
 import {
-  calcularSequencias,
   contarPorDia,
   diaDoMomento,
-  diaMaisProdutivo,
   faixasDeIntensidade,
   listarConclusoes,
   montarSemanasDoMapa,
@@ -136,33 +134,14 @@ describe('faixas de intensidade', () => {
   })
 })
 
-describe('sequências e resumo', () => {
-  const contagem = new Map([
-    ['2026-10-01', 1],
-    ['2026-10-02', 3],
-    ['2026-10-03', 1],
-    ['2026-10-04', 2],
-    ['2026-10-10', 1],
-    ['2026-10-30', 3],
-    ['2026-10-31', 1],
-    ['2026-11-01', 2],
-  ])
-
-  it('atual conta até hoje; maior é a mais longa do período', () => {
-    expect(calcularSequencias(contagem, '2026-01-01', '2026-11-01')).toEqual({ atual: 3, maior: 4 })
-  })
-
-  it('hoje ainda vazio não quebra a sequência atual (conta até ontem)', () => {
-    expect(calcularSequencias(contagem, '2026-01-01', '2026-11-02').atual).toBe(3)
-    expect(calcularSequencias(contagem, '2026-01-01', '2026-11-03').atual).toBe(0)
-  })
-
-  it('dia mais produtivo (empate: o mais recente) e total do período', () => {
-    expect(diaMaisProdutivo(contagem, '2026-01-01', '2026-11-02')).toEqual({
-      data: '2026-10-30',
-      quantidade: 3,
-    })
-    expect(diaMaisProdutivo(new Map(), '2026-01-01', '2026-11-02')).toBeNull()
+describe('resumo', () => {
+  it('total do período', () => {
+    const contagem = new Map([
+      ['2026-10-29', 4],
+      ['2026-10-30', 3],
+      ['2026-10-31', 1],
+      ['2026-11-01', 2],
+    ])
     expect(totalNoPeriodo(contagem, '2026-10-30', '2026-11-02')).toBe(6)
   })
 

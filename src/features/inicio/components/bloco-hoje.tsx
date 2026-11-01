@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
-import { ListChecks } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ListChecks, Plus } from 'lucide-react'
 import { cn } from 'cn'
+import { CampoNovoItem } from '@/components/campo-novo-item'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { GroupItem, Task } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
@@ -58,9 +59,65 @@ function itensVisiveis(grupo: GrupoDoDia): GroupItem[] {
   return grupo.itens.filter((item) => item.status === 'pendente' || item.status === 'concluido')
 }
 
+/**
+ * Card de hoje: título, progresso e itens marcáveis. "+ Adicionar item" aparece ao passar o
+ * mouse (ou com foco) e põe o item no fim do card, pela mesma regra da captura.
+ */
+function GrupoDeHoje({ grupo }: { grupo: GrupoDoDia }) {
+  const { definirConclusaoItem, adicionarItem } = useAcoesDoInicio()
+  const [isAdicionando, setIsAdicionando] = useState(false)
+  const { serie, card } = grupo
+  const itens = itensVisiveis(grupo)
+
+  return (
+    <li aria-label={`Grupo ${serie.titulo}`} className="group/grupo">
+      <div className="flex min-h-8 items-center gap-2.5 text-sm">
+        <ListChecks aria-hidden className="size-4 shrink-0 text-grafite" />
+        <span className="min-w-0 flex-1 truncate font-semibold">{serie.titulo}</span>
+        <button
+          type="button"
+          aria-label={`Adicionar item em ${serie.titulo}`}
+          title="Adicionar item"
+          onClick={() => setIsAdicionando(true)}
+          className="flex size-6 items-center justify-center rounded text-grafite opacity-0 group-focus-within/grupo:opacity-100 group-hover/grupo:opacity-100 hover:bg-accent hover:text-tinta focus-visible:opacity-100"
+        >
+          <Plus aria-hidden className="size-3.5" />
+        </button>
+        <span className="text-xs text-grafite tabular-nums">
+          {progressoDoGrupo(grupo).feitos}/{itens.length}
+        </span>
+        <PontoDaCategoria dono={serie} />
+      </div>
+      <ul>
+        {itens.map((item) => (
+          <LinhaMarcavel
+            key={item.id}
+            titulo={item.titulo}
+            isFeita={item.status === 'concluido'}
+            onMarcar={(isFeita) => void definirConclusaoItem(item.id, isFeita)}
+            recuo
+          />
+        ))}
+      </ul>
+      {isAdicionando && (
+        <div className="ml-5 text-sm">
+          <CampoNovoItem
+            rotulo="Adicionar item"
+            nomeAcessivel={`Novo item em ${serie.titulo}`}
+            tamanho="compacto"
+            autoFocus
+            onCriar={(titulo) => adicionarItem(serie.id, card.data, titulo)}
+            onSairVazio={() => setIsAdicionando(false)}
+          />
+        </div>
+      )}
+    </li>
+  )
+}
+
 /** O que está em hoje (tarefas e grupos), marcável ali mesmo. */
 export function BlocoHoje({ entradas }: BlocoHojeProps) {
-  const { definirConclusao, definirConclusaoItem } = useAcoesDoInicio()
+  const { definirConclusao } = useAcoesDoInicio()
   const pendentes = entradas.reduce(
     (soma, entrada) =>
       soma +
@@ -101,29 +158,7 @@ export function BlocoHoje({ entradas }: BlocoHojeProps) {
                 <PontoDaCategoria dono={entrada.tarefa} />
               </LinhaMarcavel>
             ) : (
-              <li key={entrada.grupo.card.id} aria-label={`Grupo ${entrada.grupo.serie.titulo}`}>
-                <div className="flex min-h-8 items-center gap-2.5 text-sm">
-                  <ListChecks aria-hidden className="size-4 shrink-0 text-grafite" />
-                  <span className="min-w-0 flex-1 truncate font-semibold">
-                    {entrada.grupo.serie.titulo}
-                  </span>
-                  <span className="text-xs text-grafite tabular-nums">
-                    {progressoDoGrupo(entrada.grupo).feitos}/{itensVisiveis(entrada.grupo).length}
-                  </span>
-                  <PontoDaCategoria dono={entrada.grupo.serie} />
-                </div>
-                <ul>
-                  {itensVisiveis(entrada.grupo).map((item) => (
-                    <LinhaMarcavel
-                      key={item.id}
-                      titulo={item.titulo}
-                      isFeita={item.status === 'concluido'}
-                      onMarcar={(isFeita) => void definirConclusaoItem(item.id, isFeita)}
-                      recuo
-                    />
-                  ))}
-                </ul>
-              </li>
+              <GrupoDeHoje key={entrada.grupo.card.id} grupo={entrada.grupo} />
             ),
           )}
         </ul>

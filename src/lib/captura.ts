@@ -6,17 +6,25 @@ import { inicioDaSemana } from '@/lib/semana'
 
 /** Regras da captura rápida do Início (o que criar, onde e quando). */
 
-export type TipoCaptura = 'tarefa' | 'grupo'
+/** Tarefa solta, grupo novo ou item(ns) num grupo que já existe ("Em grupo…"). */
+export type TipoCaptura = 'tarefa' | 'grupo' | 'em-grupo'
 
-export const esquemaCaptura = z.object({
-  titulo: esquemaTituloTarefa,
-  tipo: z.enum(['tarefa', 'grupo']),
-  categoryId: z.string().optional(),
-  subcategoryId: z.string().optional(),
-  data: z.string().refine(isDataLocalValida, 'Escolha um dia.'),
-  /** Só do grupo; linhas em branco são ignoradas. */
-  itens: z.array(z.object({ titulo: z.string() })),
-})
+export const esquemaCaptura = z
+  .object({
+    titulo: esquemaTituloTarefa,
+    tipo: z.enum(['tarefa', 'grupo', 'em-grupo']),
+    categoryId: z.string().optional(),
+    subcategoryId: z.string().optional(),
+    /** Série escolhida em "Em grupo…". */
+    seriesId: z.string().optional(),
+    data: z.string().refine(isDataLocalValida, 'Escolha um dia.'),
+    /** Do grupo novo ou a mais em "Em grupo…"; linhas em branco são ignoradas. */
+    itens: z.array(z.object({ titulo: z.string() })),
+  })
+  .refine((captura) => captura.tipo !== 'em-grupo' || Boolean(captura.seriesId), {
+    message: 'Escolha o grupo.',
+    path: ['seriesId'],
+  })
 
 export type CapturaInput = z.infer<typeof esquemaCaptura>
 
@@ -49,6 +57,12 @@ export function diaEMes(data: DataLocal) {
 }
 
 /** Aviso depois de criar, ex.: "Tarefa criada para 03/11" ou "Grupo criado para 03/11". */
-export function textoCapturado(tipo: TipoCaptura, data: DataLocal) {
+export function textoCapturado(tipo: Exclude<TipoCaptura, 'em-grupo'>, data: DataLocal) {
   return `${tipo === 'tarefa' ? 'Tarefa criada' : 'Grupo criado'} para ${diaEMes(data)}`
+}
+
+/** Aviso depois de pôr itens num grupo, ex.: "2 itens adicionados a Casa · 01/11". */
+export function textoItensAdicionados(quantidade: number, grupo: string, data: DataLocal) {
+  const itens = quantidade === 1 ? '1 item adicionado' : `${quantidade} itens adicionados`
+  return `${itens} a ${grupo} · ${diaEMes(data)}`
 }

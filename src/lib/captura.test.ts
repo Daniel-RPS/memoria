@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { atalhosDeDia, esquemaCaptura, itensPreenchidos, textoCapturado } from '@/lib/captura'
+import {
+  atalhosDeDia,
+  esquemaCaptura,
+  itensPreenchidos,
+  textoCapturado,
+  textoItensAdicionados,
+} from '@/lib/captura'
 
 describe('captura rápida', () => {
   it('atalhos: hoje, amanhã e a segunda-feira da próxima semana', () => {
@@ -34,8 +40,28 @@ describe('captura rápida', () => {
     )
   })
 
+  it('"Em grupo…" exige o grupo escolhido', () => {
+    const base = {
+      tipo: 'em-grupo' as const,
+      titulo: 'Fazer lasanha',
+      data: '2026-11-02',
+      itens: [],
+    }
+    const semGrupo = esquemaCaptura.safeParse(base)
+    expect(semGrupo.success).toBe(false)
+    expect(semGrupo.error?.issues[0]).toMatchObject({
+      path: ['seriesId'],
+      message: 'Escolha o grupo.',
+    })
+    expect(esquemaCaptura.safeParse({ ...base, seriesId: 'casa' }).success).toBe(true)
+  })
+
   it('aviso depois de criar', () => {
     expect(textoCapturado('tarefa', '2026-11-03')).toBe('Tarefa criada para 03/11')
     expect(textoCapturado('grupo', '2026-11-03')).toBe('Grupo criado para 03/11')
+    expect(textoItensAdicionados(1, 'Casa', '2026-11-01')).toBe('1 item adicionado a Casa · 01/11')
+    expect(textoItensAdicionados(3, 'Casa', '2026-11-01')).toBe(
+      '3 itens adicionados a Casa · 01/11',
+    )
   })
 })

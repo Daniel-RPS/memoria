@@ -164,3 +164,50 @@ export function isPendenteDeAntes(
 ) {
   return item.status === 'pendente' && (item.dataOriginal < dataDoCard || item.dataOriginal < hoje)
 }
+
+/** Uma série na lista de "Em grupo…": quando foi usada por último e se tem card no dia. */
+export interface SerieParaEscolher {
+  serie: GroupSeries
+  ultimoUso: string
+  /** Card visível da série no dia escolhido (os itens entram nele). */
+  temCardNoDia: boolean
+}
+
+/**
+ * Séries da mais usada recentemente (card ou item mexido por último) para a menos; empate
+ * pelo nome. Marca se a série já tem card visível em `data`.
+ */
+export function ordenarParaEscolher(
+  series: GroupSeries[],
+  cards: Pick<GroupCard, 'id' | 'seriesId' | 'data' | 'arquivado' | 'atualizadoEm'>[],
+  itens: Pick<GroupItem, 'cardId' | 'atualizadoEm'>[],
+  data: DataLocal,
+): SerieParaEscolher[] {
+  const serieDoCard = new Map(cards.map((card) => [card.id, card.seriesId]))
+  const ultimoUso = new Map(series.map((serie) => [serie.id, serie.atualizadoEm]))
+  const usar = (seriesId: string | undefined, momento: string) => {
+    if (seriesId && momento > (ultimoUso.get(seriesId) ?? '')) ultimoUso.set(seriesId, momento)
+  }
+  for (const card of cards) usar(card.seriesId, card.atualizadoEm)
+  for (const item of itens) usar(serieDoCard.get(item.cardId), item.atualizadoEm)
+  const comCardNoDia = new Set(
+    cards.filter((card) => card.data === data && !card.arquivado).map((card) => card.seriesId),
+  )
+  return series
+    .map((serie) => ({
+      serie,
+      ultimoUso: ultimoUso.get(serie.id) ?? '',
+      temCardNoDia: comCardNoDia.has(serie.id),
+    }))
+    .sort(
+      (a, b) =>
+        b.ultimoUso.localeCompare(a.ultimoUso) || a.serie.titulo.localeCompare(b.serie.titulo),
+    )
+}
+
+/** Busca pelo nome da série, sem diferenciar acento e maiúscula. */
+export function filtrarSeries(lista: SerieParaEscolher[], termo: string) {
+  const busca = normalizar(termo)
+  if (!busca) return lista
+  return lista.filter(({ serie }) => normalizar(serie.titulo).includes(busca))
+}

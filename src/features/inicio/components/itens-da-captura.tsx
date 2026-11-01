@@ -9,13 +9,21 @@ interface ItensDaCapturaProps {
   /** Valor atual de um item (para saber se está vazio). */
   valorDe: (indice: number) => string
   onCriar: () => void
+  /** Em "Em grupo…" o campo principal já é o item 1: a lista começa no 2. */
+  primeiroNumero?: number
 }
 
 /**
  * Itens do grupo, um por linha, logo abaixo do título. Enter numa linha preenchida abre a
  * próxima; Enter na última linha vazia cria o grupo; Backspace numa linha vazia apaga a linha.
  */
-export function ItensDaCaptura({ campos, register, valorDe, onCriar }: ItensDaCapturaProps) {
+export function ItensDaCaptura({
+  campos,
+  register,
+  valorDe,
+  onCriar,
+  primeiroNumero = 1,
+}: ItensDaCapturaProps) {
   const { fields, append, insert, remove } = campos
 
   function handleKeyDown(evento: KeyboardEvent<HTMLInputElement>, indice: number) {
@@ -39,8 +47,10 @@ export function ItensDaCaptura({ campos, register, valorDe, onCriar }: ItensDaCa
         >
           <span aria-hidden className="size-3.5 shrink-0 rounded-sm border border-input" />
           <input
-            aria-label={`Item ${indice + 1}`}
-            placeholder={indice === 0 ? 'Primeiro item' : undefined}
+            aria-label={`Item ${indice + primeiroNumero}`}
+            placeholder={
+              indice === 0 ? (primeiroNumero === 1 ? 'Primeiro item' : 'Mais um item') : undefined
+            }
             autoComplete="off"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-grafite/70"
             {...register(`itens.${indice}.titulo`)}
@@ -49,7 +59,7 @@ export function ItensDaCaptura({ campos, register, valorDe, onCriar }: ItensDaCa
           {fields.length > 1 && (
             <button
               type="button"
-              aria-label={`Tirar item ${indice + 1}`}
+              aria-label={`Tirar item ${indice + primeiroNumero}`}
               onClick={() => remove(indice)}
               className="flex size-6 items-center justify-center rounded text-grafite opacity-0 group-focus-within/linha:opacity-100 group-hover/linha:opacity-100 hover:bg-accent hover:text-tinta"
             >

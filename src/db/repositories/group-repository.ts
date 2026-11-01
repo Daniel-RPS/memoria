@@ -166,6 +166,82 @@ export async function criarItem(cardId: string, titulo: string): Promise<GroupIt
   })
 }
 
+/** Como o card do dia estava antes de receber itens: desfazer depende disso. */
+export type SituacaoDoCard = 'criado' | 'reaberto' | 'existente'
+
+export interface ItensAdicionados {
+  cardId: string
+  seriesId: string
+  data: DataLocal
+  idsItens: string[]
+  card: SituacaoDoCard
+}
+
+/**
+ * Põe itens no card da série no dia: no fim do card que já existe; se ele estava arquivado,
+ * reabre; se não há card, cria um no fim do dia (card do usuário, não some sozinho). Itens
+ * nascem pendentes com `dataOriginal` = dia. Usada pela captura e pelo bloco Hoje do Início.
+ */
+export async function adicionarItensNaSerie(
+  seriesId: string,
+  data: DataLocal,
+  titulos: string[],
+): Promise<ItensAdicionados> {
+  const preenchidos = titulos.map((titulo) => titulo.trim()).filter((titulo) => titulo !== '')
+  if (preenchidos.length === 0) throw new ErroDeValidacao('Escreva um item.')
+  return db.transaction(
+    'rw',
+    [db.tasks, db.groupSeries, db.groupCards, db.groupItems],
+    async () => {
+      if (!(await db.groupSeries.get(seriesId))) throw new Error('Grupo não encontrado.')
+      const momento = agora()
+      const existente = await cardDaSerieNoDia(seriesId, data)
+      let card: GroupCard
+      let situacao: SituacaoDoCard
+      if (existente && !existente.arquivado) {
+        card = existente
+        situacao = 'existente'
+      } else if (existente) {
+        card = {
+          ...existente,
+          arquivado: false,
+          criadoPorTransferencia: false,
+          ordem: (await maiorOrdemDoDia(data)) + 1,
+          atualizadoEm: momento,
+        }
+        await db.groupCards.put(card)
+        situacao = 'reaberto'
+      } else {
+        card = novoCard(seriesId, data, (await maiorOrdemDoDia(data)) + 1)
+        await db.groupCards.add(card)
+        situacao = 'criado'
+      }
+      const idsItens: string[] = []
+      for (const titulo of preenchidos) idsItens.push((await criarItem(card.id, titulo)).id)
+      return { cardId: card.id, seriesId, data, idsItens, card: situacao }
+    },
+  )
+}
+
+/** Desfaz `adicionarItensNaSerie`: apaga os itens; card criado some, reaberto volta a arquivado. */
+export async function desfazerItensAdicionados(resultado: ItensAdicionados) {
+  await db.transaction('rw', db.groupSeries, db.groupCards, db.groupItems, async () => {
+    await db.groupItems.bulkDelete(resultado.idsItens)
+    if (resultado.card === 'criado') await excluirGrupo(resultado.cardId)
+    else if (resultado.card === 'reaberto') await arquivarGrupo(resultado.cardId)
+  })
+}
+
+/** Séries, cards e itens para escolher um grupo (ordem e busca em `lib/grupos`). */
+export async function carregarSeriesParaEscolher() {
+  const [series, cards, itens] = await Promise.all([
+    db.groupSeries.toArray(),
+    db.groupCards.toArray(),
+    db.groupItems.toArray(),
+  ])
+  return { series, cards, itens }
+}
+
 /** Renomeia a série: vale para o card em todos os dias. Nome de outra série é recusado. */
 export async function renomearGrupo(seriesId: string, titulo: string) {
   await db.transaction('rw', db.groupSeries, async () => {

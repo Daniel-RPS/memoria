@@ -1,4 +1,4 @@
-import { ListChecks, SquareCheck } from 'lucide-react'
+import { ListChecks, ListEnd, SquareCheck } from 'lucide-react'
 import { cn } from 'cn'
 import type { TipoCaptura } from '@/lib/captura'
 
@@ -10,9 +10,10 @@ interface EscolhaDoTipoProps {
 const OPCOES = [
   { tipo: 'tarefa', rotulo: 'Tarefa', icone: SquareCheck },
   { tipo: 'grupo', rotulo: 'Grupo', icone: ListChecks },
+  { tipo: 'em-grupo', rotulo: 'Em grupo…', icone: ListEnd },
 ] as const
 
-/** Tarefa solta ou grupo (card com itens). */
+/** Tarefa solta, grupo novo (card com itens) ou item num grupo que já existe. */
 export function EscolhaDoTipo({ tipo, onEscolher }: EscolhaDoTipoProps) {
   return (
     <div role="group" aria-label="Tipo" className="flex rounded-md bg-nevoa p-0.5">

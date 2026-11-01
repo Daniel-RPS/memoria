@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Plus, Search } from 'lucide-react'
 import {
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -11,6 +11,7 @@ import { FormularioNovaCategoria } from '@/components/seletor-categoria/formular
 import { useAcoesCategoria } from '@/hooks/use-acoes-categoria'
 import { useCategorias } from '@/hooks/use-categorias'
 import { corDaSubcategoria, type CategoriaComSubcategorias } from '@/lib/categorias'
+import { normalizar } from '@/lib/procedimentos'
 import { proximaCor } from '@/lib/cores'
 
 export interface CategoriaEscolhida {
@@ -24,6 +25,11 @@ export interface SeletorCategoriaProps {
   onEscolher: (categoria: CategoriaEscolhida) => void
   /** Fecha o menu depois de criar (escolher uma opção já fecha sozinho). */
   onFechar: () => void
+  /**
+   * `filtro`: só para filtrar uma lista (ex.: mapa do Início): "Todas as categorias", busca e
+   * só as categorias, sem subcategorias e sem criar. Escolher "Todas" devolve `{}`.
+   */
+  modo?: 'escolha' | 'filtro'
 }
 
 type Criando =
@@ -48,7 +54,12 @@ function Amostra({ cor }: { cor: string }) {
  * "Sem categoria", categorias e subcategorias na ordem do usuário, e criar ali mesmo.
  * O que for criado já fica aplicado ao item e o menu fecha.
  */
-export function SeletorCategoria({ atual, onEscolher, onFechar }: SeletorCategoriaProps) {
+export function SeletorCategoria({
+  atual,
+  onEscolher,
+  onFechar,
+  modo = 'escolha',
+}: SeletorCategoriaProps) {
   const { categorias } = useCategorias()
   const { criarCategoria, criarSubcategoria } = useAcoesCategoria()
   const [criando, setCriando] = useState<Criando | null>(null)
@@ -60,6 +71,10 @@ export function SeletorCategoria({ atual, onEscolher, onFechar }: SeletorCategor
     }
     const [categoryId, subcategoryId] = valor.split(SEPARADOR)
     onEscolher({ categoryId, subcategoryId })
+  }
+
+  if (modo === 'filtro') {
+    return <FiltroDeCategorias categorias={categorias} atual={atual} onEscolher={handleEscolher} />
   }
 
   // Criando: só o formulário, para nada no menu roubar o foco do campo.
@@ -144,6 +159,68 @@ export function SeletorCategoria({ atual, onEscolher, onFechar }: SeletorCategor
       >
         <Plus /> Nova categoria
       </DropdownMenuItem>
+    </>
+  )
+}
+
+/** Modo filtro: busca no topo, "Todas as categorias" e as categorias na ordem do usuário. */
+function FiltroDeCategorias({
+  categorias,
+  atual,
+  onEscolher,
+}: {
+  categorias: CategoriaComSubcategorias[]
+  atual: CategoriaEscolhida
+  onEscolher: (valor: string) => void
+}) {
+  const [busca, setBusca] = useState('')
+  const termo = normalizar(busca)
+  const visiveis = termo
+    ? categorias.filter((categoria) => normalizar(categoria.nome).includes(termo))
+    : categorias
+
+  return (
+    <>
+      <label className="mb-1 flex items-center gap-2 rounded-md border border-input px-2">
+        <Search aria-hidden className="size-3.5 text-grafite" />
+        <input
+          autoFocus
+          value={busca}
+          onChange={(evento) => setBusca(evento.target.value)}
+          onKeyDown={(evento) => {
+            if (evento.key === 'Escape' || evento.key === 'Tab') return
+            if (evento.key === 'ArrowDown') {
+              evento.preventDefault()
+              evento.currentTarget
+                .closest('[role="menu"]')
+                ?.querySelector<HTMLElement>('[role="menuitemradio"]')
+                ?.focus()
+            } else if (evento.key === 'Enter') {
+              evento.preventDefault()
+              onEscolher((termo && visiveis[0]?.id) || SEM_CATEGORIA)
+            }
+            // Dentro do menu: letras não podem virar a busca por digitação do Radix.
+            evento.stopPropagation()
+          }}
+          placeholder="Buscar categoria"
+          aria-label="Buscar categoria"
+          className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-grafite/70"
+        />
+      </label>
+      <DropdownMenuRadioGroup value={atual.categoryId ?? SEM_CATEGORIA} onValueChange={onEscolher}>
+        {!termo && (
+          <DropdownMenuRadioItem value={SEM_CATEGORIA}>Todas as categorias</DropdownMenuRadioItem>
+        )}
+        {visiveis.map((categoria) => (
+          <DropdownMenuRadioItem key={categoria.id} value={categoria.id}>
+            <Amostra cor={categoria.cor} />
+            <span className="min-w-0 break-words">{categoria.nome}</span>
+          </DropdownMenuRadioItem>
+        ))}
+        {visiveis.length === 0 && (
+          <p className="px-2 py-1.5 text-sm text-grafite">Nenhuma categoria com esse nome.</p>
+        )}
+      </DropdownMenuRadioGroup>
     </>
   )
 }
