@@ -112,6 +112,8 @@ Legenda: ✅ pronto · 🔜 planejado
 
 Não há servidor nem banco externo: o app roda inteiro no navegador.
 
+Cores, fontes e logo: [docs/branding/README.md](docs/branding/README.md).
+
 ## Como instalar e rodar
 
 Pré-requisito: [Node.js](https://nodejs.org/) 22 ou mais recente (desenvolvido com o 24).

@@ -1,0 +1,1604 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="claro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paleta MemorIA</title>
+    <link rel="icon" href="logo/favicon-32.png" />
+    <!--
+      Página única do branding do MemorIA. Abre direto no navegador (file://), sem internet:
+      a fonte e a logo vêm das pastas fonte/ e logo/ ao lado. Os tokens são gerados por
+      scripts/gerar-tokens.mjs a partir de src/index.css (não edite o bloco à mão).
+      ?tema=claro|escuro escolhe o tema ao abrir.
+    -->
+    <style>
+      @font-face {
+        font-family: 'Bricolage Grotesque Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 200 800;
+        font-stretch: 75% 100%;
+        src: url('fonte/bricolage-grotesque-latin-standard-normal.woff2') format('woff2-variations');
+      }
+      :root {
+        --nevoa: #f4f2f8;
+        --papel: #ffffff;
+        --tinta: #111019;
+        --grafite: #625e70;
+        --pauta: #e4e0ee;
+        --caneta: #8b3dff;
+        --violeta-profundo: #4b16a8;
+        --marca-texto: #ece2ff;
+        --alerta: #a84c0a;
+        --primeiro-plano-caneta: #ffffff;
+        --accent: #f1eaff;
+        --barra: #fbfafd;
+        color-scheme: light;
+      }
+      :root[data-tema='escuro'] {
+        --nevoa: #0f0d15;
+        --papel: #19161f;
+        --tinta: #ece8f5;
+        --grafite: #a39eb3;
+        --pauta: #2c2738;
+        --caneta: #a274ff;
+        --violeta-profundo: #c6a8ff;
+        --marca-texto: #2b2042;
+        --alerta: #f0a25e;
+        --primeiro-plano-caneta: #14101f;
+        --accent: #2a2240;
+        --barra: #121017;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        background: var(--nevoa);
+        color: var(--tinta);
+        font-family: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      body {
+        margin: 0;
+        font-size: 14px;
+        line-height: 20px;
+      }
+      .folha {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 32px 16px 64px;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--tinta);
+      }
+      .logo-topo {
+        height: 40px;
+      }
+      [data-so='escuro'] {
+        display: none;
+      }
+      :root[data-tema='escuro'] [data-so='claro'] {
+        display: none;
+      }
+      :root[data-tema='escuro'] [data-so='escuro'] {
+        display: revert;
+      }
+      .troca {
+        display: inline-flex;
+        padding: 3px;
+        gap: 2px;
+        border: 1px solid var(--pauta);
+        border-radius: 8px;
+        background: var(--papel);
+      }
+      .troca button {
+        font: inherit;
+        font-weight: 500;
+        color: var(--grafite);
+        background: none;
+        border: 0;
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+      .troca button[aria-pressed='true'] {
+        background: var(--caneta);
+        color: var(--primeiro-plano-caneta);
+        font-weight: 600;
+      }
+      .troca button:focus-visible {
+        outline: 2px solid var(--caneta);
+        outline-offset: 2px;
+      }
+      h1 {
+        font-size: 36px;
+        line-height: 40px;
+        font-weight: 800;
+        font-stretch: 80%;
+        letter-spacing: -0.02em;
+        margin: 28px 0 4px;
+      }
+      h2 {
+        font-size: 20px;
+        line-height: 28px;
+        font-weight: 700;
+        font-stretch: 85%;
+        letter-spacing: -0.01em;
+        margin: 40px 0 4px;
+      }
+      .sub {
+        color: var(--grafite);
+        margin: 0 0 16px;
+        max-width: 70ch;
+      }
+      .grade {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+      }
+      .ficha {
+        background: var(--papel);
+        border: 1px solid var(--pauta);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .amostra {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 72px;
+        border-bottom: 1px solid var(--pauta);
+      }
+      .amostra span {
+        display: flex;
+        align-items: flex-end;
+        padding: 6px 8px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .amostra .xadrez {
+        background-image: conic-gradient(#ccc 25%, #fff 0 50%, #ccc 0 75%, #fff 0);
+        background-size: 12px 12px;
+      }
+      .rotulo {
+        padding: 8px 10px 10px;
+      }
+      .rotulo strong {
+        display: block;
+        font-weight: 600;
+      }
+      .rotulo code,
+      td code {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+          monospace;
+        font-size: 12px;
+      }
+      .rotulo p {
+        margin: 4px 0 0;
+        color: var(--grafite);
+        font-size: 12px;
+        line-height: 16px;
+      }
+      .top3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .top3 ol {
+        margin: 0;
+        padding: 12px 16px 14px 36px;
+      }
+      .top3 li {
+        margin: 6px 0;
+      }
+      .top3 h3 {
+        margin: 0;
+        padding: 10px 16px;
+        font-size: 14px;
+        border-bottom: 1px solid var(--pauta);
+      }
+      .bolinha {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        vertical-align: -2px;
+        margin-right: 6px;
+        border: 1px solid var(--pauta);
+      }
+      .escala {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .escala .quadro {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        padding-bottom: 2px;
+      }
+      .linha-escala {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--pauta);
+      }
+      .linha-escala:last-child {
+        border-bottom: 0;
+      }
+      .categorias {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 8px;
+      }
+      .categoria {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        background: var(--papel);
+        border: 1px solid var(--pauta);
+        border-left-width: 4px;
+        border-radius: 6px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--papel);
+        border: 1px solid var(--pauta);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--pauta);
+        vertical-align: middle;
+      }
+      th {
+        font-size: 12px;
+        color: var(--grafite);
+        font-weight: 500;
+      }
+      .rolagem {
+        overflow-x: auto;
+      }
+      .par {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        border: 1px solid var(--pauta);
+      }
+      .nota-ruim {
+        color: var(--alerta);
+        font-weight: 600;
+      }
+      .tipo {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--pauta);
+      }
+      .tipo:last-child {
+        border-bottom: 0;
+      }
+      .tipo small {
+        display: block;
+        color: var(--grafite);
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+      .pesos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 24px;
+        font-size: 24px;
+        line-height: 32px;
+      }
+      .logos {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+      }
+      .palco {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 28px 20px;
+        min-height: 150px;
+      }
+      .palco.claro {
+        background: #ffffff;
+      }
+      .palco.escuro {
+        background: #19161f;
+      }
+      .palco img {
+        max-width: 100%;
+      }
+      .respiro {
+        outline: 1px dashed var(--caneta);
+        outline-offset: 0;
+        padding: 16px;
+      }
+      ul.regras {
+        margin: 0;
+        padding: 12px 16px 14px 32px;
+      }
+      ul.regras li {
+        margin: 4px 0;
+      }
+      footer {
+        margin-top: 48px;
+        color: var(--grafite);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="folha">
+      <header>
+        <span>
+          <img class="logo-topo" data-so="claro" src="logo/logo-memoria-clara.png" alt="MemorIA" />
+          <img class="logo-topo" data-so="escuro" src="logo/logo-memoria.png" alt="MemorIA" />
+        </span>
+        <div class="troca" role="group" aria-label="Tema">
+          <button type="button" data-tema-botao="claro">Claro</button>
+          <button type="button" data-tema-botao="escuro">Escuro</button>
+        </div>
+      </header>
+
+      <h1>Paleta e marca</h1>
+      <p class="sub">
+        Cores, fontes e logo do app, lidas de <code>src/index.css</code>. Cada amostra mostra o
+        valor do tema claro (esquerda) e do escuro (direita). A página inteira segue o tema
+        escolhido acima.
+      </p>
+
+      <h2>As 3 cores mais usadas</h2>
+      <p class="sub">
+        Contando referências no código, ganham as cores de texto e de ação. Medindo pixels na tela
+        (Início e Semana), ganham as superfícies, já que a névoa aparece pouco no código mas cobre
+        metade da tela.
+      </p>
+      <div class="top3" id="top3"></div>
+
+      <h2>Cores da marca</h2>
+      <p class="sub">A agenda pautada: névoa, papel, tinta, grafite, pauta e a caneta violeta.</p>
+      <div class="grade" id="marca"></div>
+
+      <h2>Apelidos do shadcn/ui</h2>
+      <p class="sub">Nomes usados pelos componentes de <code>src/components/ui/</code>.</p>
+      <div class="grade" id="shadcn"></div>
+
+      <h2>Barra lateral</h2>
+      <div class="grade" id="barraLateral"></div>
+
+      <h2>Fundos decorativos</h2>
+      <p class="sub">
+        Translúcidos (o xadrez mostra a transparência). Aurora, Pontos e Grade; o Liso não tem
+        camada.
+      </p>
+      <div class="grade" id="fundo"></div>
+
+      <h2>Escalas</h2>
+      <div class="ficha" id="escalas"></div>
+
+      <h2>Contraste WCAG</h2>
+      <p class="sub">Texto normal: AA ≥ 4,5:1, AAA ≥ 7:1. Gráfico e texto grande: ≥ 3:1.</p>
+      <div class="rolagem"><table id="contrastes"></table></div>
+
+      <h2>Cores de categoria</h2>
+      <p class="sub">
+        Não são cores da marca: são as 12 opções que o usuário escolhe para as categorias. No tema
+        escuro, a tela clareia cada uma 28%; esta página mostra o valor do tema ativo.
+      </p>
+      <div class="categorias" id="categorias"></div>
+
+      <h2>Tipografia</h2>
+      <p class="sub">
+        Uma família só, Bricolage Grotesque Variable (OFL 1.1, arquivo local). A hierarquia vem de
+        peso, tamanho e largura.
+      </p>
+      <div class="ficha">
+        <div class="tipo">
+          <small>Número do Dia · 96 px · 800 · largura 75% · tracking −0,04em · leading 0,78</small>
+          <div
+            style="
+              font-size: 96px;
+              line-height: 0.78;
+              font-weight: 800;
+              font-stretch: 75%;
+              letter-spacing: -0.04em;
+            "
+          >
+            02
+          </div>
+        </div>
+        <div class="tipo">
+          <small
+            >Título de página · text-4xl (36/40 px) · 800 · largura 80% · tracking −0,02em</small
+          >
+          <div
+            style="
+              font-size: 36px;
+              line-height: 40px;
+              font-weight: 800;
+              font-stretch: 80%;
+              letter-spacing: -0.02em;
+            "
+          >
+            Início
+          </div>
+        </div>
+        <div class="tipo">
+          <small
+            >Título de seção e card · text-lg (18/28 px) · 700–800 · largura 85% · tracking
+            −0,01em</small
+          >
+          <div
+            style="
+              font-size: 18px;
+              line-height: 28px;
+              font-weight: 700;
+              font-stretch: 85%;
+              letter-spacing: -0.01em;
+            "
+          >
+            12 itens concluídos no último ano
+          </div>
+        </div>
+        <div class="tipo">
+          <small>Item de tarefa · text-base (16/24 px) · 400</small>
+          <div style="font-size: 16px; line-height: 24px">Pagar a conta de luz</div>
+        </div>
+        <div class="tipo">
+          <small>Interface · text-sm (14/20 px) · 400 / 500 / 600 (o tamanho mais usado)</small>
+          <div>
+            Calendário · <span style="font-weight: 500">Procedimentos</span> ·
+            <span style="font-weight: 600; color: var(--caneta)">Hoje</span>
+          </div>
+        </div>
+        <div class="tipo">
+          <small>Texto secundário · text-xs (12/16 px) em grafite, com selo de atraso</small>
+          <div style="font-size: 12px; line-height: 16px; color: var(--grafite)">
+            1 pendente ·
+            <span
+              style="
+                background: var(--marca-texto);
+                color: var(--violeta-profundo);
+                padding: 0 6px;
+                border-radius: 3px;
+                font-weight: 500;
+              "
+              >há 3 dias</span
+            >
+            · <span style="color: var(--alerta); font-weight: 600">Atrasadas</span>
+          </div>
+        </div>
+        <div class="tipo">
+          <small>Pesos 400 · 500 · 600 · 700 · 800 (eixo vai de 200 a 800)</small>
+          <div class="pesos">
+            <span style="font-weight: 400">Regular</span><span style="font-weight: 500">Medium</span
+            ><span style="font-weight: 600">Semibold</span><span style="font-weight: 700">Bold</span
+            ><span style="font-weight: 800">Extrabold</span>
+          </div>
+        </div>
+        <div class="tipo">
+          <small>Larguras 75% · 80% · 85% · 100% (peso 800)</small>
+          <div class="pesos" style="font-weight: 800">
+            <span style="font-stretch: 75%">Semana</span
+            ><span style="font-stretch: 80%">Semana</span
+            ><span style="font-stretch: 85%">Semana</span
+            ><span style="font-stretch: 100%">Semana</span>
+          </div>
+        </div>
+        <div class="tipo">
+          <small
+            >Números tabulares (tabular-nums) · Monoespaçada do sistema (só no campo
+            hexadecimal)</small
+          >
+          <div style="font-variant-numeric: tabular-nums; font-size: 16px">
+            1 111 · 2 222 · 0 808
+          </div>
+          <div
+            style="
+              font-family:
+                ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+                'Courier New', monospace;
+              text-transform: uppercase;
+              margin-top: 6px;
+            "
+          >
+            #8b3dff
+          </div>
+        </div>
+      </div>
+
+      <h2>Logo</h2>
+      <p class="sub">
+        Imagem PNG com fundo transparente, um par por tema. "Memor" muda de cor com o tema (#1A1625
+        no claro, branco no escuro); "IA" e o símbolo são violeta nos dois.
+      </p>
+      <div class="logos">
+        <div class="ficha">
+          <div class="palco claro">
+            <img
+              src="logo/logo-memoria-clara.png"
+              alt="Logo para o tema claro"
+              style="height: 48px"
+            />
+          </div>
+          <div class="rotulo">
+            <strong>Completa · tema claro</strong><code>logo-memoria-clara.png</code> · 864×218
+          </div>
+        </div>
+        <div class="ficha">
+          <div class="palco escuro">
+            <img src="logo/logo-memoria.png" alt="Logo para o tema escuro" style="height: 48px" />
+          </div>
+          <div class="rotulo">
+            <strong>Completa · tema escuro</strong><code>logo-memoria.png</code> · 864×218
+          </div>
+        </div>
+        <div class="ficha">
+          <div class="palco claro">
+            <img
+              src="logo/simbolo-memoria-claro.png"
+              alt="Símbolo para o tema claro"
+              style="height: 64px"
+            />
+            <img src="logo/simbolo-memoria-claro.png" alt="" style="height: 32px" />
+            <img src="logo/favicon-32.png" alt="Favicon" style="height: 16px" />
+          </div>
+          <div class="rotulo">
+            <strong>Símbolo · tema claro</strong><code>simbolo-memoria-claro.png</code> · 218×218 ·
+            64, 32 e favicon 16 px
+          </div>
+        </div>
+        <div class="ficha">
+          <div class="palco escuro">
+            <img
+              src="logo/simbolo-memoria.png"
+              alt="Símbolo para o tema escuro"
+              style="height: 64px"
+            />
+            <img
+              src="logo/apple-touch-icon.png"
+              alt="Ícone do app"
+              style="height: 64px; border-radius: 14px"
+            />
+          </div>
+          <div class="rotulo">
+            <strong>Símbolo · tema escuro e ícone</strong><code>simbolo-memoria.png</code> ·
+            <code>apple-touch-icon.png</code> 180×180
+          </div>
+        </div>
+        <div class="ficha">
+          <div class="palco claro">
+            <span class="respiro"
+              ><img
+                src="logo/logo-memoria-clara.png"
+                alt="Logo com a área de respiro marcada"
+                style="height: 32px; display: block"
+            /></span>
+          </div>
+          <div class="rotulo">
+            <strong>Área de respiro</strong>No mínimo metade da altura da logo em volta (16 px na
+            logo de 32 px).
+          </div>
+        </div>
+        <div class="ficha">
+          <ul class="regras">
+            <li>
+              Use o par do tema: <strong>clara</strong> sobre fundo claro, a outra sobre fundo
+              escuro.
+            </li>
+            <li>
+              Completa com no mínimo <strong>32 px</strong> de altura (o tamanho na barra lateral);
+              menor que isso, use o <strong>símbolo</strong> (até 16 px, como no favicon).
+            </li>
+            <li>Não estique: mantenha a proporção 864×218 (≈ 4:1) e 1:1 no símbolo.</li>
+            <li>Não troque as cores, não aplique sombra nem contorno, não recrie com texto.</li>
+            <li>
+              Não altere os originais em <code>img/</code> e <code>src/assets/</code>; esta pasta
+              tem cópias.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <footer>
+        Gerado a partir do código do MemorIA. Valores em <code>tokens.json</code>; detalhes em
+        <code>cores.md</code> e <code>tipografia.md</code>.
+      </footer>
+    </div>
+
+    <script id="tokens" type="application/json">
+      {
+        "$schema": "Tokens de marca do MemorIA, gerados por docs/branding/scripts/gerar-tokens.mjs a partir de src/index.css",
+        "nome": "MemorIA",
+        "gerado": "2026-11-02",
+        "temas": { "claro": ":root (data-tema='claro')", "escuro": ":root[data-tema='escuro']" },
+        "cores": {
+          "marca": {
+            "nevoa": {
+              "papel": "Fundo da página (o <html>), atrás das folhas e da barra lateral.",
+              "cssVar": "--nevoa",
+              "tailwind": "*-nevoa",
+              "definicao": { "claro": "#f4f2f8", "escuro": "#0f0d15" },
+              "claro": { "hex": "#f4f2f8", "rgb": "rgb(244 242 248)", "hsl": "hsl(260 30% 96%)" },
+              "escuro": { "hex": "#0f0d15", "rgb": "rgb(15 13 21)", "hsl": "hsl(255 24% 7%)" }
+            },
+            "papel": {
+              "papel": "Superfície das folhas, fichas/cards, popovers e campos.",
+              "cssVar": "--papel",
+              "tailwind": "*-papel",
+              "definicao": { "claro": "#ffffff", "escuro": "#19161f" },
+              "claro": { "hex": "#ffffff", "rgb": "rgb(255 255 255)", "hsl": "hsl(0 0% 100%)" },
+              "escuro": { "hex": "#19161f", "rgb": "rgb(25 22 31)", "hsl": "hsl(260 17% 10%)" }
+            },
+            "tinta": {
+              "papel": "Texto principal e ícones fortes; fundo do botão \"Criar\" da captura.",
+              "cssVar": "--tinta",
+              "tailwind": "*-tinta",
+              "definicao": { "claro": "#111019", "escuro": "#ece8f5" },
+              "claro": { "hex": "#111019", "rgb": "rgb(17 16 25)", "hsl": "hsl(247 22% 8%)" },
+              "escuro": { "hex": "#ece8f5", "rgb": "rgb(236 232 245)", "hsl": "hsl(258 39% 94%)" }
+            },
+            "grafite": {
+              "papel": "Texto secundário (datas, contadores, rótulos, ícones discretos).",
+              "cssVar": "--grafite",
+              "tailwind": "*-grafite",
+              "definicao": { "claro": "#625e70", "escuro": "#a39eb3" },
+              "claro": { "hex": "#625e70", "rgb": "rgb(98 94 112)", "hsl": "hsl(253 9% 40%)" },
+              "escuro": { "hex": "#a39eb3", "rgb": "rgb(163 158 179)", "hsl": "hsl(254 12% 66%)" }
+            },
+            "pauta": {
+              "papel": "Linhas e bordas: pauta da folha, borda de card, divisórias.",
+              "cssVar": "--pauta",
+              "tailwind": "*-pauta",
+              "definicao": { "claro": "#e4e0ee", "escuro": "#2c2738" },
+              "claro": { "hex": "#e4e0ee", "rgb": "rgb(228 224 238)", "hsl": "hsl(257 29% 91%)" },
+              "escuro": { "hex": "#2c2738", "rgb": "rgb(44 39 56)", "hsl": "hsl(258 18% 19%)" }
+            },
+            "caneta": {
+              "papel": "Cor da marca: ação principal, item ativo, foco, ✓ dos menus, links.",
+              "cssVar": "--caneta",
+              "tailwind": "*-caneta",
+              "definicao": { "claro": "#8b3dff", "escuro": "#a274ff" },
+              "claro": { "hex": "#8b3dff", "rgb": "rgb(139 61 255)", "hsl": "hsl(264 100% 62%)" },
+              "escuro": { "hex": "#a274ff", "rgb": "rgb(162 116 255)", "hsl": "hsl(260 100% 73%)" }
+            },
+            "violeta-profundo": {
+              "papel": "Destaques miúdos: texto sobre marca-texto, \"hoje\", item ativo do Calendário, nível 4 do mapa.",
+              "cssVar": "--violeta-profundo",
+              "tailwind": "*-violeta-profundo",
+              "definicao": { "claro": "#4b16a8", "escuro": "#c6a8ff" },
+              "claro": { "hex": "#4b16a8", "rgb": "rgb(75 22 168)", "hsl": "hsl(262 77% 37%)" },
+              "escuro": { "hex": "#c6a8ff", "rgb": "rgb(198 168 255)", "hsl": "hsl(261 100% 83%)" }
+            },
+            "marca-texto": {
+              "papel": "Fundo lavanda só para atrasos (\"há X dias\", \"pendente desde\") e a sombra dos menus.",
+              "cssVar": "--marca-texto",
+              "tailwind": "*-marca-texto",
+              "definicao": { "claro": "#ece2ff", "escuro": "#2b2042" },
+              "claro": { "hex": "#ece2ff", "rgb": "rgb(236 226 255)", "hsl": "hsl(261 100% 94%)" },
+              "escuro": { "hex": "#2b2042", "rgb": "rgb(43 32 66)", "hsl": "hsl(259 35% 19%)" }
+            },
+            "alerta": {
+              "papel": "Laranja só no título e no contador de Atrasadas do Início.",
+              "cssVar": "--alerta",
+              "tailwind": "*-alerta",
+              "definicao": { "claro": "#a84c0a", "escuro": "#f0a25e" },
+              "claro": { "hex": "#a84c0a", "rgb": "rgb(168 76 10)", "hsl": "hsl(25 89% 35%)" },
+              "escuro": { "hex": "#f0a25e", "rgb": "rgb(240 162 94)", "hsl": "hsl(28 83% 65%)" }
+            }
+          },
+          "shadcn": {
+            "background": {
+              "papel": "Alias shadcn de nevoa (fundo da página).",
+              "cssVar": "--background",
+              "tailwind": "*-background",
+              "definicao": { "claro": "var(--nevoa)", "escuro": "var(--nevoa)" },
+              "claro": { "hex": "#f4f2f8", "rgb": "rgb(244 242 248)", "hsl": "hsl(260 30% 96%)" },
+              "escuro": { "hex": "#0f0d15", "rgb": "rgb(15 13 21)", "hsl": "hsl(255 24% 7%)" }
+            },
+            "foreground": {
+              "papel": "Alias shadcn de tinta (texto).",
+              "cssVar": "--foreground",
+              "tailwind": "*-foreground",
+              "definicao": { "claro": "var(--tinta)", "escuro": "var(--tinta)" },
+              "claro": { "hex": "#111019", "rgb": "rgb(17 16 25)", "hsl": "hsl(247 22% 8%)" },
+              "escuro": { "hex": "#ece8f5", "rgb": "rgb(236 232 245)", "hsl": "hsl(258 39% 94%)" }
+            },
+            "card": {
+              "papel": "Alias shadcn de papel.",
+              "cssVar": "--card",
+              "tailwind": "*-card",
+              "definicao": { "claro": "var(--papel)", "escuro": "var(--papel)" },
+              "claro": { "hex": "#ffffff", "rgb": "rgb(255 255 255)", "hsl": "hsl(0 0% 100%)" },
+              "escuro": { "hex": "#19161f", "rgb": "rgb(25 22 31)", "hsl": "hsl(260 17% 10%)" }
+            },
+            "card-foreground": {
+              "papel": "Alias shadcn de tinta (sem uso no código).",
+              "cssVar": "--card-foreground",
+              "tailwind": "*-card-foreground",
+              "definicao": { "claro": "var(--tinta)", "escuro": "var(--tinta)" },
+              "claro": { "hex": "#111019", "rgb": "rgb(17 16 25)", "hsl": "hsl(247 22% 8%)" },
+              "escuro": { "hex": "#ece8f5", "rgb": "rgb(236 232 245)", "hsl": "hsl(258 39% 94%)" }
+            },
+            "popover": {
+              "papel": "Fundo de menus e popovers (papel no claro; um pouco mais claro que o papel no escuro).",
+              "cssVar": "--popover",
+              "tailwind": "*-popover",
+              "definicao": { "claro": "var(--papel)", "escuro": "#1e1a26" },
+              "claro": { "hex": "#ffffff", "rgb": "rgb(255 255 255)", "hsl": "hsl(0 0% 100%)" },
+              "escuro": { "hex": "#1e1a26", "rgb": "rgb(30 26 38)", "hsl": "hsl(260 19% 13%)" }
+            },
+            "popover-foreground": {
+              "papel": "Texto de menus e popovers.",
+              "cssVar": "--popover-foreground",
+              "tailwind": "*-popover-foreground",
+              "definicao": { "claro": "var(--tinta)", "escuro": "var(--tinta)" },
+              "claro": { "hex": "#111019", "rgb": "rgb(17 16 25)", "hsl": "hsl(247 22% 8%)" },
+              "escuro": { "hex": "#ece8f5", "rgb": "rgb(236 232 245)", "hsl": "hsl(258 39% 94%)" }
+            },
+            "primary": {
+              "papel": "Alias shadcn de caneta (botão principal).",
+              "cssVar": "--primary",
+              "tailwind": "*-primary",
+              "definicao": { "claro": "var(--caneta)", "escuro": "var(--caneta)" },
+              "claro": { "hex": "#8b3dff", "rgb": "rgb(139 61 255)", "hsl": "hsl(264 100% 62%)" },
+              "escuro": { "hex": "#a274ff", "rgb": "rgb(162 116 255)", "hsl": "hsl(260 100% 73%)" }
+            },
+            "primary-foreground": {
+              "papel": "Texto sobre a caneta (branco no claro, quase preto no escuro).",
+              "cssVar": "--primary-foreground",
+              "tailwind": "*-primary-foreground",
+              "definicao": { "claro": "#ffffff", "escuro": "#14101f" },
+              "claro": { "hex": "#ffffff", "rgb": "rgb(255 255 255)", "hsl": "hsl(0 0% 100%)" },
+              "escuro": { "hex": "#14101f", "rgb": "rgb(20 16 31)", "hsl": "hsl(256 32% 9%)" }
+            },
+            "secondary": {
+              "papel": "Fundo de botão secundário.",
+              "cssVar": "--secondary",
+              "tailwind": "*-secondary",
+              "definicao": { "claro": "#ece9f3", "escuro": "#231f2c" },
+              "claro": { "hex": "#ece9f3", "rgb": "rgb(236 233 243)", "hsl": "hsl(258 29% 93%)" },
+              "escuro": { "hex": "#231f2c", "rgb": "rgb(35 31 44)", "hsl": "hsl(258 17% 15%)" }
+            },
+            "secondary-foreground": {
+              "papel": "Texto do botão secundário.",
+              "cssVar": "--secondary-foreground",
+              "tailwind": "*-secondary-foreground",
+              "definicao": { "claro": "var(--tinta)", "escuro": "var(--tinta)" },
+              "claro": { "hex": "#111019", "rgb": "rgb(17 16 25)", "hsl": "hsl(247 22% 8%)" },
+              "escuro": { "hex": "#ece8f5", "rgb": "rgb(236 232 245)", "hsl": "hsl(258 39% 94%)" }
+            },
+            "muted": {
+              "papel": "Fundo apagado (skeleton, áreas neutras).",
+              "cssVar": "--muted",
+              "tailwind": "*-muted",
+              "definicao": { "claro": "#ece9f3", "escuro": "#231f2c" },
+              "claro": { "hex": "#ece9f3", "rgb": "rgb(236 233 243)", "hsl": "hsl(258 29% 93%)" },
+              "escuro": { "hex": "#231f2c", "rgb": "rgb(35 31 44)", "hsl": "hsl(258 17% 15%)" }
+            },
+            "muted-foreground": {
+              "papel": "Alias shadcn de grafite.",
+              "cssVar": "--muted-foreground",
+              "tailwind": "*-muted-foreground",
+              "definicao": { "claro": "var(--grafite)", "escuro": "var(--grafite)" },
+              "claro": { "hex": "#625e70", "rgb": "rgb(98 94 112)", "hsl": "hsl(253 9% 40%)" },
+              "escuro": { "hex": "#a39eb3", "rgb": "rgb(163 158 179)", "hsl": "hsl(254 12% 66%)" }
+            },
+            "accent": {
+              "papel": "Hover e item realçado em menus e listas (lavanda bem clara).",
+              "cssVar": "--accent",
+              "tailwind": "*-accent",
+              "definicao": { "claro": "#f1eaff", "escuro": "#2a2240" },
+              "claro": { "hex": "#f1eaff", "rgb": "rgb(241 234 255)", "hsl": "hsl(260 100% 96%)" },
+              "escuro": { "hex": "#2a2240", "rgb": "rgb(42 34 64)", "hsl": "hsl(256 31% 19%)" }
+            },
+            "accent-foreground": {
+              "papel": "Texto sobre accent.",
+              "cssVar": "--accent-foreground",
+              "tailwind": "*-accent-foreground",
+              "definicao": { "claro": "var(--tinta)", "escuro": "var(--tinta)" },
+              "claro": { "hex": "#111019", "rgb": "rgb(17 16 25)", "hsl": "hsl(247 22% 8%)" },
+              "escuro": { "hex": "#ece8f5", "rgb": "rgb(236 232 245)", "hsl": "hsl(258 39% 94%)" }
+            },
+            "destructive": {
+              "papel": "Erro e ações de excluir.",
+              "cssVar": "--destructive",
+              "tailwind": "*-destructive",
+              "definicao": { "claro": "#b42323", "escuro": "#f07a7a" },
+              "claro": { "hex": "#b42323", "rgb": "rgb(180 35 35)", "hsl": "hsl(0 67% 42%)" },
+              "escuro": { "hex": "#f07a7a", "rgb": "rgb(240 122 122)", "hsl": "hsl(0 80% 71%)" }
+            },
+            "border": {
+              "papel": "Alias shadcn de pauta (borda padrão de tudo).",
+              "cssVar": "--border",
+              "tailwind": "*-border",
+              "definicao": { "claro": "var(--pauta)", "escuro": "var(--pauta)" },
+              "claro": { "hex": "#e4e0ee", "rgb": "rgb(228 224 238)", "hsl": "hsl(257 29% 91%)" },
+              "escuro": { "hex": "#2c2738", "rgb": "rgb(44 39 56)", "hsl": "hsl(258 18% 19%)" }
+            },
+            "input": {
+              "papel": "Borda dos campos de formulário.",
+              "cssVar": "--input",
+              "tailwind": "*-input",
+              "definicao": { "claro": "#cdc7da", "escuro": "#3b3549" },
+              "claro": { "hex": "#cdc7da", "rgb": "rgb(205 199 218)", "hsl": "hsl(259 20% 82%)" },
+              "escuro": { "hex": "#3b3549", "rgb": "rgb(59 53 73)", "hsl": "hsl(258 16% 25%)" }
+            },
+            "ring": {
+              "papel": "Anel de foco (caneta, usado com 50% de opacidade).",
+              "cssVar": "--ring",
+              "tailwind": "*-ring",
+              "definicao": { "claro": "var(--caneta)", "escuro": "var(--caneta)" },
+              "claro": { "hex": "#8b3dff", "rgb": "rgb(139 61 255)", "hsl": "hsl(264 100% 62%)" },
+              "escuro": { "hex": "#a274ff", "rgb": "rgb(162 116 255)", "hsl": "hsl(260 100% 73%)" }
+            }
+          },
+          "barraLateral": {
+            "barra": {
+              "papel": "Fundo da barra lateral.",
+              "cssVar": "--barra",
+              "tailwind": "*-barra",
+              "definicao": { "claro": "#fbfafd", "escuro": "#121017" },
+              "claro": { "hex": "#fbfafd", "rgb": "rgb(251 250 253)", "hsl": "hsl(260 43% 99%)" },
+              "escuro": { "hex": "#121017", "rgb": "rgb(18 16 23)", "hsl": "hsl(257 18% 8%)" }
+            },
+            "barra-borda": {
+              "papel": "Borda da barra lateral (= pauta).",
+              "cssVar": "--barra-borda",
+              "tailwind": "*-barra-borda",
+              "definicao": { "claro": "var(--pauta)", "escuro": "var(--pauta)" },
+              "claro": { "hex": "#e4e0ee", "rgb": "rgb(228 224 238)", "hsl": "hsl(257 29% 91%)" },
+              "escuro": { "hex": "#2c2738", "rgb": "rgb(44 39 56)", "hsl": "hsl(258 18% 19%)" }
+            },
+            "barra-texto": {
+              "papel": "Texto da barra lateral (= tinta).",
+              "cssVar": "--barra-texto",
+              "tailwind": "*-barra-texto",
+              "definicao": { "claro": "var(--tinta)", "escuro": "var(--tinta)" },
+              "claro": { "hex": "#111019", "rgb": "rgb(17 16 25)", "hsl": "hsl(247 22% 8%)" },
+              "escuro": { "hex": "#ece8f5", "rgb": "rgb(236 232 245)", "hsl": "hsl(258 39% 94%)" }
+            },
+            "barra-suave": {
+              "papel": "Texto secundário da barra lateral (= grafite).",
+              "cssVar": "--barra-suave",
+              "tailwind": "*-barra-suave",
+              "definicao": { "claro": "var(--grafite)", "escuro": "var(--grafite)" },
+              "claro": { "hex": "#625e70", "rgb": "rgb(98 94 112)", "hsl": "hsl(253 9% 40%)" },
+              "escuro": { "hex": "#a39eb3", "rgb": "rgb(163 158 179)", "hsl": "hsl(254 12% 66%)" }
+            },
+            "barra-realce": {
+              "papel": "Hover/item ativo da barra lateral (tinta a 6%).",
+              "cssVar": "--barra-realce",
+              "tailwind": "*-barra-realce",
+              "definicao": {
+                "claro": "color-mix(in oklab, var(--tinta) 6%, transparent)",
+                "escuro": "rgb(255 255 255 / 0.06)"
+              },
+              "claro": {
+                "hex": "#111019",
+                "rgb": "rgb(17 16 25)",
+                "hsl": "hsl(247 22% 8%)",
+                "alfa": 0.06,
+                "css": "#1110190f"
+              },
+              "escuro": {
+                "hex": "#ffffff",
+                "rgb": "rgb(255 255 255)",
+                "hsl": "hsl(0 0% 100%)",
+                "alfa": 0.06,
+                "css": "#ffffff0f"
+              }
+            }
+          },
+          "fundo": {
+            "fundo-mancha-1": {
+              "papel": "Fundo Aurora: mancha violeta (canto superior direito).",
+              "cssVar": "--fundo-mancha-1",
+              "tailwind": "*-fundo-mancha-1",
+              "definicao": {
+                "claro": "color-mix(in oklab, var(--caneta) 12%, transparent)",
+                "escuro": "color-mix(in oklab, var(--caneta) 22%, transparent)"
+              },
+              "claro": {
+                "hex": "#8b3dff",
+                "rgb": "rgb(139 61 255)",
+                "hsl": "hsl(264 100% 62%)",
+                "alfa": 0.12,
+                "css": "#8b3dff1f"
+              },
+              "escuro": {
+                "hex": "#a274ff",
+                "rgb": "rgb(162 116 255)",
+                "hsl": "hsl(260 100% 73%)",
+                "alfa": 0.22,
+                "css": "#a274ff38"
+              }
+            },
+            "fundo-mancha-2": {
+              "papel": "Fundo Aurora: mancha azul (#4f7dff) embaixo à esquerda.",
+              "cssVar": "--fundo-mancha-2",
+              "tailwind": "*-fundo-mancha-2",
+              "definicao": {
+                "claro": "color-mix(in oklab, #4f7dff 13%, transparent)",
+                "escuro": "color-mix(in oklab, #4f7dff 13%, transparent)"
+              },
+              "claro": {
+                "hex": "#4f7dff",
+                "rgb": "rgb(79 125 255)",
+                "hsl": "hsl(224 100% 65%)",
+                "alfa": 0.13,
+                "css": "#4f7dff21"
+              },
+              "escuro": {
+                "hex": "#4f7dff",
+                "rgb": "rgb(79 125 255)",
+                "hsl": "hsl(224 100% 65%)",
+                "alfa": 0.13,
+                "css": "#4f7dff21"
+              }
+            },
+            "fundo-mancha-3": {
+              "papel": "Fundo Aurora: mancha magenta (#d36bff) no centro.",
+              "cssVar": "--fundo-mancha-3",
+              "tailwind": "*-fundo-mancha-3",
+              "definicao": {
+                "claro": "color-mix(in oklab, #d36bff 12%, transparent)",
+                "escuro": "color-mix(in oklab, #d36bff 10%, transparent)"
+              },
+              "claro": {
+                "hex": "#d36bff",
+                "rgb": "rgb(211 107 255)",
+                "hsl": "hsl(282 100% 71%)",
+                "alfa": 0.12,
+                "css": "#d36bff1f"
+              },
+              "escuro": {
+                "hex": "#d36bff",
+                "rgb": "rgb(211 107 255)",
+                "hsl": "hsl(282 100% 71%)",
+                "alfa": 0.1,
+                "css": "#d36bff1a"
+              }
+            },
+            "fundo-ponto": {
+              "papel": "Fundo Pontos: cor dos pontos da grade (22 px).",
+              "cssVar": "--fundo-ponto",
+              "tailwind": "*-fundo-ponto",
+              "definicao": {
+                "claro": "color-mix(in oklab, var(--tinta) 15%, transparent)",
+                "escuro": "color-mix(in oklab, var(--tinta) 12%, transparent)"
+              },
+              "claro": {
+                "hex": "#111019",
+                "rgb": "rgb(17 16 25)",
+                "hsl": "hsl(247 22% 8%)",
+                "alfa": 0.15,
+                "css": "#11101926"
+              },
+              "escuro": {
+                "hex": "#ece8f5",
+                "rgb": "rgb(236 232 245)",
+                "hsl": "hsl(258 39% 94%)",
+                "alfa": 0.12,
+                "css": "#ece8f51f"
+              }
+            },
+            "fundo-linha": {
+              "papel": "Fundo Grade: linhas da grade (32 px).",
+              "cssVar": "--fundo-linha",
+              "tailwind": "*-fundo-linha",
+              "definicao": {
+                "claro": "color-mix(in oklab, var(--tinta) 7%, transparent)",
+                "escuro": "color-mix(in oklab, var(--tinta) 6%, transparent)"
+              },
+              "claro": {
+                "hex": "#111019",
+                "rgb": "rgb(17 16 25)",
+                "hsl": "hsl(247 22% 8%)",
+                "alfa": 0.07,
+                "css": "#11101912"
+              },
+              "escuro": {
+                "hex": "#ece8f5",
+                "rgb": "rgb(236 232 245)",
+                "hsl": "hsl(258 39% 94%)",
+                "alfa": 0.06,
+                "css": "#ece8f50f"
+              }
+            },
+            "fundo-brilho": {
+              "papel": "Fundo Pontos: brilho violeta no canto.",
+              "cssVar": "--fundo-brilho",
+              "tailwind": "*-fundo-brilho",
+              "definicao": {
+                "claro": "color-mix(in oklab, var(--caneta) 15%, transparent)",
+                "escuro": "color-mix(in oklab, var(--caneta) 20%, transparent)"
+              },
+              "claro": {
+                "hex": "#8b3dff",
+                "rgb": "rgb(139 61 255)",
+                "hsl": "hsl(264 100% 62%)",
+                "alfa": 0.15,
+                "css": "#8b3dff26"
+              },
+              "escuro": {
+                "hex": "#a274ff",
+                "rgb": "rgb(162 116 255)",
+                "hsl": "hsl(260 100% 73%)",
+                "alfa": 0.2,
+                "css": "#a274ff33"
+              }
+            },
+            "fundo-holofote": {
+              "papel": "Fundo Grade: holofote que segue o ponteiro (380 px).",
+              "cssVar": "--fundo-holofote",
+              "tailwind": "*-fundo-holofote",
+              "definicao": {
+                "claro": "color-mix(in oklab, var(--caneta) 11%, transparent)",
+                "escuro": "color-mix(in oklab, var(--caneta) 14%, transparent)"
+              },
+              "claro": {
+                "hex": "#8b3dff",
+                "rgb": "rgb(139 61 255)",
+                "hsl": "hsl(264 100% 62%)",
+                "alfa": 0.11,
+                "css": "#8b3dff1c"
+              },
+              "escuro": {
+                "hex": "#a274ff",
+                "rgb": "rgb(162 116 255)",
+                "hsl": "hsl(260 100% 73%)",
+                "alfa": 0.14,
+                "css": "#a274ff24"
+              }
+            }
+          }
+        },
+        "maisUsadas": {
+          "metodo": "Referências no código (docs/branding/scripts/contar-cores.mjs), somando cada alias à cor-base; ver README.md",
+          "porCodigo": { "grafite": 194, "caneta": 151, "tinta": 119 },
+          "porAreaVisivel": {
+            "metodo": "Pixels das capturas do Início e da Semana (1680×1000, fundo liso), cada um no token mais próximo; ver scripts/medir-area.py",
+            "claro": { "nevoa": "53,9%", "papel": "30,4%", "barra": "12,5%" },
+            "escuro": { "nevoa": "52,6%", "papel": "30,4%", "barra": "12,3%" }
+          }
+        },
+        "logo": {
+          "memorClaro": "#1a1625",
+          "memorEscuro": "#fcfdff",
+          "IA": "gradiente violeta ≈ #8b3dff (amostras de #7a22ff a #9a50ff)",
+          "simbolo": "violetas ≈ #8b3dff e lavandas claras; folha branca",
+          "fichaDoFavicon": "#111019 (tinta)"
+        },
+        "mapaDeConclusoes": {
+          "claro": [
+            {
+              "nivel": 0,
+              "classe": "bg-nevoa + contorno pauta",
+              "hex": "#f4f2f8",
+              "rgb": "rgb(244 242 248)",
+              "hsl": "hsl(260 30% 96%)"
+            },
+            {
+              "nivel": 1,
+              "classe": "color-mix(caneta 24%, papel)",
+              "hex": "#e0d6ff",
+              "rgb": "rgb(224 214 255)",
+              "hsl": "hsl(255 100% 92%)"
+            },
+            {
+              "nivel": 2,
+              "classe": "color-mix(caneta 52%, papel)",
+              "hex": "#bda5ff",
+              "rgb": "rgb(189 165 255)",
+              "hsl": "hsl(256 100% 82%)"
+            },
+            {
+              "nivel": 3,
+              "classe": "bg-caneta",
+              "hex": "#8b3dff",
+              "rgb": "rgb(139 61 255)",
+              "hsl": "hsl(264 100% 62%)"
+            },
+            {
+              "nivel": 4,
+              "classe": "bg-violeta-profundo",
+              "hex": "#4b16a8",
+              "rgb": "rgb(75 22 168)",
+              "hsl": "hsl(262 77% 37%)"
+            }
+          ],
+          "escuro": [
+            {
+              "nivel": 0,
+              "classe": "bg-nevoa + contorno pauta",
+              "hex": "#0f0d15",
+              "rgb": "rgb(15 13 21)",
+              "hsl": "hsl(255 24% 7%)"
+            },
+            {
+              "nivel": 1,
+              "classe": "color-mix(caneta 24%, papel)",
+              "hex": "#362b4e",
+              "rgb": "rgb(54 43 78)",
+              "hsl": "hsl(259 29% 24%)"
+            },
+            {
+              "nivel": 2,
+              "classe": "color-mix(caneta 52%, papel)",
+              "hex": "#5b458b",
+              "rgb": "rgb(91 69 139)",
+              "hsl": "hsl(259 34% 41%)"
+            },
+            {
+              "nivel": 3,
+              "classe": "bg-caneta",
+              "hex": "#a274ff",
+              "rgb": "rgb(162 116 255)",
+              "hsl": "hsl(260 100% 73%)"
+            },
+            {
+              "nivel": 4,
+              "classe": "bg-violeta-profundo",
+              "hex": "#c6a8ff",
+              "rgb": "rgb(198 168 255)",
+              "hsl": "hsl(261 100% 83%)"
+            }
+          ]
+        },
+        "visaoDeAno": {
+          "claro": [
+            {
+              "faixa": 0,
+              "classe": "(sem fundo)",
+              "hex": "#ffffff",
+              "rgb": "rgb(255 255 255)",
+              "hsl": "hsl(0 0% 100%)"
+            },
+            {
+              "faixa": 1,
+              "classe": "bg-caneta/15",
+              "hex": "#eee2ff",
+              "rgb": "rgb(238 226 255)",
+              "hsl": "hsl(265 100% 94%)"
+            },
+            {
+              "faixa": 2,
+              "classe": "bg-caneta/40",
+              "hex": "#d1b1ff",
+              "rgb": "rgb(209 177 255)",
+              "hsl": "hsl(265 100% 85%)"
+            },
+            {
+              "faixa": 3,
+              "classe": "bg-caneta text-white",
+              "hex": "#8b3dff",
+              "rgb": "rgb(139 61 255)",
+              "hsl": "hsl(264 100% 62%)"
+            }
+          ],
+          "escuro": [
+            {
+              "faixa": 0,
+              "classe": "(sem fundo)",
+              "hex": "#19161f",
+              "rgb": "rgb(25 22 31)",
+              "hsl": "hsl(260 17% 10%)"
+            },
+            {
+              "faixa": 1,
+              "classe": "bg-caneta/15",
+              "hex": "#2e2441",
+              "rgb": "rgb(46 36 65)",
+              "hsl": "hsl(261 29% 20%)"
+            },
+            {
+              "faixa": 2,
+              "classe": "bg-caneta/40",
+              "hex": "#503c79",
+              "rgb": "rgb(80 60 121)",
+              "hsl": "hsl(260 34% 35%)"
+            },
+            {
+              "faixa": 3,
+              "classe": "bg-caneta text-white",
+              "hex": "#a274ff",
+              "rgb": "rgb(162 116 255)",
+              "hsl": "hsl(260 100% 73%)"
+            }
+          ]
+        },
+        "categorias": {
+          "observacao": "Escolha do usuário, não são cores da marca. No tema escuro a tela mostra a cor clareada 28% (corNaTela); faixas e barras ainda escurecem/clareiam até 3:1 sobre o papel (corDeTraco). O banco guarda a cor escolhida.",
+          "paleta": [
+            { "nome": "Tomate", "hex": "#c8402f", "escuroNaTela": "#d77569" },
+            { "nome": "Laranja", "hex": "#d0702a", "escuroNaTela": "#dd9866" },
+            { "nome": "Mostarda", "hex": "#b88d14", "escuroNaTela": "#ccad56" },
+            { "nome": "Oliva", "hex": "#71842a", "escuroNaTela": "#99a666" },
+            { "nome": "Verde", "hex": "#2f8a57", "escuroNaTela": "#69ab86" },
+            { "nome": "Petróleo", "hex": "#1f7a80", "escuroNaTela": "#5e9fa4" },
+            { "nome": "Azul", "hex": "#3366c2", "escuroNaTela": "#6c91d3" },
+            { "nome": "Índigo", "hex": "#5b4fbf", "escuroNaTela": "#8980d1" },
+            { "nome": "Ameixa", "hex": "#8e4a9e", "escuroNaTela": "#ae7db9" },
+            { "nome": "Rosa", "hex": "#c2477a", "escuroNaTela": "#d37b9f" },
+            { "nome": "Terra", "hex": "#8a5a3c", "escuroNaTela": "#ab8873" },
+            { "nome": "Grafite", "hex": "#5e6b7a", "escuroNaTela": "#8b949f" }
+          ]
+        },
+        "contrastes": [
+          {
+            "par": "Texto principal sobre o fundo da página",
+            "texto": "var(--tinta)",
+            "fundo": "var(--nevoa)",
+            "tipo": "texto",
+            "claro": { "texto": "#111019", "fundo": "#f4f2f8", "razao": 17, "resultado": "AAA" },
+            "escuro": { "texto": "#ece8f5", "fundo": "#0f0d15", "razao": 16, "resultado": "AAA" }
+          },
+          {
+            "par": "Texto principal sobre a folha/card",
+            "texto": "var(--tinta)",
+            "fundo": "var(--papel)",
+            "tipo": "texto",
+            "claro": { "texto": "#111019", "fundo": "#ffffff", "razao": 18.9, "resultado": "AAA" },
+            "escuro": { "texto": "#ece8f5", "fundo": "#19161f", "razao": 14.8, "resultado": "AAA" }
+          },
+          {
+            "par": "Texto secundário sobre a folha/card",
+            "texto": "var(--grafite)",
+            "fundo": "var(--papel)",
+            "tipo": "texto",
+            "claro": { "texto": "#625e70", "fundo": "#ffffff", "razao": 6.3, "resultado": "AA" },
+            "escuro": { "texto": "#a39eb3", "fundo": "#19161f", "razao": 6.9, "resultado": "AA" }
+          },
+          {
+            "par": "Texto secundário sobre o fundo da página",
+            "texto": "var(--grafite)",
+            "fundo": "var(--nevoa)",
+            "tipo": "texto",
+            "claro": { "texto": "#625e70", "fundo": "#f4f2f8", "razao": 5.6, "resultado": "AA" },
+            "escuro": { "texto": "#a39eb3", "fundo": "#0f0d15", "razao": 7.4, "resultado": "AAA" }
+          },
+          {
+            "par": "Texto secundário sobre muted",
+            "texto": "var(--grafite)",
+            "fundo": "var(--muted)",
+            "tipo": "texto",
+            "claro": { "texto": "#625e70", "fundo": "#ece9f3", "razao": 5.2, "resultado": "AA" },
+            "escuro": { "texto": "#a39eb3", "fundo": "#231f2c", "razao": 6.2, "resultado": "AA" }
+          },
+          {
+            "par": "Caneta (link/ativo) sobre a folha",
+            "texto": "var(--caneta)",
+            "fundo": "var(--papel)",
+            "tipo": "texto",
+            "claro": { "texto": "#8b3dff", "fundo": "#ffffff", "razao": 5, "resultado": "AA" },
+            "escuro": { "texto": "#a274ff", "fundo": "#19161f", "razao": 5.5, "resultado": "AA" }
+          },
+          {
+            "par": "Texto do botão principal sobre a caneta",
+            "texto": "var(--primary-foreground)",
+            "fundo": "var(--caneta)",
+            "tipo": "texto",
+            "claro": { "texto": "#ffffff", "fundo": "#8b3dff", "razao": 5, "resultado": "AA" },
+            "escuro": { "texto": "#14101f", "fundo": "#a274ff", "razao": 5.8, "resultado": "AA" }
+          },
+          {
+            "par": "Violeta profundo sobre a folha",
+            "texto": "var(--violeta-profundo)",
+            "fundo": "var(--papel)",
+            "tipo": "texto",
+            "claro": { "texto": "#4b16a8", "fundo": "#ffffff", "razao": 10.6, "resultado": "AAA" },
+            "escuro": { "texto": "#c6a8ff", "fundo": "#19161f", "razao": 8.9, "resultado": "AAA" }
+          },
+          {
+            "par": "Violeta profundo sobre marca-texto (selo de atraso)",
+            "texto": "var(--violeta-profundo)",
+            "fundo": "var(--marca-texto)",
+            "tipo": "texto",
+            "claro": { "texto": "#4b16a8", "fundo": "#ece2ff", "razao": 8.5, "resultado": "AAA" },
+            "escuro": { "texto": "#c6a8ff", "fundo": "#2b2042", "razao": 7.5, "resultado": "AAA" }
+          },
+          {
+            "par": "Alerta (Atrasadas) sobre a folha",
+            "texto": "var(--alerta)",
+            "fundo": "var(--papel)",
+            "tipo": "texto",
+            "claro": { "texto": "#a84c0a", "fundo": "#ffffff", "razao": 5.7, "resultado": "AA" },
+            "escuro": { "texto": "#f0a25e", "fundo": "#19161f", "razao": 8.5, "resultado": "AAA" }
+          },
+          {
+            "par": "Alerta (Atrasadas) sobre o fundo da página",
+            "texto": "var(--alerta)",
+            "fundo": "var(--nevoa)",
+            "tipo": "texto",
+            "claro": { "texto": "#a84c0a", "fundo": "#f4f2f8", "razao": 5.1, "resultado": "AA" },
+            "escuro": { "texto": "#f0a25e", "fundo": "#0f0d15", "razao": 9.2, "resultado": "AAA" }
+          },
+          {
+            "par": "Erro (destructive) sobre a folha",
+            "texto": "var(--destructive)",
+            "fundo": "var(--papel)",
+            "tipo": "texto",
+            "claro": { "texto": "#b42323", "fundo": "#ffffff", "razao": 6.6, "resultado": "AA" },
+            "escuro": { "texto": "#f07a7a", "fundo": "#19161f", "razao": 6.6, "resultado": "AA" }
+          },
+          {
+            "par": "Texto de menu sobre popover",
+            "texto": "var(--tinta)",
+            "fundo": "var(--popover)",
+            "tipo": "texto",
+            "claro": { "texto": "#111019", "fundo": "#ffffff", "razao": 18.9, "resultado": "AAA" },
+            "escuro": { "texto": "#ece8f5", "fundo": "#1e1a26", "razao": 14.2, "resultado": "AAA" }
+          },
+          {
+            "par": "Texto sobre accent (hover de menu)",
+            "texto": "var(--tinta)",
+            "fundo": "var(--accent)",
+            "tipo": "texto",
+            "claro": { "texto": "#111019", "fundo": "#f1eaff", "razao": 16.1, "resultado": "AAA" },
+            "escuro": { "texto": "#ece8f5", "fundo": "#2a2240", "razao": 12.4, "resultado": "AAA" }
+          },
+          {
+            "par": "Texto da barra lateral",
+            "texto": "var(--barra-texto)",
+            "fundo": "var(--barra)",
+            "tipo": "texto",
+            "claro": { "texto": "#111019", "fundo": "#fbfafd", "razao": 18.2, "resultado": "AAA" },
+            "escuro": { "texto": "#ece8f5", "fundo": "#121017", "razao": 15.7, "resultado": "AAA" }
+          },
+          {
+            "par": "Texto secundário da barra lateral",
+            "texto": "var(--barra-suave)",
+            "fundo": "var(--barra)",
+            "tipo": "texto",
+            "claro": { "texto": "#625e70", "fundo": "#fbfafd", "razao": 6, "resultado": "AA" },
+            "escuro": { "texto": "#a39eb3", "fundo": "#121017", "razao": 7.3, "resultado": "AAA" }
+          },
+          {
+            "par": "Papel sobre tinta (botão \"Criar\" da captura)",
+            "texto": "var(--papel)",
+            "fundo": "var(--tinta)",
+            "tipo": "texto",
+            "claro": { "texto": "#ffffff", "fundo": "#111019", "razao": 18.9, "resultado": "AAA" },
+            "escuro": { "texto": "#19161f", "fundo": "#ece8f5", "razao": 14.8, "resultado": "AAA" }
+          },
+          {
+            "par": "Branco sobre caneta (faixa cheia da visão de Ano)",
+            "texto": "#ffffff",
+            "fundo": "var(--caneta)",
+            "tipo": "texto",
+            "claro": { "texto": "#ffffff", "fundo": "#8b3dff", "razao": 5, "resultado": "AA" },
+            "escuro": {
+              "texto": "#ffffff",
+              "fundo": "#a274ff",
+              "razao": 3.2,
+              "resultado": "só texto grande (AA ≥ 3:1)"
+            }
+          },
+          {
+            "par": "Borda de campo (input) sobre a folha",
+            "texto": "var(--input)",
+            "fundo": "var(--papel)",
+            "tipo": "grafico",
+            "claro": {
+              "texto": "#cdc7da",
+              "fundo": "#ffffff",
+              "razao": 1.6,
+              "resultado": "abaixo de 3:1"
+            },
+            "escuro": {
+              "texto": "#3b3549",
+              "fundo": "#19161f",
+              "razao": 1.5,
+              "resultado": "abaixo de 3:1"
+            }
+          },
+          {
+            "par": "Pauta (borda/linha) sobre a folha",
+            "texto": "var(--pauta)",
+            "fundo": "var(--papel)",
+            "tipo": "decorativo",
+            "claro": {
+              "texto": "#e4e0ee",
+              "fundo": "#ffffff",
+              "razao": 1.3,
+              "resultado": "decorativo (sem exigência)"
+            },
+            "escuro": {
+              "texto": "#2c2738",
+              "fundo": "#19161f",
+              "razao": 1.2,
+              "resultado": "decorativo (sem exigência)"
+            }
+          }
+        ],
+        "tipografia": {
+          "sans": {
+            "familia": "Bricolage Grotesque Variable",
+            "pilha": "'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif",
+            "origem": "pacote npm @fontsource-variable/bricolage-grotesque (arquivo local, sem Google Fonts em tempo de execução)",
+            "licenca": "SIL Open Font License 1.1",
+            "eixos": { "peso": "200–800", "largura": "75%–100%" },
+            "usos": ["interface", "títulos (--font-heading = --font-sans)"]
+          },
+          "mono": {
+            "familia": "fonte monoespaçada do sistema (padrão do Tailwind)",
+            "pilha": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+            "usos": ["campo hexadecimal do misturador de cor"]
+          },
+          "pesos": { "normal": 400, "medium": 500, "semibold": 600, "bold": 700, "extrabold": 800 },
+          "escala": {
+            "text-xs": { "tamanho": "12px", "altura": "16px" },
+            "text-sm": { "tamanho": "14px", "altura": "20px" },
+            "text-base": { "tamanho": "16px", "altura": "24px" },
+            "text-lg": { "tamanho": "18px", "altura": "28px" },
+            "text-xl": { "tamanho": "20px", "altura": "28px" },
+            "text-2xl": { "tamanho": "24px", "altura": "32px" },
+            "text-3xl": { "tamanho": "30px", "altura": "36px" },
+            "text-4xl": { "tamanho": "36px", "altura": "40px" }
+          }
+        },
+        "raio": { "base": "0.375rem", "sm": "0.6×", "md": "0.8×", "lg": "1×", "xl": "1.4×" }
+      }
+    </script>
+    <script>
+      const tokens = JSON.parse(document.getElementById('tokens').textContent)
+      const raiz = document.documentElement
+
+      function amostraCor(cor) {
+        return cor.alfa ? cor.css : cor.hex
+      }
+      function textoSobre(hex) {
+        const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+        return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#111019' : '#ffffff'
+      }
+      function rotuloCor(cor) {
+        return cor.alfa ? `${cor.hex} · ${Math.round(cor.alfa * 100)}%` : cor.hex
+      }
+
+      function fichaToken(nome, token) {
+        const ficha = document.createElement('div')
+        ficha.className = 'ficha'
+        const amostra = document.createElement('div')
+        amostra.className = 'amostra'
+        for (const tema of ['claro', 'escuro']) {
+          const cor = token[tema]
+          const lado = document.createElement('span')
+          if (cor.alfa) {
+            lado.className = 'xadrez'
+            lado.style.backgroundImage = `linear-gradient(${cor.css}, ${cor.css}), conic-gradient(#ccc 25%, #fff 0 50%, #ccc 0 75%, #fff 0)`
+            lado.style.backgroundSize = 'auto, 12px 12px'
+            lado.style.color = '#111019'
+          } else {
+            lado.style.background = cor.hex
+            lado.style.color = textoSobre(cor.hex)
+          }
+          lado.textContent = rotuloCor(cor).toUpperCase()
+          lado.title = `${tema}: ${cor.rgb} · ${cor.hsl}`
+          amostra.append(lado)
+        }
+        const rotulo = document.createElement('div')
+        rotulo.className = 'rotulo'
+        rotulo.innerHTML = `<strong>${nome}</strong><code>--${nome}</code><p></p>`
+        rotulo.querySelector('p').textContent = token.papel
+        ficha.append(amostra, rotulo)
+        return ficha
+      }
+
+      for (const grupo of ['marca', 'shadcn', 'barraLateral', 'fundo']) {
+        const alvo = document.getElementById(grupo)
+        for (const [nome, token] of Object.entries(tokens.cores[grupo]))
+          alvo.append(fichaToken(nome, token))
+      }
+
+      function corDoTema(nome) {
+        for (const grupo of Object.values(tokens.cores))
+          if (grupo[nome]) return grupo[nome][temaAtual()].hex
+        return '#000000'
+      }
+      function temaAtual() {
+        return raiz.dataset.tema === 'escuro' ? 'escuro' : 'claro'
+      }
+
+      function desenharVariaveis() {
+        const tema = temaAtual()
+        const { porCodigo, porAreaVisivel } = tokens.maisUsadas
+        const onde = {
+          grafite: 'texto secundário, datas, contadores, ícones',
+          caneta: 'foco, item ativo, botões, links, ✓',
+          tinta: 'texto principal, títulos',
+          nevoa: 'fundo da página',
+          papel: 'folhas, cards, menus',
+          barra: 'barra lateral',
+        }
+        const lista = (titulo, itens) =>
+          `<div class="ficha"><h3>${titulo}</h3><ol>${itens
+            .map(
+              ([nome, valor]) =>
+                `<li><span class="bolinha" style="background:${corDoTema(nome)}"></span><strong>${nome}</strong> · ${corDoTema(nome).toUpperCase()} · ${valor} <br><small style="color:var(--grafite)">${onde[nome]}</small></li>`,
+            )
+            .join('')}</ol></div>`
+        document.getElementById('top3').innerHTML =
+          lista(
+            'Por código (referências)',
+            Object.entries(porCodigo).map(([n, v]) => [n, `${v} usos`]),
+          ) +
+          lista(
+            `Por área visível (${tema})`,
+            Object.entries(porAreaVisivel[tema]).map(([n, v]) => [n, `${v} da tela`]),
+          )
+
+        const quadros = (lista, chave) =>
+          lista
+            .map(
+              (n) =>
+                `<span class="quadro" title="${n.classe}" style="background:${n.hex};color:${textoSobre(n.hex)};outline:1px solid var(--pauta);outline-offset:-1px">${n[chave]}</span>`,
+            )
+            .join('')
+        document.getElementById('escalas').innerHTML = `
+          <div class="linha-escala"><strong>Mapa de conclusões</strong><div class="escala">${quadros(tokens.mapaDeConclusoes[tema], 'nivel')}<span style="color:var(--grafite);font-size:12px">nível 0 → 4</span></div></div>
+          <div class="linha-escala"><strong>Visão de Ano</strong><div class="escala">${quadros(tokens.visaoDeAno[tema], 'faixa')}<span style="color:var(--grafite);font-size:12px">faixa 0 → 3</span></div></div>`
+
+        document.getElementById('categorias').innerHTML = tokens.categorias.paleta
+          .map((c) => {
+            const cor = tema === 'escuro' ? c.escuroNaTela : c.hex
+            return `<div class="categoria" style="border-left-color:${cor}"><span class="bolinha" style="background:${cor};border:0"></span><span><strong>${c.nome}</strong><br><code style="font-size:11px;color:var(--grafite)">${cor}</code></span></div>`
+          })
+          .join('')
+
+        document.getElementById('contrastes').innerHTML =
+          `<thead><tr><th>Par</th><th>Amostra</th><th>Razão</th><th>Resultado</th></tr></thead><tbody>` +
+          tokens.contrastes
+            .map((c) => {
+              const v = c[tema]
+              const ruim = /reprova|abaixo|só texto/.test(v.resultado)
+              return `<tr><td>${c.par}</td><td><span class="par" style="background:${v.fundo};color:${v.texto}">Aa</span></td><td>${String(v.razao).replace('.', ',')}:1</td><td class="${ruim ? 'nota-ruim' : ''}">${v.resultado}</td></tr>`
+            })
+            .join('') +
+          '</tbody>'
+      }
+
+      function aplicarTema(tema) {
+        raiz.dataset.tema = tema
+        for (const botao of document.querySelectorAll('[data-tema-botao]'))
+          botao.setAttribute('aria-pressed', String(botao.dataset.temaBotao === tema))
+        desenharVariaveis()
+      }
+      for (const botao of document.querySelectorAll('[data-tema-botao]'))
+        botao.addEventListener('click', () => aplicarTema(botao.dataset.temaBotao))
+
+      const pedido = new URLSearchParams(location.search).get('tema')
+      aplicarTema(
+        pedido === 'escuro' || pedido === 'claro'
+          ? pedido
+          : matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'escuro'
+            : 'claro',
+      )
+    </script>
+  </body>
+</html>

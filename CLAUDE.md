@@ -188,6 +188,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Prévia no app: `.claude/launch.json` usa a porta 5180 — outra origem, então os dados de teste da prévia NÃO são os do usuário (5173)
 - `crypto.randomUUID`, gravação de áudio e PWA exigem contexto seguro: `localhost` ou `https` (no Laragon, só com SSL ativo)
 - Molas são curvas CSS `linear()` no `@theme` (`ease-mola`, `ease-mola-suave`); animação sempre com `motion-reduce:transition-none`. Indicador que desliza usa passos fixos (item `h-8` + vão = 34px)
+- Branding (cores, top 3, fontes, logo, tokens.json, paleta.html): `docs/branding/README.md`
 - Cores do visual são tokens em `src/index.css` (`nevoa`, `papel`, `tinta` #111019, `grafite` = cinza do texto secundário, `pauta`, `caneta` #8B3DFF, `violeta-profundo` #4B16A8 para destaques miúdos, `marca-texto` lavanda só para atrasos; barra lateral: `barra`, `barra-borda`, `barra-texto`, `barra-suave`, `barra-realce`); componentes usam os tokens, nunca hex nem `white`/`black`. Os MESMOS nomes mudam de valor em `:root[data-tema='escuro']` (caneta #A274FF; texto sobre caneta = `text-primary-foreground`, escuro no tema escuro). `dark:` segue `data-tema`. Contraste AA conferido nos dois temas: token novo, confira também
 - Submenu Radix em teste: use teclado (`ArrowRight`, `Enter`); no jsdom o ponteiro fecha o submenu
 - Testes: o jsdom não tem `matchMedia`; `src/test/midia.ts` instala um e `simularMidia(consulta, casa)` simula sistema escuro/movimento reduzido
