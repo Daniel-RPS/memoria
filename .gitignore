@@ -27,3 +27,17 @@ dist-ssr
 e2e/resultados
 e2e/capturas
 playwright-report
+
+# Variáveis de ambiente e segredos (o repositório é público)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Backups e dumps locais: nunca vão para o git
+*.sql
+*.sql.gz
+*.tar.gz
+*.zip
+memoria-backup-*.json

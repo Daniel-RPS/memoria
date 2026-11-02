@@ -6,7 +6,7 @@
 
 App pessoal de organização em formato de calendário. Reúne tarefas do dia, subtarefas, **grupos de tarefas**, categorias coloridas e **procedimentos**: etapas numeradas de algo que você repete, como uma configuração de servidor ou uma rotina mensal.
 
-Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
+Feito para **uso pessoal, num computador**. Publicado em **[daniel-rps.github.io/memoria](https://daniel-rps.github.io/memoria/)** (ou rodando local). Funciona **sem servidor de dados e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
 > **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias (em cards por grupo e tarefas soltas), e o mapa de conclusões do último ano (01/11/2026). Modo claro e escuro (ou seguindo o sistema) e um fundo animado discreto, com a logo ajustada a cada tema (01/11/2026). Notas ligadas a tarefas, grupos e itens, com a aba Notas organizada por categoria, grupo ou data (02/11/2026). Blocos recolhíveis e filtro por dia em Notas e Procedimentos, e ícones (emoji ou logotipo de serviço) em procedimentos e categorias (02/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
@@ -203,7 +203,18 @@ Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou
 - A troca é feita de uma vez: se algo falhar no meio, os dados atuais ficam como estavam.
 - Antes de restaurar, use **Baixar backup dos dados atuais** se quiser poder voltar.
 
-Recomendação: faça backup com frequência e guarde o arquivo fora do computador (pendrive ou nuvem).
+Recomendação: faça backup com frequência e guarde o arquivo fora do computador (pendrive ou nuvem). Quando há dados e o último backup neste navegador tem mais de 7 dias (ou nunca houve um), o ícone **Backup** da barra lateral ganha um ponto laranja; a dica diz desde quando.
+
+## Deploy
+
+O site é publicado no **GitHub Pages** em **https://daniel-rps.github.io/memoria/**, pelo workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): a cada push na `main`, ele roda `npm ci`, `npm test` e `npm run build` e publica a pasta `dist/`. Também dá para disparar à mão em **Actions → Deploy no GitHub Pages → Run workflow**.
+
+- **Subcaminho:** o build usa `base: '/memoria/'` (`vite.config.ts`) e o roteador usa o mesmo caminho (`basename`); o `npm run dev` continua na raiz de `http://localhost:5173`. Ícones de marca, emojis, favicon e logo seguem o subcaminho.
+- **Recarregar uma tela:** o GitHub Pages não conhece as rotas do app. O build gera um `404.html` igual ao `index.html`, então `/memoria/dia/2026-11-02` abre normalmente ao recarregar.
+- **Conferir antes de publicar:** `npm run build` e depois `npm run preview`, e abra **`http://localhost:4173/memoria/`**.
+- **Ativar (uma vez):** no GitHub, **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
+> **Os dados não viajam com o site.** O navegador guarda os dados por endereço: o que está em `http://localhost:5173` **não aparece** em `https://daniel-rps.github.io/memoria/` (e vice-versa). Para levar seus dados, faça **Backup → Baixar backup** no endereço antigo e **Backup → Escolher arquivo de backup** no novo. Todos os sites `daniel-rps.github.io/...` dividem o mesmo armazenamento do navegador; o MemorIA usa nomes próprios (`memoria:` e o banco do app), então não se misturam.
 
 ## Roadmap
 

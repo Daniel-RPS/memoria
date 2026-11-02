@@ -1,7 +1,7 @@
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { SecaoExportar } from '@/features/backup/components/secao-exportar'
 import { SecaoRestaurar } from '@/features/backup/components/secao-restaurar'
-import { useUltimoBackup } from '@/features/backup/hooks/use-backup'
+import { useUltimoBackup } from '@/hooks/use-ultimo-backup'
 
 export function BackupPage() {
   const ultimoBackup = useUltimoBackup()

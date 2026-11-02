@@ -2,12 +2,34 @@
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { recursosDeIcones } from './vite-recursos-de-icones.ts'
 
+/** Subcaminho do site no GitHub Pages (https://daniel-rps.github.io/memoria/). */
+const BASE_DO_SITE = '/memoria/'
+
+/**
+ * O GitHub Pages não conhece as rotas do React Router: recarregar `/memoria/dia/...` cairia
+ * num 404. Com um `404.html` igual ao `index.html`, o app abre e o roteador acha a tela.
+ */
+function paginaDe404(): Plugin {
+  return {
+    name: 'memoria-pagina-404',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_opcoes, pacote) {
+      const indice = pacote['index.html']
+      if (indice?.type !== 'asset') return
+      this.emitFile({ type: 'asset', fileName: '404.html', source: indice.source })
+    },
+  }
+}
+
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss(), recursosDeIcones()],
+export default defineConfig(({ command, isPreview }) => ({
+  // Build e `npm run preview` usam o subcaminho; o dev continua na raiz de http://localhost:5173.
+  base: command === 'build' || isPreview ? BASE_DO_SITE : '/',
+  plugins: [react(), tailwindcss(), recursosDeIcones(), paginaDe404()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -32,4 +54,4 @@ export default defineConfig({
     // e esperas que levam 1 s viram 5 s. Metade dos núcleos deixa a suíte estável.
     maxWorkers: '50%',
   },
-})
+}))

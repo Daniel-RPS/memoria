@@ -11,12 +11,12 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Arrastar e soltar: @dnd-kit/core 6.3 + sortable 10 · Datas: date-fns 4.4 + locale `pt-BR`
 - Ícones: frimousse 0.4 (seletor de emoji) + emojibase-data 18 (pt) e simple-icons 16 (marcas, CC0), os dois últimos só em dev: o plugin `vite-recursos-de-icones.ts` serve `/marcas/indice.json`, `/marcas/<slug>.svg` e `/emojibase/pt/*.json` (dev) e copia para o `dist/` (build)
 - Testes: Vitest 5 + Testing Library + fake-indexeddb · E2E: Playwright (`e2e/`) · Lint: oxlint · Formatação: Prettier
-- IMPORTANTE: só computador, uso pessoal, sem servidor nem banco externo (decidido em 30/10/2026). Celular, sync e compartilhamento estão FORA do escopo — não proponha sem o usuário pedir
+- IMPORTANTE: só computador, uso pessoal, sem servidor nem banco externo (decidido em 30/10/2026). Publicado como site estático no GitHub Pages (`https://daniel-rps.github.io/memoria/`, 02/11/2026); os dados continuam só no navegador. Celular, sync e compartilhamento estão FORA do escopo — não proponha sem o usuário pedir
 
 ## Comandos
 
 - `npm run dev` — app em `http://localhost:5173` (porta FIXA, `strictPort`: os dados ficam presos à origem)
-- `npm run build` — build de produção (`tsc -b` + Vite)
+- `npm run build` — build de produção (`tsc -b` + Vite) · `npm run preview` — confere o build em `http://localhost:4173/memoria/`
 - `npm test` — todos os testes · `npx vitest run <arquivo>` — um arquivo
 - `npm run e2e` — Playwright no navegador (sobe o Vite na porta 5190; capturas em `e2e/capturas/`, conferir ao mexer em arrasto)
 - `npm run lint` — oxlint · `npm run format` — Prettier
@@ -83,6 +83,9 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Mapa de conclusões: TODA conta em `src/lib/estatisticas.ts` (puro); filtro = `SeletorCategoria` com `modo="filtro"` (lembrado por `useFiltroDoMapa`); semana do mapa começa no DOMINGO (como no GitHub), ao contrário do resto do app. Dia da conclusão = dia local de `concluidaEm`/`concluidoEm` (`diaDoMomento`); sem ele, o dia planejado
 - Aviso com "Desfazer" + Ctrl+Z: `avisarComDesfazer` (`use-mover-tarefas.ts`), uma ação desfazível por vez
 - Arrastar na Semana: `detectarAlvo` (`quadro-semana.tsx`) escolhe o dia pela coluna sob o ponteiro e, dentro dela, `closestCorners` (a prévia é larga e encosta na coluna vizinha)
+
+- Deploy: `.github/workflows/deploy.yml` (push na `main` → `npm ci`, testes, build, GitHub Pages). Build e preview usam `base: '/memoria/'`; o dev fica na raiz. IMPORTANTE: caminho de arquivo servido pelo app SEMPRE com `import.meta.env.BASE_URL` (nunca `'/marcas/...'` fixo) e rota atual SEMPRE pelo React Router (`useMatch`), nunca `window.location.pathname` (tem o subcaminho). `404.html` = cópia do `index.html` (plugin `paginaDe404` no `vite.config.ts`)
+- Último backup: `useUltimoBackup` (`src/hooks/`, compartilhado entre a tela Backup e a barra); `isBackupAtrasado` (`lib/backup.ts`, > 7 dias pelo dia local, ou nunca, com dados) pinta um ponto `bg-alerta` no link Backup via `useLembreteDeBackup`
 
 ## Modelo de dados (resumo)
 

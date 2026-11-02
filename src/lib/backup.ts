@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { Attachment, DataLocal, Dono, TipoDono } from '@/db/types'
 import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
+import { diasEntre, hoje } from '@/lib/datas'
 import { converterGruposAntigos } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 import { preencherCadeias } from '@/lib/grupos'
@@ -301,4 +302,20 @@ export function lerBackup(textoArquivo: string, versaoBancoAtual: number): Resul
     }
   }
   return { isValido: true, backup }
+}
+
+/** Depois de quantos dias sem backup a barra lateral lembra de fazer um. */
+export const DIAS_PARA_LEMBRAR_BACKUP = 7
+
+/**
+ * Se é hora de lembrar do backup: há dados e o último backup (momento ISO, contado pelo dia
+ * local) foi há mais de `DIAS_PARA_LEMBRAR_BACKUP` dias, ou nunca houve um. Sem dados não há o
+ * que guardar.
+ */
+export function isBackupAtrasado(ultimo: string | null, dataHoje: DataLocal, hasDados: boolean) {
+  if (!hasDados) return false
+  if (!ultimo) return true
+  const momento = new Date(ultimo)
+  if (Number.isNaN(momento.getTime())) return true
+  return diasEntre(hoje(momento), dataHoje) > DIAS_PARA_LEMBRAR_BACKUP
 }

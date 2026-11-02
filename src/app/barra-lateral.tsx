@@ -21,6 +21,7 @@ import {
   type VisaoDoCalendario,
 } from '@/app/grupo-calendario'
 import { useGrupoCalendarioAberto } from '@/app/use-grupo-calendario-aberto'
+import { useLembreteDeBackup } from '@/hooks/use-lembrete-de-backup'
 import { SeletorAparencia } from '@/app/seletor-aparencia'
 import logoMemoriaClara from '@/assets/logo-memoria-clara.png'
 import logoMemoria from '@/assets/logo-memoria.png'
@@ -33,18 +34,24 @@ interface LinkTelaProps {
   icone: LucideIcon
   isAtiva: boolean
   isRecolhida: boolean
+  /** Lembrete discreto: ponto no ícone, com o texto na dica e na descrição do link. */
+  aviso?: string
   children: string
 }
 
 // Recolher/expandir: a largura corre com a mesma mola do grupo Calendário.
 const TRANSICAO_DA_BARRA = 'duration-400 ease-mola-suave motion-reduce:transition-none'
 
-function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, children }: LinkTelaProps) {
+function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, aviso, children }: LinkTelaProps) {
   return (
-    <DicaDaBarra texto={children} isLigada={isRecolhida}>
+    <DicaDaBarra
+      texto={aviso ? `${children}: ${aviso}` : children}
+      isLigada={isRecolhida || aviso !== undefined}
+    >
       <Link
         to={para}
         aria-current={isAtiva ? 'page' : undefined}
+        aria-description={aviso}
         className={cn(
           // O ícone fica no lugar enquanto a barra estreita: muda só o recuo, e o nome some
           // por opacidade (continua sendo o nome acessível do link).
@@ -56,7 +63,16 @@ function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, children }: LinkTe
             : 'text-barra-suave hover:bg-barra-realce hover:text-barra-texto',
         )}
       >
-        <Icone aria-hidden className="size-4 shrink-0" />
+        <span className="relative shrink-0">
+          <Icone aria-hidden className="size-4" />
+          {aviso && (
+            <span
+              aria-hidden
+              data-aviso
+              className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-alerta ring-2 ring-barra"
+            />
+          )}
+        </span>
         <span
           className={cn(
             'transition-opacity duration-200 motion-reduce:transition-none',
@@ -174,7 +190,14 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
     { para: `/mes/${dataAberta}`, icone: Calendar, isAtiva: rotaMes !== null, nome: 'Mês' },
     { para: `/ano/${anoAberto}`, icone: CalendarRange, isAtiva: rotaAno !== null, nome: 'Ano' },
   ]
-  const telas = [
+  const lembreteDeBackup = useLembreteDeBackup()
+  const telas: {
+    para: string
+    icone: LucideIcon
+    isAtiva: boolean
+    nome: string
+    aviso?: string
+  }[] = [
     {
       para: '/procedimentos',
       icone: ListOrdered,
@@ -183,7 +206,13 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
     },
     { para: '/notas', icone: StickyNote, isAtiva: isNasNotas, nome: 'Notas' },
     { para: '/categorias', icone: Tags, isAtiva: isNasCategorias, nome: 'Categorias' },
-    { para: '/backup', icone: HardDriveDownload, isAtiva: isNoBackup, nome: 'Backup' },
+    {
+      para: '/backup',
+      icone: HardDriveDownload,
+      isAtiva: isNoBackup,
+      nome: 'Backup',
+      aviso: lembreteDeBackup,
+    },
   ]
   const { isAberto, handleAlternar } = useGrupoCalendarioAberto(
     visoes.some((visao) => visao.isAtiva),
@@ -239,6 +268,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
               icone={tela.icone}
               isAtiva={tela.isAtiva}
               isRecolhida={isRecolhida}
+              aviso={tela.aviso}
             >
               {tela.nome}
             </LinkTela>

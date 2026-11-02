@@ -5,6 +5,7 @@ import {
   base64ParaBlob,
   blobParaBase64,
   FORMATO_ATUAL,
+  isBackupAtrasado,
   lerBackup,
   MARCA_DO_APP,
   nomeDoArquivo,
@@ -324,5 +325,27 @@ describe('textos do backup', () => {
 
   it('nomeia o arquivo com a data', () => {
     expect(nomeDoArquivo('2026-10-30')).toBe('memoria-backup-2026-10-30.json')
+  })
+})
+
+describe('isBackupAtrasado', () => {
+  const dataHoje = '2026-11-10'
+
+  it('não lembra quando ainda não há dados', () => {
+    expect(isBackupAtrasado(null, dataHoje, false)).toBe(false)
+  })
+
+  it('lembra quando há dados e nunca houve backup', () => {
+    expect(isBackupAtrasado(null, dataHoje, true)).toBe(true)
+  })
+
+  it('só lembra depois de mais de 7 dias, pelo dia local', () => {
+    expect(isBackupAtrasado('2026-11-03T23:30:00-03:00', dataHoje, true)).toBe(false)
+    // 00:30 UTC do dia 3 ainda é dia 2 em São Paulo.
+    expect(isBackupAtrasado('2026-11-03T00:30:00Z', dataHoje, true)).toBe(true)
+  })
+
+  it('trata momento ilegível como sem backup', () => {
+    expect(isBackupAtrasado('ontem', dataHoje, true)).toBe(true)
   })
 })

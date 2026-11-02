@@ -36,4 +36,7 @@ export const rotas: RouteObject[] = [
   },
 ]
 
-export const router = createBrowserRouter(rotas)
+// No GitHub Pages o app mora em /memoria/ (`base` do Vite); no dev, na raiz.
+export const router = createBrowserRouter(rotas, {
+  basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/',
+})

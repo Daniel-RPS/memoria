@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useMatch, useNavigate } from 'react-router'
 import { isCampoDeTexto } from '@/lib/teclado'
 
 /** Estado de navegação que pede à captura do Início para pegar o foco. */
@@ -17,6 +17,8 @@ export function isPedidoDeFocarCaptura(estado: unknown): estado is PedidoDeFocar
  */
 export function useAtalhoCaptura() {
   const navigate = useNavigate()
+  // Pela rota (não por `location.pathname`): no site publicado o endereço tem o subcaminho.
+  const isNoInicio = useMatch('/inicio') !== null
 
   useEffect(() => {
     function handleKeyDown(evento: KeyboardEvent) {
@@ -35,9 +37,9 @@ export function useAtalhoCaptura() {
       evento.preventDefault()
       const pedido: PedidoDeFocarCaptura = { focarCaptura: Date.now() }
       // Já no Início, não empilha histórico a cada atalho.
-      void navigate('/inicio', { state: pedido, replace: window.location.pathname === '/inicio' })
+      void navigate('/inicio', { state: pedido, replace: isNoInicio })
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigate])
+  }, [navigate, isNoInicio])
 }

@@ -127,7 +127,7 @@ function AbaEmoji({ onEscolher }: { onEscolher: (emoji: string) => void }) {
   return (
     <EmojiPicker.Root
       locale="pt"
-      emojibaseUrl="/emojibase"
+      emojibaseUrl={`${import.meta.env.BASE_URL}emojibase`}
       columns={8}
       onEmojiSelect={({ emoji }) => onEscolher(emoji)}
       className="flex h-80 flex-col gap-1"

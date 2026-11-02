@@ -3,35 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { contarDados } from '@/db/repositories/backup-repository'
 import { solicitarArmazenamentoPersistente } from '@/lib/armazenamento'
 
-const CHAVE_ULTIMO_BACKUP = 'memoria:ultimo-backup'
-
 /** Quantos registros há agora em cada tabela (`undefined` enquanto conta). */
 export function useDadosAtuais() {
   return useLiveQuery(contarDados, [])
-}
-
-function lerUltimoBackup() {
-  try {
-    return window.localStorage.getItem(CHAVE_ULTIMO_BACKUP)
-  } catch {
-    return null
-  }
-}
-
-/** Quando foi baixado o último backup neste navegador (ISO), lembrado entre visitas. */
-export function useUltimoBackup() {
-  const [ultimo, setUltimo] = useState(lerUltimoBackup)
-
-  function registrar(momento: string) {
-    setUltimo(momento)
-    try {
-      window.localStorage.setItem(CHAVE_ULTIMO_BACKUP, momento)
-    } catch {
-      // Sem localStorage, a lembrança vale só nesta visita.
-    }
-  }
-
-  return { ultimo, registrar }
 }
 
 export interface EstadoArmazenamento {

@@ -16,7 +16,7 @@ let pedido: Promise<void> | undefined
 const ouvintes = new Set<() => void>()
 
 function carregar() {
-  pedido ??= fetch('/marcas/indice.json')
+  pedido ??= fetch(`${import.meta.env.BASE_URL}marcas/indice.json`)
     .then((resposta) => {
       if (!resposta.ok) throw new Error(`Índice de marcas: ${resposta.status}`)
       return resposta.json() as Promise<MarcaDoIndice[]>
@@ -53,7 +53,7 @@ function semAssinar() {
   return () => {}
 }
 
-/** Endereço do desenho de uma marca (servido pelo próprio app). */
+/** Endereço do desenho de uma marca (servido pelo próprio app, dentro do subcaminho do site). */
 export function enderecoDaMarca(slug: string) {
-  return `/marcas/${slug}.svg`
+  return `${import.meta.env.BASE_URL}marcas/${slug}.svg`
 }
