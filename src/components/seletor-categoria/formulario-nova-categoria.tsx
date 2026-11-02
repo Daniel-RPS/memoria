@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { cn } from 'cn'
 import { PaletaCores } from '@/components/paleta-cores'
@@ -66,6 +66,7 @@ export function FormularioNovaCategoria({
     defaultValues: { nome: '', cor: corInicial },
   })
   const erro = errors.nome?.message
+  const nomeDigitado = useWatch({ control, name: 'nome' })
 
   // Depois de criar, a próxima cor livre muda; só segue se o usuário não escolheu outra.
   useEffect(() => {
@@ -131,6 +132,7 @@ export function FormularioNovaCategoria({
               rotulo={`Cor de ${rotulo.toLowerCase()}`}
               selecionada={field.value || undefined}
               tamanho="pequeno"
+              nomeAmostra={nomeDigitado.trim() || rotulo}
               onEscolher={(cor) => {
                 field.onChange(cor)
                 setFocus('nome')

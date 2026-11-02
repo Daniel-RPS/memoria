@@ -261,6 +261,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
             />
           ) : (
             <CampoCategoria
+              tipo="grupo"
               atual={{ categoryId, subcategoryId }}
               onEscolher={(categoria) => {
                 setValue('categoryId', categoria.categoryId)

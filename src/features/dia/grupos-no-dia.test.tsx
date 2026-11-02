@@ -175,6 +175,7 @@ describe('Grupos na visão do dia', () => {
       id: 'casa',
       nome: 'Limpeza',
       cor: '#2f8f5b',
+      tipo: 'grupo',
       ordem: 1,
       criadoEm: '',
       atualizadoEm: '',

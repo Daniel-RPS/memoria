@@ -14,7 +14,7 @@ export function ProcedimentosPage() {
   const [parametros, setParametros] = useSearchParams()
   const termo = parametros.get(PARAMETRO_BUSCA) ?? ''
   const { procedimentos, isCarregando } = useProcedimentos()
-  const { categorias } = useCategorias()
+  const { categorias } = useCategorias('procedimento')
   const blocos = agruparPorCategoria(buscarProcedimentos(procedimentos, termo), categorias)
 
   function handleBuscar(texto: string) {

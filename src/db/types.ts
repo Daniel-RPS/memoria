@@ -8,10 +8,14 @@ export interface EntidadeBase {
   atualizadoEm: string
 }
 
+/** Onde a categoria é usada: em grupos e tarefas soltas, ou só na aba Procedimentos. */
+export type TipoCategoria = 'grupo' | 'procedimento'
+
 export interface Category extends EntidadeBase {
   nome: string
   cor: string
-  /** Posição definida pelo usuário (aceita decimais); vale em todo o app. */
+  tipo: TipoCategoria
+  /** Posição definida pelo usuário dentro do tipo (aceita decimais); vale em todo o app. */
   ordem: number
 }
 

@@ -15,16 +15,22 @@ interface ConfirmarExclusaoProps {
   descricao: string
   rotuloAcao: string
   isAberto: boolean
+  /** Ação que não apaga nada (ex.: mover de tipo): botão na cor principal. */
+  isNeutra?: boolean
   onMudarAberto: (isAberto: boolean) => void
   onConfirmar: () => void
 }
 
-/** Confirma a exclusão de categoria ou subcategoria dizendo o que acontece com os itens. */
+/**
+ * Confirma a exclusão (ou a troca de tipo) de categoria ou subcategoria dizendo o que acontece
+ * com os itens.
+ */
 export function ConfirmarExclusao({
   titulo,
   descricao,
   rotuloAcao,
   isAberto,
+  isNeutra,
   onMudarAberto,
   onConfirmar,
 }: ConfirmarExclusaoProps) {
@@ -37,7 +43,7 @@ export function ConfirmarExclusao({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onConfirmar}>
+          <AlertDialogAction variant={isNeutra ? 'default' : 'destructive'} onClick={onConfirmar}>
             {rotuloAcao}
           </AlertDialogAction>
         </AlertDialogFooter>

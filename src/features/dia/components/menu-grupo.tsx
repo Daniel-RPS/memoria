@@ -100,6 +100,7 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
             <Pencil /> Renomear
           </DropdownMenuItem>
           <SubmenuCategoria
+            tipo="grupo"
             atual={serie}
             onEscolher={(categoria) => void definirCategoriaDoGrupo(serie.id, categoria)}
             onFechar={() => setIsMenuAberto(false)}

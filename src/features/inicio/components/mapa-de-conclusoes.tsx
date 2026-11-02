@@ -27,7 +27,7 @@ const NIVEIS: NivelDeIntensidade[] = [0, 1, 2, 3, 4]
  * itens de grupo concluídos por dia, com filtro por categoria num menu compacto (lembrado).
  */
 export function MapaDeConclusoes({ hoje }: MapaDeConclusoesProps) {
-  const { categorias, isCarregando } = useCategorias()
+  const { categorias, isCarregando } = useCategorias('grupo')
   const filtro = useFiltroDoMapa()
   const corNaTela = useCorNaTela()
   const [isMenuAberto, setIsMenuAberto] = useState(false)
@@ -68,6 +68,7 @@ export function MapaDeConclusoes({ hoje }: MapaDeConclusoesProps) {
               className="max-h-[min(22rem,var(--radix-dropdown-menu-content-available-height))] w-60 overflow-y-auto p-1.5"
             >
               <SeletorCategoria
+                tipo="grupo"
                 modo="filtro"
                 atual={{ categoryId }}
                 onEscolher={(escolhida) => {

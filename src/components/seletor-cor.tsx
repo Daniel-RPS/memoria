@@ -41,6 +41,7 @@ export function SeletorCor({
         <PaletaCores
           rotulo={`Cor de ${nomeItem}`}
           selecionada={isAutomatica ? undefined : cor}
+          nomeAmostra={nomeItem}
           onEscolher={onEscolher}
         />
         {onUsarAutomatica && (

@@ -33,8 +33,11 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Reordenar: `gravarNovaPosicao` (`db/repositories/ordenacao.ts`) na escrita e `ListaOrdenavel` (`src/components/`) na UI; reuse, não duplique
 - Subtarefa NÃO conclui a tarefa automaticamente (nem o contrário) — decisão do usuário
 - Excluir categoria NUNCA apaga tarefas, grupos nem procedimentos: só limpa `categoryId`/`subcategoryId` (excluir subcategoria só limpa `subcategoryId`)
-- Categoria/subcategoria: regras em `category-repository` (nome válido e único no nível, `ordem`, reordenar, uso) e puras em `lib/categorias.ts`; ordem do usuário vale em todo o app (`montarCategorias`)
-- Escolher categoria SEMPRE pelo seletor único `src/components/seletor-categoria/` (`SubmenuCategoria` no menu ⋯, `CampoCategoria` em formulário); ele cria categoria/subcategoria ali mesmo e já aplica. Menu que o contém é controlado (`open`) para o seletor fechar após criar
+- Categoria/subcategoria: regras em `category-repository` (nome válido e único no nível, `ordem`, reordenar, uso, `moverCategoriaDeTipo`) e puras em `lib/categorias.ts`; ordem do usuário vale em todo o app (`montarCategorias`)
+- IMPORTANTE: `Category.tipo` = `grupo` (grupos e tarefas soltas) ou `procedimento` (só Procedimentos). Nome único e `ordem` valem DENTRO do tipo; reordenar recebe só os ids de um tipo. Mudar de tipo limpa `categoryId`/`subcategoryId` dos itens do tipo antigo. Telas que só pintam buscam em todas (`useCategorias()`); quem escolhe usa `useCategorias(tipo)`. Sem `tipo`, `criarCategoria` cria grupo
+- Classificar sem tipo (migração v9 e backup antigo): SEMPRE `separarPorTipo` (`lib/categorias.ts`); usada pelos dois tipos vira duas (a original fica grupo)
+- Escolher categoria SEMPRE pelo seletor único `src/components/seletor-categoria/` (`SubmenuCategoria` no menu ⋯, `CampoCategoria` em formulário), com `tipo` obrigatório (`procedimento` só no editor de procedimento); ele cria categoria/subcategoria ali mesmo, no tipo, e já aplica. Menu que o contém é controlado (`open`) para o seletor fechar após criar
+- Escolher cor SEMPRE por `PaletaCores` (`src/components/paleta-cores.tsx`: 12 cores + "Cor personalizada" com `MisturadorCor` + recentes); contas de cor (hex/HSV, `lerHex`, contraste, `coresRecentes`) puras em `lib/cores.ts`. Recentes são derivadas das categorias (`useCoresRecentes`), sem localStorage
 - IMPORTANTE: mover tarefa SOLTA = só `data`/`ordem` via `moverTarefas`/`adiarTarefas`/`soltarTarefaNoDia`; NUNCA tocar em `dataOriginal`
 - Ações de mover na UI passam por `useMoverTarefas` → `moverSelecao`/`adiarSelecao`/`trazerPendenciasDeOntem` (`group-repository`); aviso com "Desfazer" via `desfazerAcao`; Ctrl+Z (`useAtalhoDesfazer` no `LayoutApp`) desfaz a última enquanto o aviso está na tela
 - Semana começa na segunda (`PRIMEIRO_DIA_DA_SEMANA` em `src/lib/semana.ts`); colunas do quadro em `src/lib/quadro.ts`
@@ -42,7 +45,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Arrastar no mês: `useDraggable` + teclado próprio (`coordenadasDaGrade`: lados ±1 dia, cima/baixo ±7)
 - Item arrastável com clique: use `div` com `attributes` (num `<button>`, soltar o espaço dispara clique)
 - Card da semana: mesmo `MenuGrupo` e `MenuItemGrupo` do Dia. O card inteiro arrasta o grupo (ponteiro); a alça ⋮⋮ do cabeçalho é o ativador (foco/espaço). Área com `data-sem-arrasto` (itens, menu ⋯, título em edição) não arrasta o card; item só pela alça ⋮⋮ (`useSortable`, alvo de soltar só para itens do mesmo card: solto no card reordena, em outro dia leva). NÃO use `stopPropagation` no `onKeyDown` do card: bloqueia o Ctrl+Z global (só formulários dentro de menu param as teclas)
-- Banco Dexie na versão 8 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`; v6: marca `criadoPorTransferencia`; v7: procedimento vira etapas via `lib/migracao-procedimentos.ts`, apaga `procedureVersions`/`executions`, `tasks.procedureId` e anexos/notas de procedimento/passo; v8: `ordem` em categorias/subcategorias via `preencherOrdem`); mudar índice = nova `version()`
+- Banco Dexie na versão 9 (v2: `tasks.procedureId`; v3: 1ª versão dos grupos; v4: `groupCards`/`groupItems` com migração da v3 em `lib/migracao-grupos.ts`; v5: remove `groupInstances`; v6: marca `criadoPorTransferencia`; v7: procedimento vira etapas via `lib/migracao-procedimentos.ts`, apaga `procedureVersions`/`executions`, `tasks.procedureId` e anexos/notas de procedimento/passo; v8: `ordem` em categorias/subcategorias via `preencherOrdem`; v9: `tipo` em categorias via `separarPorTipo`); mudar índice = nova `version()`
 - IMPORTANTE: tabela ou campo novo no banco exige atualizar `esquemaBackup` (`src/lib/backup.ts`) e, se mudar a estrutura do JSON, `FORMATO_ATUAL`
 - Importar backup SUBSTITUI tudo numa transação única (`importarDados`); blobs são convertidos fora da transação
 - Anexo pertence ao `dono` {tipo, id} (`task` ou `note`); procedimento não tem anexo nem anotação
@@ -77,7 +80,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 
 - Toda entidade: `id` (`crypto.randomUUID()`), `criadoEm`, `atualizadoEm`; NUNCA ids autoincrementais (deixam aberta uma sync futura)
 - Alterar índices = nova `version()` no Dexie, NUNCA editar a versão existente
-- Category { id, nome, cor, ordem } · Subcategory { id, categoryId, nome, cor?, ordem } (sem cor = variação da cor da categoria)
+- Category { id, nome, cor, tipo: grupo|procedimento, ordem } · Subcategory { id, categoryId, nome, cor?, ordem } (sem cor = variação da cor da categoria)
 - Task { id, titulo, data, categoryId?, subcategoryId?, ordem (aceita decimais), status: pendente|concluida|arquivada, dataOriginal, concluidaEm? }
 - GroupSeries { id, titulo (único, sem acento/maiúscula), categoryId?, subcategoryId? } — liga os cards de dias diferentes; categoria só dá cor
 - GroupCard { id, seriesId, data, ordem, arquivado, criadoPorTransferencia? } — no máximo um por série e dia; encerrado é calculado (tem itens e nenhum pendente)
@@ -155,6 +158,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 01/11/2026: um texto apagado por modo no campo da captura ("Escreva a tarefa a ser feita" etc.)
 - Ajuste 01/11/2026: Procedimentos em cartões (grade por categoria, prévia de 3 etapas) e editor de etapas compacto com Enter/Backspace — só camada visual, sem mudar o banco
 - Ajuste 01/11/2026: Hoje e Atrasadas do Início em cards por tipo (um por grupo + "Tarefas soltas"), Atrasadas com título laranja e "Tudo em dia"
+- Ajuste 02/11/2026: categorias por tipo (Grupos × Procedimentos, banco v9, backup formato 6) e cor personalizada com misturador — detalhes em `docs/proposta-inicial.md`
 
 ## Armadilhas
 

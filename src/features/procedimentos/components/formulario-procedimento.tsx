@@ -99,6 +99,7 @@ export function FormularioProcedimento({
                 name="categoryId"
                 render={({ field }) => (
                   <CampoCategoria
+                    tipo="procedimento"
                     id="categoria"
                     atual={{
                       categoryId: field.value || undefined,

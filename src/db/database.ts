@@ -11,7 +11,7 @@ import type {
   Subtask,
   Task,
 } from '@/db/types'
-import { preencherOrdem } from '@/lib/categorias'
+import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
 import { converterGruposAntigos, type CardAntigo, type TarefaAntiga } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo, type ProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 
@@ -138,6 +138,34 @@ export class MemoriaDatabase extends Dexie {
         )
         await transacao.table('categories').bulkPut(categorias)
         await transacao.table('subcategories').bulkPut(subcategorias)
+      })
+    // v9: categorias ganham `tipo` (grupo ou procedimento; sem índice), classificadas pelo uso.
+    // Usada pelos dois vira duas: a cópia leva as subcategorias e os procedimentos.
+    this.version(9)
+      .stores({})
+      .upgrade(async (transacao) => {
+        const [categorias, subcategorias, tarefas, grupos, procedimentos] = await Promise.all(
+          ['categories', 'subcategories', 'tasks', 'groupSeries', 'procedures'].map((nome) =>
+            transacao.table(nome).toArray(),
+          ),
+        )
+        const separado = separarPorTipo({
+          categorias,
+          subcategorias,
+          tarefas,
+          grupos,
+          procedimentos: procedimentos as Procedure[],
+        })
+        const idsAntigos = new Set(subcategorias.map((subcategoria) => subcategoria.id))
+        await transacao.table('categories').bulkPut(separado.categorias)
+        await transacao
+          .table('subcategories')
+          .bulkAdd(
+            separado.subcategorias.filter((subcategoria) => !idsAntigos.has(subcategoria.id)),
+          )
+        await transacao
+          .table('procedures')
+          .bulkPut(separado.procedimentos.filter((item, indice) => item !== procedimentos[indice]))
       })
   }
 }

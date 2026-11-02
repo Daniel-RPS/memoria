@@ -21,7 +21,11 @@ interface ModuloGrupos {
 }
 
 interface ModuloCategorias {
-  criarCategoria: (dados: { nome: string; cor?: string }) => Promise<{ id: string }>
+  criarCategoria: (dados: {
+    nome: string
+    cor?: string
+    tipo?: 'grupo' | 'procedimento'
+  }) => Promise<{ id: string }>
 }
 
 interface ModuloProcedimentos {
@@ -147,7 +151,7 @@ test('Semana: pelo menu ⋯ do card, cria "Trabalho" com cor, aplica e aparece e
 
   // Navegação do próprio app: sem recarregar a página.
   await irPara(page, 'Categorias')
-  const lista = page.getByRole('list', { name: 'Categorias' })
+  const lista = page.getByRole('list', { name: 'Categorias de Grupos' })
   await expect(lista.getByRole('button', { name: 'Trabalho', exact: true })).toBeVisible()
   await expect(lista.getByText('1 grupo')).toBeVisible()
   await capturar(page, '1-depois-categorias')
@@ -162,7 +166,7 @@ test('Procedimento: cria uma subcategoria pelo seletor e ela fica aplicada', asy
     const procedimentos = (await import(
       /* @vite-ignore */ caminhoProcedimentos
     )) as ModuloProcedimentos
-    const casa = await categorias.criarCategoria({ nome: 'Casa' })
+    const casa = await categorias.criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
     return (
       await procedimentos.criarProcedimento({
         titulo: 'Regar as plantas',
@@ -256,13 +260,15 @@ test('Duas abas: a categoria criada numa aparece na outra', async ({ page, conte
   await page.goto('/categorias')
   const outra = await context.newPage()
   await outra.goto('/categorias')
-  await expect(outra.getByText('Nenhuma categoria ainda.', { exact: false })).toBeVisible()
+  await expect(outra.getByText('Nenhuma categoria aqui ainda.', { exact: false })).toHaveCount(2)
   await outra.screenshot({ path: 'e2e/capturas/categorias-5-antes-outra-aba.png' })
 
+  await page.getByRole('button', { name: 'Nova categoria em Procedimentos' }).click()
   await page.getByRole('textbox', { name: 'Nova categoria' }).fill('Saúde')
   await page.getByRole('button', { name: 'Criar categoria' }).click()
-  await expect(page.getByRole('list', { name: 'Categorias' }).getByText('Saúde')).toBeVisible()
+  const lista = { name: 'Categorias de Procedimentos' }
+  await expect(page.getByRole('list', lista).getByText('Saúde')).toBeVisible()
 
-  await expect(outra.getByRole('list', { name: 'Categorias' }).getByText('Saúde')).toBeVisible()
+  await expect(outra.getByRole('list', lista).getByText('Saúde')).toBeVisible()
   await outra.screenshot({ path: 'e2e/capturas/categorias-5-depois-outra-aba.png' })
 })

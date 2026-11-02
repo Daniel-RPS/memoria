@@ -18,7 +18,7 @@ export function SubmenuCategoria(props: SeletorCategoriaProps) {
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
         collisionPadding={8}
-        className="max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] max-w-[min(18rem,calc(100vw-1rem))] min-w-48 overflow-y-auto"
+        className="max-h-[min(40rem,var(--radix-dropdown-menu-content-available-height))] max-w-[min(18rem,calc(100vw-1rem))] min-w-48 overflow-y-auto"
       >
         <SeletorCategoria {...props} />
       </DropdownMenuSubContent>

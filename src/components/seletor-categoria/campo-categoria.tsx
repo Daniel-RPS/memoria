@@ -12,11 +12,14 @@ import {
 } from '@/components/seletor-categoria/seletor-categoria'
 import { useCategorias } from '@/hooks/use-categorias'
 import { classificarTarefa } from '@/lib/categorias'
+import type { TipoCategoria } from '@/db/types'
 
 interface CampoCategoriaProps {
   id?: string
   atual: CategoriaEscolhida
   onEscolher: (categoria: CategoriaEscolhida) => void
+  /** Tipo das categorias oferecidas (ver `SeletorCategoria`). */
+  tipo: TipoCategoria
   /** Botão compacto, só a bolinha (ex.: ao lado de "Novo grupo"). */
   isCompacto?: boolean
   /** Nome acessível do botão compacto. */
@@ -29,6 +32,7 @@ export function CampoCategoria({
   id,
   atual,
   onEscolher,
+  tipo,
   isCompacto,
   rotulo = 'Categoria',
   className,
@@ -68,11 +72,12 @@ export function CampoCategoria({
       <DropdownMenuContent
         align="start"
         collisionPadding={8}
-        className="max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] w-auto max-w-[min(18rem,calc(100vw-1rem))] min-w-[max(14rem,var(--radix-dropdown-menu-trigger-width))] overflow-y-auto"
+        className="max-h-[min(40rem,var(--radix-dropdown-menu-content-available-height))] w-auto max-w-[min(18rem,calc(100vw-1rem))] min-w-[max(14rem,var(--radix-dropdown-menu-trigger-width))] overflow-y-auto"
       >
         <SeletorCategoria
           atual={atual}
           onEscolher={onEscolher}
+          tipo={tipo}
           onFechar={() => setIsAberto(false)}
         />
       </DropdownMenuContent>

@@ -32,6 +32,7 @@ export function CampoNovoGrupo({
         />
       </div>
       <CampoCategoria
+        tipo="grupo"
         isCompacto
         rotulo={`Categoria do ${nomeAcessivel ? nomeAcessivel.toLowerCase() : 'novo grupo'}`}
         atual={categoria}

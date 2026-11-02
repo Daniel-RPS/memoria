@@ -184,6 +184,35 @@ describe('lerBackup', () => {
     expect(subcategories[0].ordem).toBe(1)
   })
 
+  it('backup do formato 5, sem tipo de categoria, é classificado pela regra da migração', () => {
+    const antigo = backupVazio()
+    const base = { criadoEm: '1', atualizadoEm: '1' }
+    const arquivo = {
+      ...antigo,
+      formato: 5,
+      tabelas: {
+        ...antigo.tabelas,
+        categories: [
+          { ...base, id: 'casa', nome: 'Casa', cor: '#000000', ordem: 1 },
+          { ...base, id: 'git', nome: 'Github', cor: '#000000', ordem: 2 },
+        ],
+        tasks: [{ ...tarefa, categoryId: 'git' }],
+        procedures: [{ ...base, id: 'p', titulo: 'Publicar', categoryId: 'git', etapas: [] }],
+      },
+    }
+    const resultado = lerBackup(JSON.stringify(arquivo), VERSAO_BANCO)
+    expect(resultado.isValido).toBe(true)
+    if (!resultado.isValido) return
+    const { categories, procedures, tasks } = resultado.backup.tabelas
+    expect(categories.map(({ nome, tipo }) => `${tipo}:${nome}`)).toEqual([
+      'grupo:Casa',
+      'grupo:Github',
+      'procedimento:Github',
+    ])
+    expect(tasks[0].categoryId).toBe('git')
+    expect(procedures[0].categoryId).toBe(categories[2].id)
+  })
+
   it('recusa o que não é JSON', () => {
     const resultado = lerBackup('isto não é json', VERSAO_BANCO)
     expect(resultado).toMatchObject({ isValido: false })
@@ -254,6 +283,7 @@ describe('textos do backup', () => {
       id: 'c',
       nome: 'Casa',
       cor: '#000000',
+      tipo: 'grupo',
       ordem: 1,
       criadoEm: '',
       atualizadoEm: '',

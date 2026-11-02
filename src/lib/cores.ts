@@ -36,6 +36,88 @@ export function isCorValida(cor: string) {
   return PADRAO_HEX.test(cor)
 }
 
+/** É uma das 12 cores da paleta (sem diferenciar maiúsculas)? */
+export function isCorDaPaleta(cor: string) {
+  const minuscula = cor.toLowerCase()
+  return PALETA_CATEGORIAS.some((opcao) => opcao.hex === minuscula)
+}
+
+/**
+ * Lê o que o usuário digitou ou colou no campo hexadecimal: com ou sem "#", maiúsculas ou
+ * minúsculas, espaços nas pontas. Devolve "#rrggbb" em minúsculas ou `null` se não for válido.
+ */
+export function lerHex(texto: string) {
+  const limpo = texto.trim().replace(/^#/, '')
+  if (!/^[0-9a-f]{6}$/i.test(limpo)) return null
+  return `#${limpo.toLowerCase()}`
+}
+
+/** Cor no espaço HSV: matiz 0–360, saturação e brilho 0–1 (o que o misturador mostra). */
+export interface Hsv {
+  matiz: number
+  saturacao: number
+  brilho: number
+}
+
+export function hexParaHsv(hex: string): Hsv {
+  const [r = 0, g = 0, b = 0] = canais(hex).map((canal) => canal / 255)
+  const maior = Math.max(r, g, b)
+  const menor = Math.min(r, g, b)
+  const delta = maior - menor
+  let matiz = 0
+  if (delta > 0) {
+    if (maior === r) matiz = ((g - b) / delta) % 6
+    else if (maior === g) matiz = (b - r) / delta + 2
+    else matiz = (r - g) / delta + 4
+  }
+  return {
+    matiz: (matiz * 60 + 360) % 360,
+    saturacao: maior === 0 ? 0 : delta / maior,
+    brilho: maior,
+  }
+}
+
+export function hsvParaHex({ matiz, saturacao, brilho }: Hsv) {
+  const canal = (n: number) => {
+    const k = (n + matiz / 60) % 6
+    const valor = brilho - brilho * saturacao * Math.max(0, Math.min(k, 4 - k, 1))
+    return Math.round(valor * 255)
+      .toString(16)
+      .padStart(2, '0')
+  }
+  return `#${canal(5)}${canal(3)}${canal(1)}`
+}
+
+/**
+ * Temas em que a cor fica com pouco contraste sobre o papel (abaixo de 3:1), mesmo com o
+ * ajuste de exibição (`corNaTela`). Só para avisar: a cor escolhida é gravada assim mesmo.
+ */
+export function temasComPoucoContraste(hex: string): Tema[] {
+  if (!isCorValida(hex)) return []
+  return (['claro', 'escuro'] as const).filter(
+    (tema) => contraste(corNaTela(hex, tema), PAPEL_DO_TEMA[tema]) < CONTRASTE_DE_TRACO,
+  )
+}
+
+/**
+ * Até `limite` cores personalizadas (fora da paleta) das categorias e subcategorias, da
+ * editada mais recentemente para a mais antiga, sem repetir. Derivadas do banco: aparecem nas
+ * duas abas e entram no backup.
+ */
+export function coresRecentes(
+  itens: { cor?: string; atualizadoEm: string }[],
+  limite = 6,
+): string[] {
+  const recentes: string[] = []
+  for (const item of [...itens].sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm))) {
+    const cor = item.cor?.toLowerCase()
+    if (!cor || !isCorValida(cor) || isCorDaPaleta(cor) || recentes.includes(cor)) continue
+    recentes.push(cor)
+    if (recentes.length === limite) break
+  }
+  return recentes
+}
+
 /**
  * Passos alternando entre mais claro (mistura com branco) e mais escuro (mistura com preto),
  * para subcategorias vizinhas ficarem distinguíveis entre si e da categoria.
@@ -82,7 +164,7 @@ export function corNaTela(hex: string, tema: Tema) {
 }
 
 /** Papel de cada tema (mesmos valores de `--papel` em `src/index.css`). */
-const PAPEL_DO_TEMA: Record<Tema, string> = { claro: '#ffffff', escuro: '#19161f' }
+export const PAPEL_DO_TEMA: Record<Tema, string> = { claro: '#ffffff', escuro: '#19161f' }
 
 /** Contraste mínimo de elemento gráfico (faixa, barra) sobre o papel, pela WCAG. */
 const CONTRASTE_DE_TRACO = 3
@@ -97,6 +179,11 @@ function luminancia(hex: string) {
     return linear <= 0.03928 ? linear / 12.92 : ((linear + 0.055) / 1.055) ** 2.4
   })
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/** Cor clara o bastante para pedir marca escura por cima (ex.: o ✓ da bolinha). */
+export function isCorClara(hex: string) {
+  return isCorValida(hex) && contraste(hex, '#000000') > contraste(hex, '#ffffff')
 }
 
 export function contraste(a: string, b: string) {

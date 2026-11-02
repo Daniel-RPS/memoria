@@ -9,6 +9,7 @@ import {
   excluirCategoria,
   excluirSubcategoria,
   listarCategorias,
+  moverCategoriaDeTipo,
   reordenarCategoria,
   reordenarSubcategoria,
 } from '@/db/repositories/category-repository'
@@ -234,5 +235,81 @@ describe('category-repository', () => {
     const uso = await contarUsoDasCategorias()
     expect(uso.get(casa.id)).toEqual({ tarefas: 2, grupos: 1, procedimentos: 0 })
     expect(uso.get(trabalho.id)).toEqual({ tarefas: 0, grupos: 1, procedimentos: 1 })
+  })
+
+  describe('tipos (Grupo e Procedimento)', () => {
+    it('cria em cada tipo; sem tipo, nasce grupo', async () => {
+      const casa = await criarCategoria({ nome: 'Casa' })
+      const receitas = await criarCategoria({ nome: 'Receitas', tipo: 'procedimento' })
+      expect(casa).toMatchObject({ tipo: 'grupo', ordem: 1 })
+      expect(receitas).toMatchObject({ tipo: 'procedimento', ordem: 1 })
+    })
+
+    it('nome repetido é recusado no mesmo tipo e aceito no outro', async () => {
+      await criarCategoria({ nome: 'Github', tipo: 'grupo' })
+      await expect(criarCategoria({ nome: 'GITHUB', tipo: 'grupo' })).rejects.toBeInstanceOf(
+        ErroDeValidacao,
+      )
+      const outra = await criarCategoria({ nome: 'github', tipo: 'procedimento' })
+      expect(outra.tipo).toBe('procedimento')
+
+      const receitas = await criarCategoria({ nome: 'Receitas', tipo: 'procedimento' })
+      await expect(atualizarCategoria(receitas.id, { nome: 'Github' })).rejects.toBeInstanceOf(
+        ErroDeValidacao,
+      )
+      const casa = await criarCategoria({ nome: 'Casa', tipo: 'grupo' })
+      await atualizarCategoria(casa.id, { nome: 'Receitas' })
+      expect((await db.categories.get(casa.id))?.nome).toBe('Receitas')
+    })
+
+    it('reordenar dentro de um tipo não mexe na ordem do outro', async () => {
+      const a = await criarCategoria({ nome: 'A', tipo: 'grupo' })
+      const b = await criarCategoria({ nome: 'B', tipo: 'grupo' })
+      const x = await criarCategoria({ nome: 'X', tipo: 'procedimento' })
+      const y = await criarCategoria({ nome: 'Y', tipo: 'procedimento' })
+      await reordenarCategoria([b.id, a.id], b.id)
+
+      const categorias = await listarCategorias()
+      const nomes = (tipo: string) =>
+        categorias.filter((item) => item.tipo === tipo).map((item) => item.nome)
+      expect(nomes('grupo')).toEqual(['B', 'A'])
+      expect(nomes('procedimento')).toEqual(['X', 'Y'])
+      expect((await db.categories.get(x.id))?.ordem).toBe(1)
+      expect((await db.categories.get(y.id))?.ordem).toBe(2)
+    })
+
+    it('mover de tipo deixa sem categoria os itens que a usavam e vai para o fim do outro tipo', async () => {
+      await criarCategoria({ nome: 'Receitas', tipo: 'procedimento' })
+      const casa = await criarCategoria({ nome: 'Casa', tipo: 'grupo' })
+      const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
+      const tarefa = await criarTarefa({ titulo: 'Varrer', data: DIA })
+      await definirCategoria(tarefa.id, { categoryId: casa.id, subcategoryId: jardim.id })
+      const card = await criarGrupo({ titulo: 'Mercado', data: DIA, categoryId: casa.id })
+
+      await moverCategoriaDeTipo(casa.id)
+
+      expect(await db.categories.get(casa.id)).toMatchObject({ tipo: 'procedimento', ordem: 2 })
+      expect(await db.subcategories.get(jardim.id)).toMatchObject({ categoryId: casa.id })
+      const tarefaDepois = await db.tasks.get(tarefa.id)
+      expect(tarefaDepois?.categoryId).toBeUndefined()
+      expect(tarefaDepois?.subcategoryId).toBeUndefined()
+      expect((await db.groupSeries.get(card.seriesId))?.categoryId).toBeUndefined()
+    })
+
+    it('mover de volta limpa os procedimentos e recusa nome que já existe no destino', async () => {
+      const github = await criarCategoria({ nome: 'Github', tipo: 'procedimento' })
+      const procedimento = await criarProcedimento({
+        titulo: 'Publicar',
+        categoryId: github.id,
+        etapas: [],
+      })
+      await moverCategoriaDeTipo(github.id)
+      expect((await db.procedures.get(procedimento.id))?.categoryId).toBeUndefined()
+      expect((await db.categories.get(github.id))?.tipo).toBe('grupo')
+
+      const outra = await criarCategoria({ nome: 'github', tipo: 'procedimento' })
+      await expect(moverCategoriaDeTipo(outra.id)).rejects.toBeInstanceOf(ErroDeValidacao)
+      expect((await db.categories.get(outra.id))?.tipo).toBe('procedimento')
+    })
   })
 })

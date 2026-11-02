@@ -7,7 +7,7 @@ import { expect, test, type Page } from '@playwright/test'
  */
 
 interface ModuloCategorias {
-  criarCategoria: (dados: { nome: string }) => Promise<{ id: string }>
+  criarCategoria: (dados: { nome: string; tipo?: 'procedimento' }) => Promise<{ id: string }>
 }
 
 interface ModuloBanco {
@@ -42,7 +42,7 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(async () => {
     const caminho = '/src/db/repositories/category-repository.ts'
     const categorias = (await import(/* @vite-ignore */ caminho)) as ModuloCategorias
-    await categorias.criarCategoria({ nome: 'Casa' })
+    await categorias.criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
   })
   await expect(page.getByRole('link', { name: /Criar o primeiro procedimento/ })).toBeVisible()
 })

@@ -9,7 +9,11 @@ import { expect, test, type Page } from '@playwright/test'
 const FASE = process.env.FASE ?? 'depois'
 
 interface ModuloCategorias {
-  criarCategoria: (dados: { nome: string; cor?: string }) => Promise<{ id: string }>
+  criarCategoria: (dados: {
+    nome: string
+    cor?: string
+    tipo?: 'grupo' | 'procedimento'
+  }) => Promise<{ id: string }>
 }
 
 interface ModuloProcedimentos {
@@ -47,8 +51,16 @@ async function semear(page: Page) {
     )) as ModuloProcedimentos
     const etapas = (...textos: string[]) =>
       textos.map((texto) => ({ id: crypto.randomUUID(), texto }))
-    const casa = await categorias.criarCategoria({ nome: 'Casa', cor: '#f2c94c' })
-    const trabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#2f80ed' })
+    const casa = await categorias.criarCategoria({
+      nome: 'Casa',
+      cor: '#f2c94c',
+      tipo: 'procedimento',
+    })
+    const trabalho = await categorias.criarCategoria({
+      nome: 'Trabalho',
+      cor: '#2f80ed',
+      tipo: 'procedimento',
+    })
     await procedimentos.criarProcedimento({
       titulo: 'Trocar o filtro de água',
       categoryId: casa.id,

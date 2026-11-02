@@ -73,8 +73,8 @@ describe('Procedimentos', () => {
   })
 
   it('lista um bloco por categoria, com "Sem categoria" no fim', async () => {
-    const casa = await criarCategoria({ nome: 'Casa' })
-    const trabalho = await criarCategoria({ nome: 'Trabalho' })
+    const casa = await criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
+    const trabalho = await criarCategoria({ nome: 'Trabalho', tipo: 'procedimento' })
     await criarProcedimento({ titulo: 'Solto', categoryId: '', etapas: [] })
     await criarProcedimento({ titulo: 'Relatório', categoryId: trabalho.id, etapas: [] })
     await criarProcedimento({
@@ -139,7 +139,7 @@ describe('Procedimentos', () => {
 
   it('o seletor de categoria cria uma subcategoria ali mesmo e ela fica aplicada', async () => {
     const usuario = userEvent.setup()
-    const casa = await criarCategoria({ nome: 'Casa' })
+    const casa = await criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
     const procedimento = await criarProcedimento({ titulo: 'Regar', categoryId: '', etapas: [] })
     renderizarApp(`/procedimentos/${procedimento.id}`)
 
@@ -226,8 +226,8 @@ describe('Procedimentos', () => {
   })
 
   it('os blocos seguem a ordem das categorias definida pelo usuário', async () => {
-    const casa = await criarCategoria({ nome: 'Casa' })
-    const trabalho = await criarCategoria({ nome: 'Trabalho' })
+    const casa = await criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
+    const trabalho = await criarCategoria({ nome: 'Trabalho', tipo: 'procedimento' })
     await reordenarCategoria([trabalho.id, casa.id], trabalho.id)
     await criarProcedimento({ titulo: 'Relatório', categoryId: trabalho.id, etapas: [] })
     await criarProcedimento({ titulo: 'Regar', categoryId: casa.id, etapas: [] })

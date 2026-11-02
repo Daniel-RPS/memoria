@@ -24,13 +24,16 @@ export function LayoutApp() {
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
   const isNoDia = useMatch('/dia/:data') !== null
   const isNoInicio = useMatch('/inicio') !== null
+  const isNasCategorias = useMatch('/categorias') !== null
   const largura = isNaSemana
     ? 'max-w-[96rem]'
     : isNoMesOuAno || isNoInicio
       ? 'max-w-6xl'
-      : isNosProcedimentos || isNoDia
-        ? 'max-w-3xl'
-        : 'max-w-2xl'
+      : isNasCategorias
+        ? 'max-w-5xl'
+        : isNosProcedimentos || isNoDia
+          ? 'max-w-3xl'
+          : 'max-w-2xl'
 
   return (
     <TooltipProvider delayDuration={300}>

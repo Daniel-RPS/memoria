@@ -5,6 +5,7 @@ import {
   criarSubcategoria,
   excluirCategoria,
   excluirSubcategoria,
+  moverCategoriaDeTipo,
   reordenarCategoria,
   reordenarSubcategoria,
 } from '@/db/repositories/category-repository'
@@ -16,6 +17,7 @@ export function useAcoesCategoria() {
     atualizarCategoria,
     reordenarCategoria,
     excluirCategoria,
+    moverCategoriaDeTipo,
     criarSubcategoria,
     atualizarSubcategoria,
     reordenarSubcategoria,

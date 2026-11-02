@@ -1,21 +1,28 @@
 import { z } from 'zod'
 import type { Attachment, DataLocal, Dono, TipoDono } from '@/db/types'
-import { preencherOrdem } from '@/lib/categorias'
+import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
 import { converterGruposAntigos } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 5
+export const FORMATO_ATUAL = 6
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
 const id = z.string().min(1)
 const base = { id, criadoEm: texto, atualizadoEm: texto }
 
-// `ordem` desde o formato 5; antes, é preenchida ao ler (`preencherOrdem`).
-const categoria = z.object({ ...base, nome: texto, cor: texto, ordem: z.number().optional() })
+// `ordem` desde o formato 5 e `tipo` desde o 6; antes, preenchidos ao ler (`preencherOrdem`,
+// `separarPorTipo`, a mesma regra da migração do banco).
+const categoria = z.object({
+  ...base,
+  nome: texto,
+  cor: texto,
+  tipo: z.enum(['grupo', 'procedimento']).optional(),
+  ordem: z.number().optional(),
+})
 const subcategoria = z.object({
   ...base,
   categoryId: id,
@@ -141,14 +148,18 @@ export const esquemaBackup = z.object({
     })
     .transform(({ groupInstances, tasks, notes, attachments, ...tabelas }) => {
       const { cards, itens, soltas } = converterGruposAntigos(groupInstances ?? [], tasks)
-      const { categorias, subcategorias } = preencherOrdem(
-        tabelas.categories,
-        tabelas.subcategories,
-      )
+      const comOrdem = preencherOrdem(tabelas.categories, tabelas.subcategories)
+      const { categorias, subcategorias, procedimentos } = separarPorTipo({
+        ...comOrdem,
+        tarefas: soltas,
+        grupos: tabelas.groupSeries,
+        procedimentos: tabelas.procedures,
+      })
       return {
         ...tabelas,
         categories: categorias,
         subcategories: subcategorias,
+        procedures: procedimentos,
         notes: notes.flatMap(({ dono: donoDaNota, ...nota }) => {
           if (!donoDaNota) return [nota]
           return isDonoAtual(donoDaNota) ? [{ ...nota, dono: donoDaNota }] : []

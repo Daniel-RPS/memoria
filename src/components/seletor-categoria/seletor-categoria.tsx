@@ -14,6 +14,7 @@ import { corDaSubcategoria, type CategoriaComSubcategorias } from '@/lib/categor
 import { normalizar } from '@/lib/procedimentos'
 import { proximaCor } from '@/lib/cores'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
+import type { TipoCategoria } from '@/db/types'
 
 export interface CategoriaEscolhida {
   categoryId?: string
@@ -24,6 +25,8 @@ export interface SeletorCategoriaProps {
   /** Categoria atual do item (tarefa, grupo ou procedimento). */
   atual: CategoriaEscolhida
   onEscolher: (categoria: CategoriaEscolhida) => void
+  /** Só lista e cria categorias deste tipo (grupos e tarefas, ou procedimentos). */
+  tipo: TipoCategoria
   /** Fecha o menu depois de criar (escolher uma opção já fecha sozinho). */
   onFechar: () => void
   /**
@@ -63,10 +66,11 @@ function Amostra({ cor }: { cor: string }) {
 export function SeletorCategoria({
   atual,
   onEscolher,
+  tipo,
   onFechar,
   modo = 'escolha',
 }: SeletorCategoriaProps) {
-  const { categorias } = useCategorias()
+  const { categorias } = useCategorias(tipo)
   const { criarCategoria, criarSubcategoria } = useAcoesCategoria()
   const [criando, setCriando] = useState<Criando | null>(null)
 
@@ -109,7 +113,7 @@ export function SeletorCategoria({
               const subcategoria = await criarSubcategoria({ categoryId, nome, cor })
               onEscolher({ categoryId, subcategoryId: subcategoria.id })
             } else {
-              const categoria = await criarCategoria({ nome, cor })
+              const categoria = await criarCategoria({ nome, cor, tipo })
               onEscolher({ categoryId: categoria.id })
             }
             onFechar()

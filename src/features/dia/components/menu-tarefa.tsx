@@ -117,6 +117,7 @@ export function MenuTarefa({
             <Paperclip /> Anotação e anexos
           </DropdownMenuItem>
           <SubmenuCategoria
+            tipo="grupo"
             atual={tarefa}
             onEscolher={(categoria) => void definirCategoria(tarefa.id, categoria)}
             onFechar={() => setIsMenuAberto(false)}

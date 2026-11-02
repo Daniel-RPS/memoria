@@ -125,6 +125,25 @@ describe('backup', () => {
     expect((await db.procedures.toArray())[0]).toMatchObject({ subcategoryId: jardim.id })
   })
 
+  it('exporta e importa o tipo das categorias', async () => {
+    await criarCategoria({ nome: 'Github', tipo: 'grupo' })
+    await criarCategoria({ nome: 'Github', tipo: 'procedimento' })
+    const arquivo = JSON.stringify(await exportarDados())
+    const tipos = JSON.parse(arquivo).tabelas.categories.map((item: { tipo: string }) => item.tipo)
+    expect(tipos.sort()).toEqual(['grupo', 'procedimento'])
+
+    await Promise.all(db.tables.map((tabela) => tabela.clear()))
+    const leitura = lerBackup(arquivo, versaoDoBanco())
+    if (!leitura.isValido) throw new Error(leitura.mensagem)
+    await importarDados(leitura.backup)
+
+    const categorias = await listarCategorias()
+    expect(categorias.map(({ nome, tipo }) => `${tipo}:${nome}`).sort()).toEqual([
+      'grupo:Github',
+      'procedimento:Github',
+    ])
+  })
+
   it('exporta e importa o momento da conclusão de tarefas e itens de grupo (mapa do Início)', async () => {
     const tarefa = await criarTarefa({ titulo: 'Feita', data: '2026-10-30' })
     await definirConclusao(tarefa.id, true)
@@ -161,8 +180,24 @@ describe('backup', () => {
     const backup = await exportarDados()
     // Dois registros com o mesmo id fazem o bulkAdd falhar depois de limpar as tabelas.
     backup.tabelas.categories.push(
-      { id: 'repetido', nome: 'A', cor: '#000000', ordem: 1, criadoEm: '', atualizadoEm: '' },
-      { id: 'repetido', nome: 'B', cor: '#000000', ordem: 2, criadoEm: '', atualizadoEm: '' },
+      {
+        id: 'repetido',
+        nome: 'A',
+        cor: '#000000',
+        tipo: 'grupo',
+        ordem: 1,
+        criadoEm: '',
+        atualizadoEm: '',
+      },
+      {
+        id: 'repetido',
+        nome: 'B',
+        cor: '#000000',
+        tipo: 'grupo',
+        ordem: 2,
+        criadoEm: '',
+        atualizadoEm: '',
+      },
     )
     backup.tabelas.tasks = []
 

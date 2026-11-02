@@ -1,4 +1,4 @@
-import type { Category, Subcategory, Task } from '@/db/types'
+import type { Category, Subcategory, Task, TipoCategoria } from '@/db/types'
 import { variacaoCor } from '@/lib/cores'
 
 export interface CategoriaComSubcategorias extends Category {
@@ -35,16 +35,17 @@ export function montarCategorias(
 }
 
 type SemOrdem<T> = Omit<T, 'ordem'> & { ordem?: number }
+type SemTipo<T> = Omit<T, 'tipo'> & { tipo?: TipoCategoria }
 
 /**
  * Dá `ordem` a quem não tem (banco antes da v8, backups antes do formato 5): categorias em
  * ordem alfabética e subcategorias pela criação, que era a ordem mostrada antes. Quem já tem
  * `ordem` fica como está; as novas vão para depois delas.
  */
-export function preencherOrdem(
-  categorias: SemOrdem<Category>[],
+export function preencherOrdem<C extends SemOrdem<SemTipo<Category>>>(
+  categorias: C[],
   subcategorias: SemOrdem<Subcategory>[],
-): { categorias: Category[]; subcategorias: Subcategory[] } {
+): { categorias: (C & { ordem: number })[]; subcategorias: Subcategory[] } {
   function numerar<T extends { ordem?: number }>(itens: T[], comparar: (a: T, b: T) => number) {
     const maior = Math.max(0, ...itens.flatMap((item) => item.ordem ?? []))
     const semOrdem = itens.filter((item) => item.ordem === undefined).sort(comparar)
@@ -61,6 +62,105 @@ export function preencherOrdem(
         porCriacao,
       ),
     ),
+  }
+}
+
+/** Rótulos de cada tipo, para seções, avisos e menus. */
+export const NOMES_DO_TIPO: Record<TipoCategoria, { singular: string; plural: string }> = {
+  grupo: { singular: 'Grupo', plural: 'Grupos' },
+  procedimento: { singular: 'Procedimento', plural: 'Procedimentos' },
+}
+
+export function outroTipo(tipo: TipoCategoria): TipoCategoria {
+  return tipo === 'grupo' ? 'procedimento' : 'grupo'
+}
+
+/** Só as categorias do tipo, mantendo a ordem recebida. */
+export function categoriasDoTipo<T extends { tipo: TipoCategoria }>(
+  categorias: T[],
+  tipo: TipoCategoria,
+) {
+  return categorias.filter((categoria) => categoria.tipo === tipo)
+}
+
+interface ComCategoria {
+  categoryId?: string
+  subcategoryId?: string
+}
+
+/**
+ * Dá `tipo` a quem não tem (banco antes da v9, backups antes do formato 6), pelo uso:
+ * só em tarefas/grupos ou sem uso → grupo; só em procedimentos → procedimento. Usada pelos
+ * dois vira duas com o mesmo nome e cor: a original (mesmo id) fica como grupo e uma cópia,
+ * com as subcategorias copiadas, passa a ser a dos procedimentos, que são religados a ela.
+ * Quem já tem `tipo` fica como está. Havendo mudança, a `ordem` é renumerada dentro de cada
+ * tipo, mantendo a sequência anterior.
+ */
+export function separarPorTipo<P extends ComCategoria>(dados: {
+  categorias: SemTipo<Category>[]
+  subcategorias: Subcategory[]
+  tarefas: ComCategoria[]
+  grupos: ComCategoria[]
+  procedimentos: P[]
+}): { categorias: Category[]; subcategorias: Subcategory[]; procedimentos: P[] } {
+  const semTipo = dados.categorias.filter((categoria) => categoria.tipo === undefined)
+  if (semTipo.length === 0) {
+    return { ...dados, categorias: dados.categorias as Category[] }
+  }
+  const idsDeGrupo = new Set(
+    [...dados.tarefas, ...dados.grupos].flatMap((item) => item.categoryId ?? []),
+  )
+  const idsDeProcedimento = new Set(dados.procedimentos.flatMap((item) => item.categoryId ?? []))
+
+  const categorias: Category[] = []
+  const subcategoriasNovas: Subcategory[] = []
+  /** Categoria (e subcategorias) original → cópia, para religar os procedimentos. */
+  const copiaDe = new Map<string, string>()
+  for (const categoria of dados.categorias) {
+    if (categoria.tipo !== undefined) {
+      categorias.push(categoria as Category)
+      continue
+    }
+    const isDeGrupo = idsDeGrupo.has(categoria.id)
+    const isDeProcedimento = idsDeProcedimento.has(categoria.id)
+    if (!isDeGrupo || !isDeProcedimento) {
+      categorias.push({ ...categoria, tipo: isDeProcedimento ? 'procedimento' : 'grupo' })
+      continue
+    }
+    const copia: Category = { ...categoria, id: crypto.randomUUID(), tipo: 'procedimento' }
+    categorias.push({ ...categoria, tipo: 'grupo' }, copia)
+    copiaDe.set(categoria.id, copia.id)
+    for (const subcategoria of dados.subcategorias) {
+      if (subcategoria.categoryId !== categoria.id) continue
+      const subcopia = { ...subcategoria, id: crypto.randomUUID(), categoryId: copia.id }
+      subcategoriasNovas.push(subcopia)
+      copiaDe.set(subcategoria.id, subcopia.id)
+    }
+  }
+
+  const ordemNoTipo = new Map<string, number>()
+  for (const tipo of ['grupo', 'procedimento'] as const) {
+    categoriasDoTipo(categorias, tipo)
+      .sort(porOrdem)
+      .forEach((categoria, indice) => ordemNoTipo.set(categoria.id, indice + 1))
+  }
+
+  return {
+    categorias: categorias.map((categoria) => ({
+      ...categoria,
+      ordem: ordemNoTipo.get(categoria.id) ?? categoria.ordem,
+    })),
+    subcategorias: [...dados.subcategorias, ...subcategoriasNovas],
+    procedimentos: dados.procedimentos.map((procedimento) => {
+      const novaCategoria = procedimento.categoryId && copiaDe.get(procedimento.categoryId)
+      if (!novaCategoria) return procedimento
+      const novaSubcategoria = procedimento.subcategoryId && copiaDe.get(procedimento.subcategoryId)
+      return {
+        ...procedimento,
+        categoryId: novaCategoria,
+        ...(novaSubcategoria ? { subcategoryId: novaSubcategoria } : {}),
+      }
+    }),
   }
 }
 
@@ -99,6 +199,18 @@ export function somarUso(chaves: {
     }
   }
   return uso
+}
+
+/** Só o uso que conta para o tipo: tarefas e grupos, ou procedimentos. */
+export function usoNoTipo(uso: UsoDaCategoria, tipo: TipoCategoria): UsoDaCategoria {
+  return tipo === 'grupo'
+    ? { ...uso, procedimentos: 0 }
+    : { ...SEM_USO, procedimentos: uso.procedimentos }
+}
+
+/** Quantos itens usam a categoria no próprio tipo. */
+export function totalDoUso(uso: UsoDaCategoria) {
+  return uso.tarefas + uso.grupos + uso.procedimentos
 }
 
 /** "4 tarefas · 2 grupos · 1 procedimento"; "Sem uso" quando nada usa. */

@@ -1,8 +1,8 @@
 import { db } from '@/db/database'
-import type { Category, Subcategory } from '@/db/types'
+import type { Category, Subcategory, TipoCategoria } from '@/db/types'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
-import { isMesmoNome, montarCategorias, somarUso } from '@/lib/categorias'
-import { proximaCor } from '@/lib/cores'
+import { isMesmoNome, montarCategorias, NOMES_DO_TIPO, outroTipo, somarUso } from '@/lib/categorias'
+import { coresRecentes, proximaCor } from '@/lib/cores'
 import { ErroDeValidacao } from '@/lib/erros'
 import { esquemaNomeCategoria } from '@/lib/esquemas'
 
@@ -17,13 +17,38 @@ function maiorOrdem(itens: { ordem: number }[]) {
   return Math.max(0, ...itens.map((item) => item.ordem))
 }
 
-/** Todas as categorias com suas subcategorias, na ordem do usuário. */
+function categoriasDoTipoNoBanco(tipo: TipoCategoria) {
+  return db.categories.filter((categoria) => categoria.tipo === tipo).toArray()
+}
+
+/** Lança `ErroDeValidacao` se outra categoria do mesmo tipo já tem o nome. */
+function exigirNomeLivre(nome: string, doTipo: Category[], idIgnorado?: string) {
+  if (
+    doTipo.some((categoria) => categoria.id !== idIgnorado && isMesmoNome(categoria.nome, nome))
+  ) {
+    throw new ErroDeValidacao('Já existe uma categoria com esse nome.')
+  }
+}
+
+/**
+ * Todas as categorias (dos dois tipos) com suas subcategorias, na ordem do usuário. As telas
+ * buscam a cor pelo id em todas; quem escolhe categoria filtra pelo tipo.
+ */
 export async function listarCategorias() {
   const [categorias, subcategorias] = await Promise.all([
     db.categories.toArray(),
     db.subcategories.toArray(),
   ])
   return montarCategorias(categorias, subcategorias)
+}
+
+/** Últimas cores personalizadas (fora da paleta) usadas em categorias e subcategorias. */
+export async function listarCoresRecentes() {
+  const [categorias, subcategorias] = await Promise.all([
+    db.categories.toArray(),
+    db.subcategories.toArray(),
+  ])
+  return coresRecentes([...categorias, ...subcategorias])
 }
 
 /**
@@ -43,20 +68,27 @@ export async function contarUsoDasCategorias() {
   })
 }
 
-/** Cria a categoria no fim da lista; sem `cor`, usa a próxima cor livre da paleta. */
-export async function criarCategoria(dados: { nome: string; cor?: string }): Promise<Category> {
+/**
+ * Cria a categoria no fim da lista do tipo (sem tipo = grupo); sem `cor`, usa a próxima cor
+ * livre da paleta nesse tipo. Nome repetido só é recusado dentro do mesmo tipo.
+ */
+export async function criarCategoria(dados: {
+  nome: string
+  cor?: string
+  tipo?: TipoCategoria
+}): Promise<Category> {
   const nome = nomeValido(dados.nome)
+  const tipo = dados.tipo ?? 'grupo'
   return db.transaction('rw', db.categories, async () => {
-    const existentes = await db.categories.toArray()
-    if (existentes.some((categoria) => isMesmoNome(categoria.nome, nome))) {
-      throw new ErroDeValidacao('Já existe uma categoria com esse nome.')
-    }
+    const doTipo = await categoriasDoTipoNoBanco(tipo)
+    exigirNomeLivre(nome, doTipo)
     const momento = agora()
     const categoria: Category = {
       id: crypto.randomUUID(),
       nome,
-      cor: dados.cor ?? proximaCor(existentes),
-      ordem: maiorOrdem(existentes) + 1,
+      cor: dados.cor ?? proximaCor(doTipo),
+      tipo,
+      ordem: maiorOrdem(doTipo) + 1,
       criadoEm: momento,
       atualizadoEm: momento,
     }
@@ -68,12 +100,9 @@ export async function criarCategoria(dados: { nome: string; cor?: string }): Pro
 export async function atualizarCategoria(id: string, mudancas: { nome?: string; cor?: string }) {
   const nome = mudancas.nome === undefined ? undefined : nomeValido(mudancas.nome)
   await db.transaction('rw', db.categories, async () => {
-    if (nome !== undefined) {
-      const outras = await db.categories.filter((categoria) => categoria.id !== id).toArray()
-      if (outras.some((categoria) => isMesmoNome(categoria.nome, nome))) {
-        throw new ErroDeValidacao('Já existe uma categoria com esse nome.')
-      }
-    }
+    const atual = await db.categories.get(id)
+    if (!atual) return
+    if (nome !== undefined) exigirNomeLivre(nome, await categoriasDoTipoNoBanco(atual.tipo), id)
     await db.categories.update(id, {
       ...(nome !== undefined && { nome }),
       ...(mudancas.cor !== undefined && { cor: mudancas.cor }),
@@ -82,11 +111,44 @@ export async function atualizarCategoria(id: string, mudancas: { nome?: string; 
   })
 }
 
-/** Grava a nova posição de `idMovido` entre as categorias (`idsEmOrdem` já reordenado). */
+/**
+ * Grava a nova posição de `idMovido` entre as categorias de UM tipo (`idsEmOrdem` já
+ * reordenado, só com as do tipo): a ordem do outro tipo não muda.
+ */
 export async function reordenarCategoria(idsEmOrdem: string[], idMovido: string) {
   await db.transaction('rw', db.categories, () =>
     gravarNovaPosicao(db.categories, idsEmOrdem, idMovido),
   )
+}
+
+/**
+ * Passa a categoria (com as subcategorias) para o outro tipo, no fim da lista dele. Os itens
+ * do tipo antigo que a usavam (tarefas e grupos, ou procedimentos) ficam sem categoria.
+ * Recusa com `ErroDeValidacao` se o outro tipo já tem uma categoria com o mesmo nome.
+ */
+export async function moverCategoriaDeTipo(id: string) {
+  await db.transaction('rw', [db.categories, db.tasks, db.procedures, db.groupSeries], async () => {
+    const categoria = await db.categories.get(id)
+    if (!categoria) return
+    const destino = outroTipo(categoria.tipo)
+    const doDestino = await categoriasDoTipoNoBanco(destino)
+    if (doDestino.some((outra) => isMesmoNome(outra.nome, categoria.nome))) {
+      throw new ErroDeValidacao(
+        `Já existe “${categoria.nome}” em ${NOMES_DO_TIPO[destino].plural}. Renomeie antes de mover.`,
+      )
+    }
+    const momento = agora()
+    const semCategoria = { categoryId: undefined, subcategoryId: undefined, atualizadoEm: momento }
+    const tabelas = categoria.tipo === 'grupo' ? [db.tasks, db.groupSeries] : [db.procedures]
+    for (const tabela of tabelas) {
+      await tabela.where('categoryId').equals(id).modify(semCategoria)
+    }
+    await db.categories.update(id, {
+      tipo: destino,
+      ordem: maiorOrdem(doDestino) + 1,
+      atualizadoEm: momento,
+    })
+  })
 }
 
 /**

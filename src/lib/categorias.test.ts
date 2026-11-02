@@ -5,6 +5,7 @@ import {
   corDaSubcategoria,
   montarCategorias,
   preencherOrdem,
+  separarPorTipo,
   somarUso,
   textoDoUso,
 } from '@/lib/categorias'
@@ -16,6 +17,7 @@ const casa: Category = {
   id: 'casa',
   nome: 'Casa',
   cor: '#3366c2',
+  tipo: 'grupo',
   ordem: 1,
   criadoEm: '1',
 }
@@ -24,6 +26,7 @@ const trabalho: Category = {
   id: 'trab',
   nome: 'trabalho',
   cor: '#c8402f',
+  tipo: 'grupo',
   ordem: 2,
   criadoEm: '2',
 }
@@ -164,5 +167,82 @@ describe('uso das categorias', () => {
       '4 tarefas · 2 grupos · 1 procedimento',
     )
     expect(textoDoUso({ tarefas: 0, grupos: 0, procedimentos: 0 })).toBe('Sem uso')
+  })
+})
+
+describe('separarPorTipo (migração v9 e backup antigo)', () => {
+  const comum = { criadoEm: '1', atualizadoEm: '1' }
+  const semTipo = (id: string, nome: string, ordem: number) => ({
+    ...comum,
+    id,
+    nome,
+    cor: '#3366c2',
+    ordem,
+  })
+  const subGithub: Subcategory = {
+    ...comum,
+    id: 'sub',
+    categoryId: 'github',
+    nome: 'Ações',
+    cor: '#2f8a57',
+    ordem: 1,
+  }
+
+  it('classifica pelo uso: só grupo, só procedimento e sem uso', () => {
+    const resultado = separarPorTipo({
+      categorias: [
+        semTipo('casa', 'Casa', 1),
+        semTipo('receitas', 'Receitas', 2),
+        semTipo('vazia', 'Vazia', 3),
+        semTipo('trabalho', 'Trabalho', 4),
+      ],
+      subcategorias: [],
+      tarefas: [{ categoryId: 'casa' }],
+      grupos: [{ categoryId: 'trabalho' }],
+      procedimentos: [{ categoryId: 'receitas' }],
+    })
+    expect(resultado.categorias.map(({ id, tipo, ordem }) => ({ id, tipo, ordem }))).toEqual([
+      { id: 'casa', tipo: 'grupo', ordem: 1 },
+      { id: 'receitas', tipo: 'procedimento', ordem: 1 },
+      { id: 'vazia', tipo: 'grupo', ordem: 2 },
+      { id: 'trabalho', tipo: 'grupo', ordem: 3 },
+    ])
+    expect(resultado.subcategorias).toEqual([])
+  })
+
+  it('usada pelos dois: divide em duas (mesmo nome e cor), copia subcategorias e religa', () => {
+    const procedimento = { id: 'p', categoryId: 'github', subcategoryId: 'sub' }
+    const semSub = { id: 'p2', categoryId: 'github' }
+    const resultado = separarPorTipo({
+      categorias: [semTipo('github', 'Github', 1)],
+      subcategorias: [subGithub],
+      tarefas: [{ categoryId: 'github', subcategoryId: 'sub' }],
+      grupos: [],
+      procedimentos: [procedimento, semSub],
+    })
+    const [original, copia] = resultado.categorias
+    expect(original).toMatchObject({ id: 'github', nome: 'Github', tipo: 'grupo', ordem: 1 })
+    expect(copia).toMatchObject({ nome: 'Github', cor: '#3366c2', tipo: 'procedimento', ordem: 1 })
+    expect(copia.id).not.toBe('github')
+
+    const subcopia = resultado.subcategorias.find((item) => item.id !== 'sub')
+    expect(resultado.subcategorias).toHaveLength(2)
+    expect(subcopia).toMatchObject({ categoryId: copia.id, nome: 'Ações', cor: '#2f8a57' })
+    expect(resultado.procedimentos).toEqual([
+      { id: 'p', categoryId: copia.id, subcategoryId: subcopia?.id },
+      { id: 'p2', categoryId: copia.id },
+    ])
+  })
+
+  it('quem já tem tipo fica como está', () => {
+    const categorias = [{ ...casa }, { ...trabalho, tipo: 'procedimento' as const }]
+    const resultado = separarPorTipo({
+      categorias,
+      subcategorias: [],
+      tarefas: [{ categoryId: 'trab' }],
+      grupos: [],
+      procedimentos: [],
+    })
+    expect(resultado.categorias).toBe(categorias)
   })
 })
