@@ -31,6 +31,7 @@ function item(id: string, cardId: string, ordem: number, extras: Partial<GroupIt
     ordem,
     status: 'pendente',
     dataOriginal: '2026-11-02',
+    cadeiaId: id,
     criadoEm: MOMENTO,
     atualizadoEm: MOMENTO,
     ...extras,

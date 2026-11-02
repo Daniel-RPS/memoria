@@ -7,10 +7,9 @@ export interface GrupoParaEscolher {
   titulo: string
 }
 
-/** O que as linhas da folha precisam saber além da tarefa: anexos, anotação e cards do dia. */
+/** O que as linhas da folha precisam saber além da tarefa: anexos e cards do dia. */
 export interface ExtrasDaFolha {
   anexosPorTarefa: Map<string, number>
-  tarefasComNota: Set<string>
   gruposDoDia: GrupoParaEscolher[]
   /** Dia do card que recebeu cada item transferido (por id do card). */
   dataDoDestino: Map<string, DataLocal>
@@ -18,7 +17,6 @@ export interface ExtrasDaFolha {
 
 export const ContextoExtras = createContext<ExtrasDaFolha>({
   anexosPorTarefa: new Map(),
-  tarefasComNota: new Set(),
   gruposDoDia: [],
   dataDoDestino: new Map(),
 })
@@ -27,7 +25,6 @@ export function useExtrasDaTarefa(taskId: string) {
   const extras = useContext(ContextoExtras)
   return {
     quantidadeAnexos: extras.anexosPorTarefa.get(taskId) ?? 0,
-    isComNota: extras.tarefasComNota.has(taskId),
   }
 }
 

@@ -137,13 +137,13 @@ describe('Anexos', () => {
   })
 })
 
-describe('Anotação e anexos da tarefa', () => {
+describe('Notas ligadas pelo menu ⋯', () => {
   beforeEach(async () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
     window.localStorage.clear()
   })
 
-  it('pelo menu, escreve a anotação e a linha passa a indicar que tem nota', async () => {
+  it('"Adicionar nota" abre a gaveta, salva ligada à tarefa e a linha mostra o ícone', async () => {
     const usuario = userEvent.setup()
     const tarefa = await criarTarefa({ titulo: 'Ligar para o banco', data: hoje() })
     renderizarApp(`/dia/${hoje()}`)
@@ -151,20 +151,52 @@ describe('Anotação e anexos da tarefa', () => {
     await usuario.click(
       await screen.findByRole('button', { name: 'Mais ações para Ligar para o banco' }),
     )
-    await usuario.click(await screen.findByRole('menuitem', { name: 'Anotação e anexos' }))
-    const anotacao = await screen.findByLabelText('Anotação da tarefa Ligar para o banco')
-    await waitFor(() => expect(anotacao).toHaveFocus())
-    await usuario.type(anotacao, 'Protocolo 12345')
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar nota' }))
+    const gaveta = await screen.findByRole('dialog', { name: 'Notas' })
+    expect((await within(gaveta).findAllByText('Ligar para o banco')).length).toBeGreaterThan(0)
+    const texto = within(gaveta).getByLabelText('Texto da nota')
+    await waitFor(() => expect(texto).toHaveFocus())
+    await usuario.type(texto, 'Protocolo 12345')
+    expect(await within(gaveta).findByText('Salvo')).toBeInTheDocument()
+    // Com a gaveta aberta o resto da tela fica fora do alcance (modal); fecha para conferir.
+    await usuario.keyboard('{Escape}')
 
     expect(
-      await screen.findByRole('button', {
-        name: 'Anotação e anexos de Ligar para o banco: tem anotação',
-      }),
+      await screen.findByRole('button', { name: 'Notas de Ligar para o banco: 1 nota' }),
     ).toBeInTheDocument()
     const [nota] = await db.notes.toArray()
     expect(nota).toMatchObject({
       conteudo: 'Protocolo 12345',
-      dono: { tipo: 'task', id: tarefa.id },
+      vinculo: { tipo: 'tarefa', id: tarefa.id },
     })
+  })
+
+  it('fechar a gaveta sem escrever não deixa nota vazia', async () => {
+    const usuario = userEvent.setup()
+    await criarTarefa({ titulo: 'Pagar luz', data: hoje() })
+    renderizarApp(`/dia/${hoje()}`)
+
+    await usuario.click(await screen.findByRole('button', { name: 'Mais ações para Pagar luz' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar nota' }))
+    await screen.findByRole('dialog', { name: 'Notas' })
+    await waitFor(async () => expect(await db.notes.count()).toBe(1))
+    await usuario.keyboard('{Escape}')
+    await waitFor(async () => expect(await db.notes.count()).toBe(0))
+  })
+
+  it('na aba Notas, o cartão diz a quem a nota pertence', async () => {
+    const tarefa = await criarTarefa({ titulo: 'Ligar para Fulano', data: hoje() })
+    await criarNota({ conteudo: 'Número novo', vinculo: { tipo: 'tarefa', id: tarefa.id } })
+    await criarNota({ titulo: 'Ideias' })
+    renderizarApp('/notas')
+
+    const lista = await screen.findByRole('region', { name: 'Lista de notas' })
+    const ligada = await within(lista).findByRole('article', { name: 'Número novo' })
+    expect(within(ligada).getByRole('link', { name: /Ligar para Fulano/ })).toHaveAttribute(
+      'href',
+      `/dia/${hoje()}`,
+    )
+    const avulsas = within(lista).getByRole('region', { name: 'Notas avulsas' })
+    expect(within(avulsas).getByText('Nota avulsa')).toBeInTheDocument()
   })
 })

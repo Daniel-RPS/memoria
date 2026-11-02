@@ -1,7 +1,7 @@
 import { db } from '@/db/database'
 import type { DataLocal, GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
-import { excluirNotasDe } from '@/db/repositories/note-repository'
+import { soltarNotasSemAlvo, trocarVinculoDasNotas } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 import {
   adiarTarefas,
@@ -76,6 +76,9 @@ export async function listarGruposAtrasados(hoje: DataLocal) {
     itens,
   }
 }
+
+/** Tabelas que excluir item ou card toca (as notas sem alvo viram avulsas). */
+const TABELAS_DE_EXCLUSAO = [db.tasks, db.groupSeries, db.groupCards, db.groupItems, db.notes]
 
 async function serieComTitulo(titulo: string) {
   const series = await db.groupSeries.toArray()
@@ -159,8 +162,10 @@ export async function criarItem(cardId: string, titulo: string): Promise<GroupIt
     const card = await db.groupCards.get(cardId)
     if (!card) throw new Error('Grupo não encontrado.')
     const momento = agora()
+    const id = crypto.randomUUID()
     const item: GroupItem = {
-      id: crypto.randomUUID(),
+      id,
+      cadeiaId: id,
       cardId,
       titulo: titulo.trim(),
       ordem: (await maiorOrdemDoCard(cardId)) + 1,
@@ -233,8 +238,9 @@ export async function adicionarItensNaSerie(
 
 /** Desfaz `adicionarItensNaSerie`: apaga os itens; card criado some, reaberto volta a arquivado. */
 export async function desfazerItensAdicionados(resultado: ItensAdicionados) {
-  await db.transaction('rw', db.groupSeries, db.groupCards, db.groupItems, async () => {
+  await db.transaction('rw', TABELAS_DE_EXCLUSAO, async () => {
     await db.groupItems.bulkDelete(resultado.idsItens)
+    await soltarNotasSemAlvo(resultado.idsItens.map((id) => ({ tipo: 'item', id })))
     if (resultado.card === 'criado') await excluirGrupo(resultado.cardId)
     else if (resultado.card === 'reaberto') await arquivarGrupo(resultado.cardId)
   })
@@ -303,8 +309,14 @@ export async function arquivarItem(id: string) {
   await db.groupItems.update(id, { status: 'arquivado', atualizadoEm: agora() })
 }
 
+/** Exclui o item. As notas da cadeia só viram avulsas se não sobrar nenhum item dela. */
 export async function excluirItem(id: string) {
-  await db.groupItems.delete(id)
+  await db.transaction('rw', TABELAS_DE_EXCLUSAO, async () => {
+    const item = await db.groupItems.get(id)
+    if (!item) return
+    await db.groupItems.delete(id)
+    await soltarNotasSemAlvo([{ tipo: 'item', id: item.cadeiaId }])
+  })
 }
 
 /**
@@ -330,15 +342,23 @@ export async function arquivarGrupo(cardId: string) {
   })
 }
 
-/** Exclusão definitiva do card e dos itens dele. A série some quando fica sem nenhum card. */
+/**
+ * Exclusão definitiva do card e dos itens dele. A série some quando fica sem nenhum card.
+ * Notas do grupo ou de itens que deixaram de existir viram avulsas (nunca são apagadas).
+ */
 export async function excluirGrupo(cardId: string) {
-  await db.transaction('rw', db.groupSeries, db.groupCards, db.groupItems, async () => {
+  await db.transaction('rw', TABELAS_DE_EXCLUSAO, async () => {
     const card = await db.groupCards.get(cardId)
     if (!card) return
+    const itens = await db.groupItems.where('cardId').equals(cardId).toArray()
     await db.groupItems.where('cardId').equals(cardId).delete()
     await db.groupCards.delete(cardId)
     const restantes = await db.groupCards.where('seriesId').equals(card.seriesId).count()
     if (restantes === 0) await db.groupSeries.delete(card.seriesId)
+    await soltarNotasSemAlvo([
+      { tipo: 'grupo', id: card.seriesId },
+      ...itens.map((item) => ({ tipo: 'item' as const, id: item.cadeiaId })),
+    ])
   })
 }
 
@@ -563,8 +583,9 @@ export async function desfazerAcao(resultado: ResultadoAcao) {
 }
 
 /**
- * Converte a tarefa solta em item do card (mesmo id), na posição de `idsEmOrdem` (itens do
- * card já com ela) ou no fim. Subtarefas, anotação e anexos da tarefa não passam para o item.
+ * Converte a tarefa solta em item do card (mesmo id, começa uma cadeia nova), na posição de
+ * `idsEmOrdem` (itens do card já com ela) ou no fim. As notas passam para o item; subtarefas e
+ * anexos da tarefa não passam.
  */
 export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrdem?: string[]) {
   await db.transaction(
@@ -575,6 +596,7 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
       if (!tarefa || !card || tarefa.status === 'arquivada') return
       const item: GroupItem = {
         id: tarefa.id,
+        cadeiaId: tarefa.id,
         cardId,
         titulo: tarefa.titulo,
         ordem: (await maiorOrdemDoCard(cardId)) + 1,
@@ -584,9 +606,11 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
         criadoEm: tarefa.criadoEm,
         atualizadoEm: agora(),
       }
-      const dono = [{ tipo: 'task' as const, id: tarefa.id }]
-      await excluirAnexosDe(dono)
-      await excluirNotasDe(dono)
+      await excluirAnexosDe([{ tipo: 'task' as const, id: tarefa.id }])
+      await trocarVinculoDasNotas(
+        { tipo: 'tarefa', id: tarefa.id },
+        { tipo: 'item', id: tarefa.id },
+      )
       await db.subtasks.where('taskId').equals(tarefa.id).delete()
       await db.tasks.delete(tarefa.id)
       await db.groupItems.add(item)
@@ -597,10 +621,11 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
 
 /**
  * Converte o item (pendente ou feito) em tarefa solta no dia do card (mesmo id), na posição
- * de `idsEmOrdemNoDia` (tarefas e cards já com ela) ou no fim do dia.
+ * de `idsEmOrdemNoDia` (tarefas e cards já com ela) ou no fim do dia. As notas da cadeia vão
+ * com ele (os registros "transferido" de outros dias deixam de mostrá-las).
  */
 export async function tirarDoGrupo(itemId: string, idsEmOrdemNoDia?: string[]) {
-  await db.transaction('rw', db.tasks, db.groupCards, db.groupItems, async () => {
+  await db.transaction('rw', db.tasks, db.groupCards, db.groupItems, db.notes, async () => {
     const item = await db.groupItems.get(itemId)
     if (!item || (item.status !== 'pendente' && item.status !== 'concluido')) return
     const card = await db.groupCards.get(item.cardId)
@@ -618,6 +643,10 @@ export async function tirarDoGrupo(itemId: string, idsEmOrdemNoDia?: string[]) {
     }
     await db.groupItems.delete(item.id)
     await db.tasks.add(tarefa)
+    await trocarVinculoDasNotas(
+      { tipo: 'item', id: item.cadeiaId },
+      { tipo: 'tarefa', id: tarefa.id },
+    )
     if (idsEmOrdemNoDia) await gravarNovaPosicao(tabelaDoDia, idsEmOrdemNoDia, tarefa.id)
   })
 }

@@ -2,10 +2,12 @@ import { useState, type CSSProperties } from 'react'
 import { ListChecks, Plus } from 'lucide-react'
 import { Link } from 'react-router'
 import { CampoNovoItem } from '@/components/campo-novo-item'
+import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { useCorDeTraco } from '@/hooks/use-cor-na-tela'
 import { classificarTarefa } from '@/lib/categorias'
 import type { GrupoDoResumo } from '@/lib/inicio'
+import { vinculoDoItem } from '@/lib/notas'
 import { BotaoTrazer, LinhaMarcavel, SeloHaDias } from '@/features/inicio/components/linha-marcavel'
 import { useAcoesDoInicio } from '@/features/inicio/hooks/use-acoes-do-inicio'
 
@@ -49,6 +51,11 @@ export function CardDeGrupo({ resumo, onTrazer }: CardDeGrupoProps) {
         >
           {serie.titulo}
         </Link>
+        <IndicadorNotas
+          vinculo={{ tipo: 'grupo', id: serie.id }}
+          titulo={serie.titulo}
+          revelarCom="grupo"
+        />
         {isAtrasado ? (
           <BotaoTrazer
             rotulo={`Trazer pendentes de ${serie.titulo} para hoje`}
@@ -92,7 +99,9 @@ export function CardDeGrupo({ resumo, onTrazer }: CardDeGrupoProps) {
             isFeita={isFeito}
             onMarcar={(isFeita) => void definirConclusaoItem(item.id, isFeita)}
             selo={isAtrasado && dias !== null && <SeloHaDias dias={dias} />}
-          />
+          >
+            <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} revelarCom="linha" />
+          </LinhaMarcavel>
         ))}
       </ul>
       {isAdicionando && (

@@ -211,3 +211,26 @@ export function filtrarSeries(lista: SerieParaEscolher[], termo: string) {
   if (!busca) return lista
   return lista.filter(({ serie }) => normalizar(serie.titulo).includes(busca))
 }
+
+/**
+ * Preenche `cadeiaId` de quem não tem: o id do ancestral mais antigo que ainda existe na
+ * cadeia `origemItemId` (o próprio id quando não há). Quem já tem fica como está.
+ * Usada na migração do banco (v10) e ao ler backup antigo.
+ */
+export function preencherCadeias<T extends Pick<GroupItem, 'id' | 'origemItemId'>>(
+  itens: (T & { cadeiaId?: string })[],
+): (T & { cadeiaId: string })[] {
+  const porId = new Map(itens.map((item) => [item.id, item]))
+  const cadeiaDe = (item: T & { cadeiaId?: string }): string => {
+    const vistos = new Set<string>()
+    let atual = item
+    while (!atual.cadeiaId && atual.origemItemId && !vistos.has(atual.id)) {
+      vistos.add(atual.id)
+      const pai = porId.get(atual.origemItemId)
+      if (!pai) break
+      atual = pai
+    }
+    return atual.cadeiaId ?? atual.id
+  }
+  return itens.map((item) => ({ ...item, cadeiaId: item.cadeiaId ?? cadeiaDe(item) }))
+}

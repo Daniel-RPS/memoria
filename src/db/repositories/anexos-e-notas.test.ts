@@ -7,13 +7,7 @@ import {
   listarAnexos,
   restaurarAnexo,
 } from '@/db/repositories/attachment-repository'
-import {
-  criarNota,
-  excluirNota,
-  listarNotas,
-  obterNotaDoDono,
-  salvarNotaDoDono,
-} from '@/db/repositories/note-repository'
+import { criarNota, excluirNota, listarNotas } from '@/db/repositories/note-repository'
 import { criarTarefa, excluirTarefa } from '@/db/repositories/task-repository'
 import { esquemaLink, formatarDuracao, nomeDoLink, nomePadrao } from '@/lib/anexos'
 
@@ -87,22 +81,10 @@ describe('notas', () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
   })
 
-  it('a anotação da tarefa é criada, atualizada e apagada quando fica vazia', async () => {
-    const dono = { tipo: 'task' as const, id: 't1' }
-    await salvarNotaDoDono(dono, 'Ligar antes das 10h')
-    await salvarNotaDoDono(dono, 'Ligar antes das 11h')
-    expect((await obterNotaDoDono(dono))?.conteudo).toBe('Ligar antes das 11h')
-    expect(await db.notes.count()).toBe(1)
-
-    await salvarNotaDoDono(dono, '   ')
-    expect(await db.notes.count()).toBe(0)
-  })
-
-  it('a lista de notas mostra só as avulsas, da mais recente para a mais antiga', async () => {
+  it('a lista traz todas as notas (ligadas e avulsas), da mais recente para a mais antiga', async () => {
     const primeira = await criarNota({ titulo: 'Primeira' })
     await new Promise((resolve) => setTimeout(resolve, 5))
-    await criarNota({ titulo: 'Segunda' })
-    await salvarNotaDoDono({ tipo: 'task', id: 't' }, 'Anotação de tarefa')
+    await criarNota({ titulo: 'Segunda', vinculo: { tipo: 'tarefa', id: 't' } })
 
     expect((await listarNotas()).map((nota) => nota.titulo)).toEqual(['Segunda', 'Primeira'])
     await excluirNota(primeira.id)
@@ -127,16 +109,18 @@ describe('exclusão em cascata', () => {
     expect(await db.attachments.count()).toBe(0)
   })
 
-  it('excluir a tarefa apaga anotação e anexos dela, e só dela', async () => {
+  it('excluir a tarefa apaga os anexos dela (só dela); a nota fica avulsa', async () => {
     const tarefa = await criarTarefa({ titulo: 'Com anexos', data: '2026-10-30' })
     const outra = await criarTarefa({ titulo: 'Outra', data: '2026-10-30' })
-    await salvarNotaDoDono({ tipo: 'task', id: tarefa.id }, 'texto')
+    await criarNota({ conteudo: 'texto', vinculo: { tipo: 'tarefa', id: tarefa.id } })
     await adicionarAnexo({ dono: { tipo: 'task', id: tarefa.id }, tipo: 'foto', nome: 'F' })
     await adicionarAnexo({ dono: { tipo: 'task', id: outra.id }, tipo: 'foto', nome: 'G' })
 
     await excluirTarefa(tarefa.id)
 
-    expect(await db.notes.count()).toBe(0)
+    const [nota] = await db.notes.toArray()
+    expect(nota.conteudo).toBe('texto')
+    expect(nota.vinculo).toBeUndefined()
     expect((await db.attachments.toArray()).map((anexo) => anexo.nome)).toEqual(['G'])
   })
 })

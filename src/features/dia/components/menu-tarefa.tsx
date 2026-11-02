@@ -32,8 +32,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
 import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal, Task } from '@/db/types'
+import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { useGruposDoDia } from '@/features/dia/hooks/contexto-extras'
@@ -65,6 +67,7 @@ export function MenuTarefa({
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   const isPendente = tarefa.status === 'pendente'
   const isFutura = tarefa.data > hoje
+  const avisoNotas = useAvisoNotasAvulsas({ tipo: 'tarefa', id: tarefa.id }, isConfirmandoExclusao)
   // Ações que abrem um campo: o foco deve ficar nele, não voltar para o botão do menu.
   const isAbrindoCampoRef = useRef(false)
 
@@ -113,8 +116,9 @@ export function MenuTarefa({
           <DropdownMenuItem onSelect={() => abrirCampo(onAdicionarSubtarefa)}>
             <ListPlus /> Adicionar subtarefa
           </DropdownMenuItem>
+          <ItensDeNotaDoMenu vinculo={{ tipo: 'tarefa', id: tarefa.id }} />
           <DropdownMenuItem onSelect={() => abrirCampo(onAbrirAnexos)}>
-            <Paperclip /> Anotação e anexos
+            <Paperclip /> Anexos
           </DropdownMenuItem>
           <SubmenuCategoria
             tipo="grupo"
@@ -166,6 +170,9 @@ export function MenuTarefa({
             <AlertDialogDescription>
               A tarefa e as subtarefas dela serão apagadas de vez. Para só tirar do calendário, use
               Arquivar.
+              {avisoNotas && (
+                <span className="mt-2 block font-medium text-tinta">{avisoNotas}</span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

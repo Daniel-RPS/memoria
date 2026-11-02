@@ -9,6 +9,17 @@ import {
   Trash2,
 } from 'lucide-react'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
+import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -18,7 +29,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { DataLocal, GroupItem } from '@/db/types'
+import { contarNotasQueFicamAvulsas } from '@/db/repositories/note-repository'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
+import { avisoNotasAvulsas, vinculoDoItem } from '@/lib/notas'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 
 interface MenuItemGrupoProps {
@@ -37,9 +50,17 @@ export function MenuItemGrupo({ item, data, hoje, onRenomear }: MenuItemGrupoPro
   const { tirarDoGrupo, arquivarItem, excluirItem } = useAcoesGrupo()
   const { mover, adiar } = useMoverTarefas()
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
+  /** Notas que ficariam avulsas: só com elas o excluir pede confirmação. */
+  const [notasAoExcluir, setNotasAoExcluir] = useState(0)
   const isAbrindoCampoRef = useRef(false)
   const isPendente = item.status === 'pendente'
   const isTransferido = item.status === 'transferido'
+
+  async function handleExcluir() {
+    const quantas = await contarNotasQueFicamAvulsas({ tipo: 'item', id: item.id })
+    if (quantas > 0) setNotasAoExcluir(quantas)
+    else await excluirItem(item.id)
+  }
 
   return (
     <>
@@ -91,13 +112,14 @@ export function MenuItemGrupo({ item, data, hoje, onRenomear }: MenuItemGrupoPro
               </DropdownMenuItem>
             </>
           )}
+          <ItensDeNotaDoMenu vinculo={vinculoDoItem(item)} />
           {isPendente && (
             <DropdownMenuItem onSelect={() => void arquivarItem(item.id)}>
               <Archive /> Arquivar
             </DropdownMenuItem>
           )}
-          {!isTransferido && <DropdownMenuSeparator />}
-          <DropdownMenuItem variant="destructive" onSelect={() => void excluirItem(item.id)}>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={() => void handleExcluir()}>
             <Trash2 /> Excluir
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -112,6 +134,29 @@ export function MenuItemGrupo({ item, data, hoje, onRenomear }: MenuItemGrupoPro
         hoje={hoje}
         onEscolher={(destino) => void mover([], destino, { itens: [item.id] })}
       />
+
+      <AlertDialog
+        open={notasAoExcluir > 0}
+        onOpenChange={(aberto) => !aberto && setNotasAoExcluir(0)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir “{item.titulo}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O item será apagado de vez.{' '}
+              <span className="mt-2 block font-medium text-tinta">
+                {avisoNotasAvulsas(notasAoExcluir, 'item')}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => void excluirItem(item.id)}>
+              Excluir item
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

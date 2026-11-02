@@ -1,7 +1,7 @@
 import { db } from '@/db/database'
 import type { DataLocal } from '@/db/types'
 import { adicionarAnexo } from '@/db/repositories/attachment-repository'
-import { salvarNotaDoDono } from '@/db/repositories/note-repository'
+import { criarNota, excluirNota } from '@/db/repositories/note-repository'
 import {
   adicionarItensNaSerie,
   criarGrupo,
@@ -26,7 +26,7 @@ export type NovaCaptura =
       titulo: string
       data: DataLocal
       anexos?: AnexoDaCaptura[]
-      /** Vira a anotação da tarefa (as linhas depois do título). */
+      /** Vira uma nota ligada à tarefa (as linhas depois do título). */
       anotacao?: string
     } & CategoriaDaCaptura)
   | ({
@@ -46,7 +46,12 @@ export type NovaCaptura =
     }
 
 export type ResultadoCaptura =
-  | { tipo: 'tarefa'; id: string; data: DataLocal }
+  | {
+      tipo: 'tarefa'
+      id: string
+      data: DataLocal
+      /** Nota criada com a tarefa. */ idNota?: string
+    }
   | ({ tipo: 'grupo' | 'em-grupo' } & ItensAdicionados)
 
 /**
@@ -63,8 +68,10 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
       for (const anexo of dados.anexos ?? []) {
         await adicionarAnexo({ dono, ...anexo })
       }
-      if (dados.anotacao) await salvarNotaDoDono(dono, dados.anotacao)
-      return { tipo: 'tarefa', id: tarefa.id, data: tarefa.data }
+      const nota = dados.anotacao?.trim()
+        ? await criarNota({ conteudo: dados.anotacao, vinculo: { tipo: 'tarefa', id: tarefa.id } })
+        : undefined
+      return { tipo: 'tarefa', id: tarefa.id, data: tarefa.data, idNota: nota?.id }
     })
   }
   const itens = itensPreenchidos(dados.itens)
@@ -96,10 +103,14 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
 }
 
 /**
- * Desfaz a captura: apaga a tarefa (com anexos e anotação) ou os itens; card criado agora some, card
+ * Desfaz a captura: apaga a tarefa (com anexos e a nota criada junto) ou os itens; card criado agora some, card
  * reaberto volta a arquivado e card que já existia fica.
  */
 export async function desfazerCaptura(resultado: ResultadoCaptura) {
-  if (resultado.tipo === 'tarefa') return excluirTarefa(resultado.id)
+  if (resultado.tipo === 'tarefa') {
+    // A nota nasceu com a captura e some com ela; outras escritas depois ficam avulsas.
+    if (resultado.idNota) await excluirNota(resultado.idNota)
+    return excluirTarefa(resultado.id)
+  }
   await desfazerItensAdicionados(resultado)
 }

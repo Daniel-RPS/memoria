@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { cn } from 'cn'
+import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import { definirConclusao } from '@/db/repositories/task-repository'
 import type { DataLocal, Subtask, Task } from '@/db/types'
@@ -26,7 +27,7 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
   return (
     <div
       className={cn(
-        'relative flex items-start gap-2 border-b border-pauta py-2 pr-1 pl-1 text-[0.9375rem] hover:bg-accent/60',
+        'group/linha relative flex items-start gap-2 border-b border-pauta py-2 pr-1 pl-1 text-[0.9375rem] hover:bg-accent/60',
         isSobreposto && 'rotate-1 rounded-sm border bg-papel shadow-lg ring-2 ring-caneta/40',
       )}
     >
@@ -39,10 +40,19 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
       <div className="min-w-0 flex-1">
         <Link
           to={`/dia/${tarefa.data}`}
-          className="block break-words hover:underline focus-visible:outline-2 focus-visible:outline-caneta"
+          className="break-words hover:underline focus-visible:outline-2 focus-visible:outline-caneta"
         >
           {tarefa.titulo}
         </Link>
+        {!isSobreposto && (
+          <IndicadorNotas
+            vinculo={{ tipo: 'tarefa', id: tarefa.id }}
+            titulo={tarefa.titulo}
+            revelarCom="linha"
+            className="my-0 ml-1 inline-flex h-4 px-0 align-[-0.125rem]"
+          />
+        )}
+
         {(dias !== null || progresso || classificacao) && (
           <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-grafite">
             {dias !== null && (

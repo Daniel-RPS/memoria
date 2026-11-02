@@ -5,6 +5,7 @@ import { FundoDoApp } from '@/app/fundo-do-app'
 import { useAparencia } from '@/app/use-aparencia'
 import { useAplicarTema } from '@/app/use-aplicar-tema'
 import { useBarraRecolhida } from '@/app/use-barra-recolhida'
+import { ProvedorPainelNotas } from '@/components/notas/provedor-painel-notas'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAtalhoCaptura } from '@/app/use-atalho-captura'
@@ -25,11 +26,12 @@ export function LayoutApp() {
   const isNoDia = useMatch('/dia/:data') !== null
   const isNoInicio = useMatch('/inicio') !== null
   const isNasCategorias = useMatch('/categorias') !== null
+  const isNaListaDeNotas = useMatch('/notas') !== null
   const largura = isNaSemana
     ? 'max-w-[96rem]'
     : isNoMesOuAno || isNoInicio
       ? 'max-w-6xl'
-      : isNasCategorias
+      : isNasCategorias || isNaListaDeNotas
         ? 'max-w-5xl'
         : isNosProcedimentos || isNoDia
           ? 'max-w-3xl'
@@ -37,17 +39,19 @@ export function LayoutApp() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <FundoDoApp fundo={fundo} />
-      {/* Sem cor de fundo própria: a névoa fica no <html>, com o fundo decorativo por cima. */}
-      <div className="flex min-h-dvh">
-        <BarraLateral isRecolhida={isRecolhida} onAlternarRecolhida={handleAlternar} />
-        <main className="min-w-0 flex-1">
-          <div className={cn('mx-auto px-4 pt-8 pb-16 sm:px-8', largura)}>
-            <Outlet />
-          </div>
-        </main>
-      </div>
-      <Toaster theme={tema === 'escuro' ? 'dark' : 'light'} position="bottom-center" />
+      <ProvedorPainelNotas>
+        <FundoDoApp fundo={fundo} />
+        {/* Sem cor de fundo própria: a névoa fica no <html>, com o fundo decorativo por cima. */}
+        <div className="flex min-h-dvh">
+          <BarraLateral isRecolhida={isRecolhida} onAlternarRecolhida={handleAlternar} />
+          <main className="min-w-0 flex-1">
+            <div className={cn('mx-auto px-4 pt-8 pb-16 sm:px-8', largura)}>
+              <Outlet />
+            </div>
+          </main>
+        </div>
+        <Toaster theme={tema === 'escuro' ? 'dark' : 'light'} position="bottom-center" />
+      </ProvedorPainelNotas>
     </TooltipProvider>
   )
 }

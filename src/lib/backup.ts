@@ -3,11 +3,13 @@ import type { Attachment, DataLocal, Dono, TipoDono } from '@/db/types'
 import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
 import { converterGruposAntigos } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
+import { preencherCadeias } from '@/lib/grupos'
+import { converterNotaAntiga } from '@/lib/notas'
 
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 6
+export const FORMATO_ATUAL = 7
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -71,6 +73,8 @@ const itemDeGrupo = z.object({
   concluidoEm: texto.optional(),
   transferidoParaCardId: texto.optional(),
   origemItemId: texto.optional(),
+  // Formato 7; antes, calculada ao ler (`preencherCadeias`, a mesma regra da migração v10).
+  cadeiaId: texto.optional(),
   dataOriginal: dataLocal,
 })
 
@@ -112,7 +116,15 @@ const dono = z.object({ tipo: z.enum(['task', 'note', 'procedure', 'step']), id 
 const DONOS_ATUAIS = new Set<string>(['task', 'note'] satisfies TipoDono[])
 const isDonoAtual = (valor: z.infer<typeof dono>): valor is Dono => DONOS_ATUAIS.has(valor.tipo)
 
-const nota = z.object({ ...base, titulo: texto, conteudo: texto, dono: dono.optional() })
+// `vinculo` desde o formato 7; antes, a anotação da tarefa tinha `dono` (vira nota ligada à
+// tarefa, as outras ficam avulsas, como na migração v10).
+const nota = z.object({
+  ...base,
+  titulo: texto,
+  conteudo: texto,
+  vinculo: z.object({ tipo: z.enum(['tarefa', 'grupo', 'item']), id }).optional(),
+  dono: dono.optional(),
+})
 
 /** No arquivo, o conteúdo binário do anexo (foto, desenho, áudio) vai em base64. */
 const anexoNoArquivo = z.object({
@@ -160,16 +172,16 @@ export const esquemaBackup = z.object({
         categories: categorias,
         subcategories: subcategorias,
         procedures: procedimentos,
-        notes: notes.flatMap(({ dono: donoDaNota, ...nota }) => {
-          if (!donoDaNota) return [nota]
-          return isDonoAtual(donoDaNota) ? [{ ...nota, dono: donoDaNota }] : []
+        notes: notes.flatMap((nota) => {
+          if (nota.dono && !isDonoAtual(nota.dono)) return []
+          return [converterNotaAntiga(nota, new Set(soltas.map((tarefa) => tarefa.id)))]
         }),
         attachments: attachments.flatMap((anexo) =>
           isDonoAtual(anexo.dono) ? [{ ...anexo, dono: anexo.dono }] : [],
         ),
         tasks: soltas,
         groupCards: [...tabelas.groupCards, ...cards],
-        groupItems: [...tabelas.groupItems, ...itens],
+        groupItems: preencherCadeias([...tabelas.groupItems, ...itens]),
       }
     }),
 })

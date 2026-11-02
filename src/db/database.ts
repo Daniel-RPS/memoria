@@ -12,8 +12,10 @@ import type {
   Task,
 } from '@/db/types'
 import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
+import { preencherCadeias } from '@/lib/grupos'
 import { converterGruposAntigos, type CardAntigo, type TarefaAntiga } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo, type ProcedimentoAntigo } from '@/lib/migracao-procedimentos'
+import { converterNotaAntiga, type NotaAntiga } from '@/lib/notas'
 
 /**
  * Banco local (IndexedDB). Componentes NUNCA usam esta instância direto:
@@ -166,6 +168,24 @@ export class MemoriaDatabase extends Dexie {
         await transacao
           .table('procedures')
           .bulkPut(separado.procedimentos.filter((item, indice) => item !== procedimentos[indice]))
+      })
+    // v10: notas ligadas a tarefa, grupo ou item (`vinculo`, no lugar de `dono`) e itens com
+    // `cadeiaId`. A anotação da tarefa vira nota ligada a ela; as outras ficam avulsas.
+    this.version(10)
+      .stores({
+        notes: 'id, [vinculo.tipo+vinculo.id]',
+        groupItems: 'id, cardId, status, origemItemId, cadeiaId',
+      })
+      .upgrade(async (transacao) => {
+        const itens = (await transacao.table('groupItems').toArray()) as GroupItem[]
+        await transacao.table('groupItems').bulkPut(preencherCadeias(itens))
+        const idsTarefas = new Set(
+          (await transacao.table('tasks').toCollection().primaryKeys()) as string[],
+        )
+        const notas = (await transacao.table('notes').toArray()) as NotaAntiga[]
+        await transacao
+          .table('notes')
+          .bulkPut(notas.map((nota) => converterNotaAntiga(nota, idsTarefas)))
       })
   }
 }

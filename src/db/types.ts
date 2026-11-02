@@ -84,6 +84,12 @@ export interface GroupItem extends EntidadeBase {
   transferidoParaCardId?: string
   /** Item do qual este é cópia. */
   origemItemId?: string
+  /**
+   * Id do primeiro item da cadeia `origemItemId` (o próprio id no item original). Copiado em
+   * toda cópia e nunca muda, mesmo que o primeiro item seja apagado: as notas do item apontam
+   * para ele e aparecem em todos os dias da cadeia.
+   */
+  cadeiaId: string
   /** Preservada nas cópias; base do "pendente desde". */
   dataOriginal: DataLocal
 }
@@ -109,6 +115,7 @@ export interface Procedure extends EntidadeBase {
   etapas: Etapa[]
 }
 
+/** Dono de anexo: tarefa solta ou nota. */
 export type TipoDono = 'task' | 'note'
 
 export interface Dono {
@@ -116,10 +123,23 @@ export interface Dono {
   id: string
 }
 
+/** A que uma nota pode estar ligada. */
+export type TipoVinculo = 'tarefa' | 'grupo' | 'item'
+
+/**
+ * Ligação da nota: `tarefa` → id da tarefa solta; `grupo` → id da série (vale em todos os
+ * dias); `item` → `cadeiaId` do item (vale em todas as cópias levadas de dia em dia).
+ */
+export interface Vinculo {
+  tipo: TipoVinculo
+  id: string
+}
+
 export interface Note extends EntidadeBase {
   titulo: string
   conteudo: string
-  dono?: Dono
+  /** Sem vínculo = nota avulsa. A categoria vem do que ela está ligada; não é guardada. */
+  vinculo?: Vinculo
 }
 
 export type TipoAnexo = 'foto' | 'desenho' | 'audio' | 'link'

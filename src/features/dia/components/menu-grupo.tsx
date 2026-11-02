@@ -26,8 +26,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
 import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal } from '@/db/types'
+import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { pendentesDo, rotuloLevarAdiante, type GrupoDoDia } from '@/lib/grupos'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
@@ -53,6 +55,7 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
   const isCopiavel = quantidadePendentes > 0
   const isAbrindoCampoRef = useRef(false)
   const quantidadeItens = grupo.itens.length
+  const avisoNotas = useAvisoNotasAvulsas({ tipo: 'card', id: card.id }, isConfirmandoExclusao)
 
   return (
     <>
@@ -99,6 +102,7 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
           >
             <Pencil /> Renomear
           </DropdownMenuItem>
+          <ItensDeNotaDoMenu vinculo={{ tipo: 'grupo', id: serie.id }} />
           <SubmenuCategoria
             tipo="grupo"
             atual={serie}
@@ -130,6 +134,9 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
               {quantidadeItens === 0
                 ? 'O card vazio será apagado.'
                 : `O card e ${quantidadeItens === 1 ? 'o item' : `os ${quantidadeItens} itens`} dele serão apagados de vez. Os cards de outros dias continuam. Para só tirar do calendário, use Arquivar.`}
+              {avisoNotas && (
+                <span className="mt-2 block font-medium text-tinta">{avisoNotas}</span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

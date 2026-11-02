@@ -8,7 +8,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias (em cards por grupo e tarefas soltas), e o mapa de conclusões do último ano (01/11/2026). Modo claro e escuro (ou seguindo o sistema) e um fundo animado discreto, com a logo ajustada a cada tema (01/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias (em cards por grupo e tarefas soltas), e o mapa de conclusões do último ano (01/11/2026). Modo claro e escuro (ou seguindo o sistema) e um fundo animado discreto, com a logo ajustada a cada tema (01/11/2026). Notas ligadas a tarefas, grupos e itens, com a aba Notas organizada por categoria, grupo ou data (02/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
@@ -17,7 +17,7 @@ Legenda: ✅ pronto · 🔜 planejado
 ### Início
 
 - ✅ Tela principal do app (primeiro item da barra lateral): o app abre nela
-- ✅ Captura rápida, já focada, com um texto apagado que diz o que fazer em cada modo ("Escreva a tarefa a ser feita", "Crie o grupo e coloque a(s) tarefa(s) a ser(em) feita(s)", "Escolha o grupo e coloque a tarefa"). Tarefa: Enter cria e Shift+Enter quebra a linha (as linhas de baixo viram a anotação). Categoria pelo seletor de sempre (com "+ Nova categoria" ali mesmo) e dia: Hoje, Amanhã ou Escolher data…
+- ✅ Captura rápida, já focada, com um texto apagado que diz o que fazer em cada modo ("Escreva a tarefa a ser feita", "Crie o grupo e coloque a(s) tarefa(s) a ser(em) feita(s)", "Escolha o grupo e coloque a tarefa"). Tarefa: Enter cria e Shift+Enter quebra a linha (as linhas de baixo viram uma nota da tarefa). Categoria pelo seletor de sempre (com "+ Nova categoria" ali mesmo) e dia: Hoje, Amanhã ou Escolher data…
 - ✅ **Grupo já com os itens**: o nome do grupo em destaque e, embaixo, uma linha com caixinha para cada item. Enter no nome desce para o 1º item; Enter num item abre o próximo; Backspace num item vazio apaga a linha e volta; ↑/↓ andam entre as linhas; colar várias linhas gera um item por linha; Ctrl+Enter (ou **Criar**) cria tudo de uma vez, na ordem, ignorando linhas vazias. Aviso "Grupo Casa criado com 3 itens · 02/11 · Ver no dia · Desfazer" (desfazer tira o grupo e os itens). Trocar entre Tarefa, Grupo e Em grupo… não perde o que foi digitado
 - ✅ Anexar foto/imagem ou link à tarefa já na captura
 - ✅ **Em grupo…**: a mesma lista de itens (sem o nome) vai para um grupo que já existe (ex.: "fazer lasanha" no grupo Casa), no dia escolhido. Lista de grupos com busca, os usados por último primeiro, na cor da categoria do grupo e com "já existe em 01/11" quando o card do dia já existe; senão o card é criado. Aviso "1 item adicionado a Casa · 01/11 · Ver no dia · Desfazer"
@@ -85,8 +85,9 @@ Legenda: ✅ pronto · 🔜 planejado
 ### Conteúdo e dados
 
 - ✅ Notas com texto livre que se salva sozinho, busca e anexos
+- ✅ Notas ligadas a uma tarefa, a um grupo (valem em todos os dias dele) ou a um item (acompanham o item levado a outro dia), abertas numa gaveta lateral sem sair da tela
+- ✅ Aba Notas em cartões, por categoria, por grupo ou recentes, com filtros e busca também pelos nomes da tarefa, do grupo e da categoria
 - ✅ Anexos em tarefas e notas: fotos, desenhos à mão livre, gravações de áudio e links
-- ✅ Anotação de texto em cada tarefa
 - ✅ Backup: exportar e importar todos os dados, incluindo anexos
 
 ### Aparência
@@ -129,7 +130,7 @@ Depois, abra no navegador **`http://localhost:5173`**.
 
 ### Usando
 
-- O app abre no **Início**, com o campo pronto: escreva e tecle Enter para criar uma tarefa de hoje. Shift+Enter abre outra linha, que vira a anotação da tarefa. Em **Grupo**, escreva o nome, Enter, e um item por linha (Enter abre a próxima, Backspace numa linha vazia volta); Ctrl+Enter cria o grupo com tudo. Escolha também a categoria e o dia. Tab passa pelo tipo, categoria e dia. De qualquer tela, **Ctrl+K** (ou **N**) volta para cá com o campo pronto.
+- O app abre no **Início**, com o campo pronto: escreva e tecle Enter para criar uma tarefa de hoje. Shift+Enter abre outra linha, que vira uma nota da tarefa. Em **Grupo**, escreva o nome, Enter, e um item por linha (Enter abre a próxima, Backspace numa linha vazia volta); Ctrl+Enter cria o grupo com tudo. Escolha também a categoria e o dia. Tab passa pelo tipo, categoria e dia. De qualquer tela, **Ctrl+K** (ou **N**) volta para cá com o campo pronto.
 - Para pôr um item num grupo que já existe, escolha **Em grupo…**, o grupo (busque pelo nome) e o dia; a categoria vem do grupo. No bloco **Hoje**, o **+** que aparece ao passar o mouse num grupo também adiciona item.
 - No Início, marque o que é de hoje no bloco **Hoje** e traga o que ficou para trás em **Atrasadas**. Clique num dia dos **Próximos 7 dias** ou num quadrado do mapa para abrir aquele dia.
 - Na barra lateral, **Calendário** junta Dia, Semana, Mês e Ano. Clicar nele só abre e fecha (escolher uma visão não fecha o grupo); o app lembra a escolha e abre o grupo sozinho quando você está numa dessas visões. Pelo teclado: Tab até ele, Enter ou espaço abre e fecha, setas andam entre as visões.
@@ -153,12 +154,15 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Levou para o dia errado? Arraste de volta: o item volta a ser pendente no card de antes (nada duplicado) e o card que tinha sido criado para recebê-lo some, se ficou vazio. Ou use **Desfazer** no aviso / **Ctrl+Z**.
 - Tarefas soltas continuam sendo **movidas** (não copiadas).
 - Grupos com o mesmo nome são o mesmo grupo em dias diferentes: se o destino já tem o card "Casa", os itens entram nele. Renomear ou trocar a categoria do card vale para todos os dias.
-- Arraste uma tarefa solta para dentro de um card, ou um item para fora (vira tarefa solta). Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**. Subtarefas, anotação e anexos da tarefa não passam para o item.
+- Arraste uma tarefa solta para dentro de um card, ou um item para fora (vira tarefa solta). Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**. As notas acompanham (a tarefa vira item e o item vira tarefa); subtarefas e anexos da tarefa não passam para o item.
 - Em **Procedimentos**, **Novo procedimento** pede título, categoria (e subcategoria, se quiser) e etapas (**Adicionar etapa** quantas vezes quiser). A lista mostra um cartão por procedimento, com as 3 primeiras etapas. Clique no cartão (ou Tab até ele e Enter) para ver e editar: o texto das etapas se edita ali mesmo e tudo grava sozinho ("Salvo"). Enter cria a próxima etapa (Shift+Enter quebra a linha) e Backspace numa etapa vazia apaga e volta para a anterior. A lixeira, que aparece ao passar o mouse, exclui a etapa e a numeração se ajusta.
 - Em **Mês**, cada dia mostra até 3 pendentes (atrasadas com marca-texto) e o resto como "+N". Arraste uma tarefa para outro dia; pelo teclado, foque a tarefa, tecle espaço, use as setas (lados = um dia, cima/baixo = uma semana) e espaço de novo.
 - Em **Ano**, o tom de cada dia indica quantas tarefas há, e um ponto amarelo marca pendência atrasada. Clique no mês ou no dia para abrir.
-- Em **Notas**, **Nova nota** abre uma página que se salva sozinha enquanto você escreve.
-- Anexos (em notas e no menu **⋯ → Anotação e anexos** de uma tarefa):
+- Em **Notas**, **Nova nota** abre uma página que se salva sozinha enquanto você escreve (nota avulsa; **Vincular a…** liga a uma tarefa, grupo ou item, **Desvincular** solta).
+- Nota de uma tarefa, grupo ou item: menu **⋯ → Adicionar nota** (ou **Ver notas (N)**) no Dia e na Semana; no Início, passe o mouse na linha ou no card e clique no ícone de nota. Abre uma gaveta à direita com o mesmo editor da aba Notas. Quem tem nota mostra um ícone discreto ao lado do título (com o número quando há mais de uma); clique para abrir. A nota de um item aparece em todos os dias para onde ele foi levado; a de um grupo, em todos os dias do grupo.
+- Excluir uma tarefa, grupo ou item com notas avisa antes: as notas viram avulsas, nada é apagado. Arquivar não mexe nelas.
+- A aba **Notas** mostra todas as notas em cartões: a quem pertencem ("Hostinger › Fazer Deploy"; clique no nome para abrir o dia), prévia, quando foi editada e os tipos de anexo. Organize **Por categoria**, **Por grupo** ou **Recentes** (a escolha fica lembrada), filtre por tipo (tarefas, grupos, itens, avulsas) e categoria, e busque também pelo nome da tarefa, do grupo ou da categoria.
+- Anexos (em notas e no menu **⋯ → Anexos** de uma tarefa):
   - **Foto:** escolha uma ou várias imagens. Fotos com mais de 2048 px são reduzidas para não encher o armazenamento e o backup.
   - **Desenho:** desenhe com mouse, caneta (sensível à pressão) ou dedo; cores, espessuras, borracha e desfazer. O lápis na miniatura reabre para continuar o desenho.
   - **Áudio:** grave pelo microfone (o navegador pede permissão na primeira vez). Para sozinho em 10 minutos.
@@ -198,7 +202,7 @@ Recomendação: faça backup com frequência e guarde o arquivo fora do computad
 | 5    | Procedimentos: título, categoria, etapas numeradas, lista por categoria e busca        | ✅             |
 | 6    | Visões de mês e ano                                                                    | ✅             |
 | 7    | Backup: exportar e importar (JSON com anexos)                                          | ✅             |
-| 8    | Notas, fotos, desenhos à mão livre e áudio                                             | ✅             |
+| 8    | Notas (ligadas a tarefas, grupos e itens), fotos, desenhos à mão livre e áudio         | ✅             |
 | 9    | Compartilhamento (ver ou editar), com servidor                                         | Fora do escopo |
 
 ## Fora do escopo

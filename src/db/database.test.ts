@@ -163,4 +163,83 @@ describe('MemoriaDatabase', () => {
     expect(await banco.groupSeries.get('serie')).toMatchObject({ categoryId: 'github' })
     expect(await banco.tasks.get('tarefa')).toMatchObject({ categoryId: 'casa' })
   })
+
+  it('v10: anotação de tarefa vira nota ligada, o resto fica avulsa; itens ganham cadeia', async () => {
+    // Banco como estava na v9 (notas com `dono`, itens sem `cadeiaId`).
+    const antigo = new Dexie('memoria-teste')
+    antigo.version(9).stores({
+      categories: 'id, nome',
+      subcategories: 'id, categoryId',
+      tasks: 'id, data, [data+ordem], status, categoryId, dataOriginal',
+      subtasks: 'id, taskId, [taskId+ordem]',
+      procedures: 'id, titulo, categoryId',
+      notes: 'id, [dono.tipo+dono.id]',
+      attachments: 'id, [dono.tipo+dono.id]',
+      groupSeries: 'id, titulo, categoryId',
+      groupCards: 'id, seriesId, data, [seriesId+data]',
+      groupItems: 'id, cardId, status, origemItemId',
+    })
+    const base = { criadoEm: '1', atualizadoEm: '2' }
+    await antigo.table('tasks').add({
+      ...base,
+      id: 'tarefa',
+      titulo: 'Ligar',
+      data: '2026-11-01',
+      dataOriginal: '2026-11-01',
+      ordem: 1,
+      status: 'pendente',
+    })
+    await antigo.table('notes').bulkAdd([
+      {
+        ...base,
+        id: 'anotacao',
+        titulo: '',
+        conteudo: 'Protocolo',
+        dono: { tipo: 'task', id: 'tarefa' },
+      },
+      { ...base, id: 'orfa', titulo: '', conteudo: 'x', dono: { tipo: 'task', id: 'sumiu' } },
+      { ...base, id: 'avulsa', titulo: 'Ideias', conteudo: 'texto' },
+    ])
+    await antigo.table('attachments').add({
+      ...base,
+      id: 'foto',
+      dono: { tipo: 'note', id: 'avulsa' },
+      tipo: 'foto',
+      nome: 'F',
+    })
+    const item = { ...base, titulo: 'Deploy', ordem: 1, dataOriginal: '2026-11-01' }
+    await antigo.table('groupItems').bulkAdd([
+      { ...item, id: 'a', cardId: 'c1', status: 'transferido' },
+      { ...item, id: 'b', cardId: 'c2', status: 'pendente', origemItemId: 'a' },
+    ])
+    antigo.close()
+
+    await banco.open()
+    expect(await banco.notes.get('anotacao')).toEqual({
+      ...base,
+      id: 'anotacao',
+      titulo: '',
+      conteudo: 'Protocolo',
+      vinculo: { tipo: 'tarefa', id: 'tarefa' },
+    })
+    expect(await banco.notes.get('orfa')).toEqual({
+      ...base,
+      id: 'orfa',
+      titulo: '',
+      conteudo: 'x',
+    })
+    expect(await banco.notes.get('avulsa')).toEqual({
+      ...base,
+      id: 'avulsa',
+      titulo: 'Ideias',
+      conteudo: 'texto',
+    })
+    expect(await banco.attachments.get('foto')).toMatchObject({
+      dono: { tipo: 'note', id: 'avulsa' },
+    })
+    expect(
+      await banco.notes.where('[vinculo.tipo+vinculo.id]').equals(['tarefa', 'tarefa']).count(),
+    ).toBe(1)
+    expect(await banco.groupItems.where('cadeiaId').equals('a').primaryKeys()).toEqual(['a', 'b'])
+  })
 })

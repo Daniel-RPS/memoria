@@ -6,11 +6,13 @@ import { useState, type ReactNode } from 'react'
 import { CornerDownRight, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
+import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, GroupItem } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
+import { vinculoDoItem } from '@/lib/notas'
 import { classificarTarefa } from '@/lib/categorias'
 import { ErroDeValidacao } from '@/lib/erros'
 import {
@@ -149,6 +151,13 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
               />
             )}
           </div>
+          {!isEditando && !isSobreposto && (
+            <IndicadorNotas
+              vinculo={{ tipo: 'grupo', id: serie.id }}
+              titulo={serie.titulo}
+              className="h-5"
+            />
+          )}
           {!isEditando && textoProgresso && (
             <span className="text-xs text-grafite tabular-nums">
               {isEncerrado && !isSobreposto ? `${textoProgresso} · encerrado` : textoProgresso}
@@ -325,6 +334,14 @@ function LinhaItem({
           </span>
         )}
         {isTransferido && <span className="ml-1.5 text-xs whitespace-nowrap">transferido</span>}
+        {/* No fluxo do texto: só desce de linha se não couber (não tira largura do título). */}
+        {!isEditando && !isSobreposto && (
+          <IndicadorNotas
+            vinculo={vinculoDoItem(item)}
+            titulo={item.titulo}
+            className="my-0 ml-1 inline-flex h-4 px-0 align-[-0.125rem]"
+          />
+        )}
       </span>
       {!isSobreposto && (
         <MenuItemGrupo item={item} data={data} hoje={hoje} onRenomear={() => setIsEditando(true)} />

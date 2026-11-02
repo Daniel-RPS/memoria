@@ -2,9 +2,11 @@ import { useState, type ReactNode } from 'react'
 import { CornerDownRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
+import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, GroupItem } from '@/db/types'
+import { vinculoDoItem } from '@/lib/notas'
 import { diaCurto, isPendenteDeAntes } from '@/lib/grupos'
 import { useDataDoDestino } from '@/features/dia/hooks/contexto-extras'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
@@ -81,6 +83,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
             className={cn(isConcluido && 'text-grafite line-through decoration-tinta/50')}
           />
         )}
+        {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
         {isAtrasado && !isEditando && (
           <span className={cn(MARCA_TEXTO, 'px-1.5 text-sm whitespace-nowrap')}>
             pendente desde {diaCurto(item.dataOriginal)}

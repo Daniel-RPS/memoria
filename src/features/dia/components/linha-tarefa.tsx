@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { Paperclip } from 'lucide-react'
 import { cn } from 'cn'
+import { PainelAnexos } from '@/components/anexos/painel-anexos'
+import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, Subtask, Task } from '@/db/types'
 import { classificarTarefa } from '@/lib/categorias'
@@ -8,7 +10,6 @@ import { diasPendente, progressoSubtarefas, textoDiasPendente } from '@/lib/tare
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { useExtrasDaTarefa } from '@/features/dia/hooks/contexto-extras'
-import { PainelAnotacaoAnexos } from '@/features/dia/components/painel-anotacao-anexos'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
 import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
@@ -34,8 +35,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const [isSubtarefasAbertas, setIsSubtarefasAbertas] = useState(false)
   const [isFocandoNovaSubtarefa, setIsFocandoNovaSubtarefa] = useState(false)
   const [isAnexosAbertos, setIsAnexosAbertos] = useState(false)
-  const [isFocandoAnotacao, setIsFocandoAnotacao] = useState(false)
-  const { quantidadeAnexos, isComNota } = useExtrasDaTarefa(tarefa.id)
+  const { quantidadeAnexos } = useExtrasDaTarefa(tarefa.id)
   const isConcluida = tarefa.status === 'concluida'
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
@@ -60,7 +60,6 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
 
   function handleAbrirAnexos() {
     setIsAnexosAbertos(true)
-    setIsFocandoAnotacao(true)
   }
 
   function handleAlternarSubtarefas() {
@@ -112,6 +111,9 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               className={cn(isConcluida && 'text-grafite line-through decoration-tinta/50')}
             />
           )}
+          {!isEditando && (
+            <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />
+          )}
           {dias !== null && !isEditando && (
             <span className="rounded-[3px] bg-marca-texto px-1.5 text-sm font-medium whitespace-nowrap text-violeta-profundo">
               {textoDiasPendente(dias)}
@@ -136,26 +138,17 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               onAlternar={handleAlternarSubtarefas}
             />
           )}
-          {(quantidadeAnexos > 0 || isComNota) && !isEditando && (
+          {quantidadeAnexos > 0 && !isEditando && (
             <button
               type="button"
-              onClick={() => {
-                setIsAnexosAbertos((atual) => !atual)
-                setIsFocandoAnotacao(false)
-              }}
+              onClick={() => setIsAnexosAbertos((atual) => !atual)}
               aria-expanded={isAnexosAbertos}
               aria-controls={idPainelAnexos}
-              aria-label={`Anotação e anexos de ${tarefa.titulo}: ${[
-                isComNota && 'tem anotação',
-                quantidadeAnexos > 0 &&
-                  (quantidadeAnexos === 1 ? '1 anexo' : `${quantidadeAnexos} anexos`),
-              ]
-                .filter(Boolean)
-                .join(', ')}`}
+              aria-label={`Anexos de ${tarefa.titulo}: ${quantidadeAnexos === 1 ? '1 anexo' : `${quantidadeAnexos} anexos`}`}
               className="flex items-center gap-1 rounded-sm text-sm text-grafite tabular-nums hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta"
             >
               <Paperclip aria-hidden className="size-3.5" />
-              {quantidadeAnexos > 0 ? quantidadeAnexos : 'nota'}
+              {quantidadeAnexos}
             </button>
           )}
         </div>
@@ -172,7 +165,10 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
 
       {isAnexosAbertos && (
         <div id={idPainelAnexos} className="pr-3 pb-3 pl-[3.25rem]">
-          <PainelAnotacaoAnexos tarefa={tarefa} isFocando={isFocandoAnotacao} />
+          <PainelAnexos
+            dono={{ tipo: 'task', id: tarefa.id }}
+            descricaoDono={`da tarefa ${tarefa.titulo}`}
+          />
         </div>
       )}
       {isSubtarefasAbertas && (

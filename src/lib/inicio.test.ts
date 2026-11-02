@@ -30,7 +30,17 @@ function item(
   status: GroupItem['status'],
   dataOriginal: string,
 ): GroupItem {
-  return { id, cardId, titulo: id, ordem: 1, status, dataOriginal, criadoEm: '', atualizadoEm: '' }
+  return {
+    id,
+    cadeiaId: id,
+    cardId,
+    titulo: id,
+    ordem: 1,
+    status,
+    dataOriginal,
+    criadoEm: '',
+    atualizadoEm: '',
+  }
 }
 
 function rotulos(resumo: ReturnType<typeof montarResumoDoDia>) {

@@ -72,7 +72,7 @@ describe('captura rápida (repositório)', () => {
     expect(await db.attachments.count()).toBe(0)
   })
 
-  it('grava a anotação junto com a tarefa; desfazer apaga as duas', async () => {
+  it('grava as linhas extras como nota ligada à tarefa; desfazer apaga as duas', async () => {
     const resultado = await capturar({
       tipo: 'tarefa',
       titulo: 'Comprar tinta',
@@ -82,7 +82,7 @@ describe('captura rápida (repositório)', () => {
     expect(await db.notes.toArray()).toEqual([
       expect.objectContaining({
         conteudo: 'Cor: areia\nDois galões',
-        dono: { tipo: 'task', id: idDe(resultado) },
+        vinculo: { tipo: 'tarefa', id: idDe(resultado) },
       }),
     ])
 

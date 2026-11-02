@@ -213,6 +213,37 @@ describe('lerBackup', () => {
     expect(procedures[0].categoryId).toBe(categories[2].id)
   })
 
+  it('backup do formato 6: anotação de tarefa vira nota ligada e itens ganham cadeia', () => {
+    const antigo = backupVazio()
+    const base = { criadoEm: '1', atualizadoEm: '1' }
+    const item = { ...base, titulo: 'Deploy', ordem: 1, dataOriginal: '2026-10-30' }
+    const arquivo = {
+      ...antigo,
+      formato: 6,
+      tabelas: {
+        ...antigo.tabelas,
+        tasks: [tarefa],
+        notes: [
+          { ...base, id: 'n1', titulo: '', conteudo: 'a', dono: { tipo: 'task', id: 't1' } },
+          { ...base, id: 'n2', titulo: 'Solta', conteudo: 'b' },
+        ],
+        groupItems: [
+          { ...item, id: 'i1', cardId: 'c1', status: 'transferido' },
+          { ...item, id: 'i2', cardId: 'c2', status: 'pendente', origemItemId: 'i1' },
+        ],
+      },
+    }
+    const resultado = lerBackup(JSON.stringify(arquivo), VERSAO_BANCO)
+    expect(resultado.isValido).toBe(true)
+    if (!resultado.isValido) return
+    const { notes, groupItems } = resultado.backup.tabelas
+    expect(notes).toEqual([
+      { ...base, id: 'n1', titulo: '', conteudo: 'a', vinculo: { tipo: 'tarefa', id: 't1' } },
+      { ...base, id: 'n2', titulo: 'Solta', conteudo: 'b' },
+    ])
+    expect(groupItems.map((registro) => registro.cadeiaId)).toEqual(['i1', 'i1'])
+  })
+
   it('recusa o que não é JSON', () => {
     const resultado = lerBackup('isto não é json', VERSAO_BANCO)
     expect(resultado).toMatchObject({ isValido: false })

@@ -12,7 +12,7 @@ const AMANHA = '2026-11-03'
 interface ModuloBanco {
   db: {
     tasks: { toArray: () => Promise<{ id: string; titulo: string; data: string }[]> }
-    notes: { toArray: () => Promise<{ conteudo: string; dono?: { tipo: string; id: string } }[]> }
+    notes: { toArray: () => Promise<{ conteudo: string; vinculo?: { tipo: string; id: string } }[]> }
     groupCards: { toArray: () => Promise<{ id: string; data: string }[]> }
     groupItems: { toArray: () => Promise<{ cardId: string; titulo: string; ordem: number }[]> }
     groupSeries: { toArray: () => Promise<{ titulo: string }[]> }
@@ -134,7 +134,7 @@ test('"Próximos 7 dias" fica na coluna da direita, abaixo de Atrasadas, e abre 
   await expect(page.getByText('Tarefa 4 de 2026-11-04')).toBeVisible()
 })
 
-test('o campo cresce com as linhas; Shift+Enter quebra linha e Enter cria com anotação', async ({
+test('o campo cresce com as linhas; Shift+Enter quebra linha e Enter cria com a nota da tarefa', async ({
   page,
 }) => {
   await page.goto('/inicio')
@@ -162,7 +162,7 @@ test('o campo cresce com as linhas; Shift+Enter quebra linha e Enter cria com an
   expect(notas).toEqual([
     expect.objectContaining({
       conteudo: 'Cor: areia\nMarca boa\nDois galões\nRolo e pincel',
-      dono: { tipo: 'task', id: tarefas[0].id },
+      vinculo: { tipo: 'tarefa', id: tarefas[0].id },
     }),
   ])
 })

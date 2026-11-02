@@ -13,6 +13,7 @@ import {
   reordenarCategoria,
   reordenarSubcategoria,
 } from '@/db/repositories/category-repository'
+import { criarNota } from '@/db/repositories/note-repository'
 import { criarProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
 import { criarSubtarefa } from '@/db/repositories/subtask-repository'
 import { criarGrupo, criarItem, definirConclusaoItem } from '@/db/repositories/group-repository'
@@ -45,6 +46,11 @@ async function popularBanco() {
   })
   await criarProcedimento({ titulo: 'Sem categoria', categoryId: '', etapas: [] })
   await db.notes.add({ id: 'n', titulo: 'Nota', conteudo: 'texto', criadoEm: '', atualizadoEm: '' })
+  const grupo = await criarGrupo({ titulo: 'Hostinger', data: '2026-10-30' })
+  const deploy = await criarItem(grupo.id, 'Fazer Deploy')
+  await criarNota({ conteudo: 'do grupo', vinculo: { tipo: 'grupo', id: grupo.seriesId } })
+  await criarNota({ conteudo: 'do item', vinculo: { tipo: 'item', id: deploy.cadeiaId } })
+  await criarNota({ conteudo: 'da tarefa', vinculo: { tipo: 'tarefa', id: tarefa.id } })
   await db.attachments.add({
     id: 'a',
     dono: { tipo: 'task', id: tarefa.id },
@@ -91,6 +97,8 @@ describe('backup', () => {
     expect(await fotografarBanco()).toEqual(antes)
     const tarefa = (await db.tasks.toArray())[0]
     expect(tarefa).toMatchObject({ data: '2026-10-30', dataOriginal: '2026-10-28' })
+    const vinculos = (await db.notes.toArray()).map((nota) => nota.vinculo?.tipo ?? 'avulsa')
+    expect(vinculos.sort()).toEqual(['avulsa', 'grupo', 'item', 'tarefa'])
     const procedimentos = await db.procedures.orderBy('titulo').toArray()
     expect(procedimentos.map(({ titulo, etapas }) => ({ titulo, etapas }))).toEqual([
       { titulo: 'Backup semanal', etapas: [{ id: 'e2', texto: 'Copiar a pasta', ordem: 0 }] },
@@ -215,8 +223,9 @@ describe('backup', () => {
       categories: 1,
       subcategories: 1,
       procedures: 2,
-      notes: 1,
+      notes: 4,
       attachments: 1,
+      groupItems: 1,
     })
   })
 })

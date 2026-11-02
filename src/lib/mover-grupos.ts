@@ -190,6 +190,7 @@ export function planejarLevarItens(
       ordem: maiorOrdemDoCard(alvo.id) + 1,
       status: 'pendente',
       origemItemId: item.id,
+      cadeiaId: item.cadeiaId,
       dataOriginal: item.dataOriginal,
       criadoEm: momento,
       atualizadoEm: momento,

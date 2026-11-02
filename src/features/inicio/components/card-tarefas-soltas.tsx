@@ -1,4 +1,5 @@
 import { Dot } from 'lucide-react'
+import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import type { SoltaDoResumo } from '@/lib/inicio'
 import {
   BotaoTrazer,
@@ -38,6 +39,11 @@ export function CardTarefasSoltas({ soltas, onTrazer }: CardTarefasSoltasProps) 
             onMarcar={(isFeita) => void definirConclusao(tarefa.id, isFeita)}
             selo={onTrazer && dias !== null && <SeloHaDias dias={dias} />}
           >
+            <IndicadorNotas
+              vinculo={{ tipo: 'tarefa', id: tarefa.id }}
+              titulo={tarefa.titulo}
+              revelarCom="linha"
+            />
             <PontoDaCategoria dono={tarefa} />
             {onTrazer && (
               <BotaoTrazer

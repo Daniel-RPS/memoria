@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
+import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -131,6 +132,13 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
               isSelecionavel && 'cursor-pointer',
             )}
           />
+          {!isEditando && (
+            <IndicadorNotas
+              vinculo={{ tipo: 'grupo', id: serie.id }}
+              titulo={serie.titulo}
+              className="self-center"
+            />
+          )}
           {!isEditando && total > 0 && (
             <span className="text-sm text-grafite tabular-nums">
               {textoProgressoGrupo(progresso)}

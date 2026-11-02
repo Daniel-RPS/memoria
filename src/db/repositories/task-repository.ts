@@ -1,7 +1,7 @@
 import { db } from '@/db/database'
 import type { DataLocal, Task } from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
-import { excluirNotasDe } from '@/db/repositories/note-repository'
+import { soltarNotasSemAlvo } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 import { somarDias } from '@/lib/datas'
 import { destinoDoAdiamento, pendenciasDeOntem, planejarMovimento } from '@/lib/mover'
@@ -83,15 +83,21 @@ export async function arquivarTarefa(id: string) {
   await db.tasks.update(id, { status: 'arquivada', atualizadoEm: agora() })
 }
 
-/** Exclusão definitiva, junto com subtarefas, anotação e anexos. */
+/**
+ * Exclusão definitiva, junto com subtarefas e anexos. As notas ligadas a ela NÃO são apagadas:
+ * viram avulsas.
+ */
 export async function excluirTarefa(id: string) {
-  await db.transaction('rw', [db.tasks, db.subtasks, db.notes, db.attachments], async () => {
-    const dono = [{ tipo: 'task' as const, id }]
-    await excluirAnexosDe(dono)
-    await excluirNotasDe(dono)
-    await db.subtasks.where('taskId').equals(id).delete()
-    await db.tasks.delete(id)
-  })
+  await db.transaction(
+    'rw',
+    [db.tasks, db.subtasks, db.notes, db.attachments, db.groupSeries, db.groupItems],
+    async () => {
+      await excluirAnexosDe([{ tipo: 'task' as const, id }])
+      await db.subtasks.where('taskId').equals(id).delete()
+      await db.tasks.delete(id)
+      await soltarNotasSemAlvo([{ tipo: 'tarefa', id }])
+    },
+  )
 }
 
 /** Tarefas soltas e cards de grupo vistos como uma tabela só: os dois dividem a `ordem` do dia. */

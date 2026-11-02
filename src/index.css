@@ -243,6 +243,12 @@
   font-weight: 500;
 }
 
+/* Gaveta de notas: a tela atrás fica legível (só um véu), para escrever olhando o dia. */
+[data-slot='sheet-overlay'] {
+  backdrop-filter: none;
+  background-color: color-mix(in oklab, var(--nevoa) 55%, transparent);
+}
+
 /*
  * Fundo do app (`FundoDoApp`): camada fixa atrás de tudo, sem ponteiro. "aurora" (padrão):
  * três manchas de luz que derivam devagar, com grão leve; "pontos": grade de pontos estática

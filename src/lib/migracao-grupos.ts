@@ -36,6 +36,7 @@ export function converterGruposAntigos(instancias: CardAntigo[], tarefas: Tarefa
     }
     itens.push({
       id: tarefa.id,
+      cadeiaId: tarefa.id,
       cardId: groupInstanceId,
       titulo: tarefa.titulo,
       ordem: tarefa.ordem,

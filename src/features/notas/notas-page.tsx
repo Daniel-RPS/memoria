@@ -1,23 +1,49 @@
-import { formatDistanceToNow, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Paperclip, Plus, Search } from 'lucide-react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Plus, Search } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { criarNota } from '@/db/repositories/note-repository'
-import { descreverQuantidade } from '@/lib/anexos'
-import { buscarNotas, tituloDaNota } from '@/lib/notas'
-import { useNotas } from '@/features/notas/hooks/use-notas'
+import { agruparNotas, buscarNotasComDono, filtrarNotas, type FiltroDeTipo } from '@/lib/notas'
+import { FiltrosDasNotas } from '@/features/notas/components/filtros-das-notas'
+import { ListaDeNotas } from '@/features/notas/components/lista-de-notas'
+import { useModoDasNotas, useNotas } from '@/features/notas/hooks/use-notas'
 
 const PARAMETRO_BUSCA = 'q'
+const PARAMETRO_TIPO = 'tipo'
+const PARAMETRO_CATEGORIA = 'categoria'
+const TIPOS_VALIDOS: FiltroDeTipo[] = ['todas', 'tarefa', 'grupo', 'item', 'avulsa']
 
 export function NotasPage() {
   const navigate = useNavigate()
   const [parametros, setParametros] = useSearchParams()
+  const { notas, anexosPorNota, categorias, isCarregando } = useNotas()
+  const { modo, handleEscolher: handleModo } = useModoDasNotas()
+
   const termo = parametros.get(PARAMETRO_BUSCA) ?? ''
-  const { notas, anexosPorNota, isCarregando } = useNotas()
-  const encontradas = buscarNotas(notas, termo)
+  const tipoLido = parametros.get(PARAMETRO_TIPO) as FiltroDeTipo | null
+  const tipo = tipoLido && TIPOS_VALIDOS.includes(tipoLido) ? tipoLido : 'todas'
+  // Categoria do endereço que não existe mais: volta para todas.
+  const categoria = categorias.find((opcao) => opcao.id === parametros.get(PARAMETRO_CATEGORIA))
+
+  const encontradas = buscarNotasComDono(
+    filtrarNotas(notas, { tipo, categoryId: categoria?.id }),
+    termo,
+  )
+  const blocos = agruparNotas(encontradas, modo, categorias)
+  const isFiltrando = termo !== '' || tipo !== 'todas' || categoria !== undefined
+
+  function mudarParametro(chave: string, valor: string | undefined) {
+    setParametros(
+      (atuais) => {
+        const novos = new URLSearchParams(atuais)
+        if (valor) novos.set(chave, valor)
+        else novos.delete(chave)
+        return novos
+      },
+      { replace: true },
+    )
+  }
 
   async function handleNova() {
     const nota = await criarNota()
@@ -28,7 +54,7 @@ export function NotasPage() {
     <>
       <CabecalhoPagina
         titulo="Notas"
-        descricao="Texto livre com fotos, desenhos, áudios e links. Salva sozinha enquanto você escreve."
+        descricao="Texto livre com fotos, desenhos, áudios e links, solto ou ligado a uma tarefa, grupo ou item. Salva sozinha enquanto você escreve."
         acao={
           <Button onClick={() => void handleNova()}>
             <Plus /> Nova nota
@@ -37,73 +63,64 @@ export function NotasPage() {
       />
 
       {notas.length > 0 && (
-        <label className="relative mt-8 block">
-          <span className="sr-only">Buscar notas</span>
-          <Search
-            aria-hidden
-            className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-grafite"
+        <div className="mt-6 flex flex-col gap-3">
+          <label className="relative block">
+            <span className="sr-only">Buscar notas</span>
+            <Search
+              aria-hidden
+              className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-grafite"
+            />
+            <Input
+              type="search"
+              value={termo}
+              onChange={(evento) => mudarParametro(PARAMETRO_BUSCA, evento.target.value)}
+              placeholder="Buscar no título, no texto e em tarefas, grupos e categorias"
+              className="h-10 bg-papel pl-9"
+            />
+          </label>
+          <FiltrosDasNotas
+            modo={modo}
+            onModo={handleModo}
+            tipo={tipo}
+            onTipo={(novo) => mudarParametro(PARAMETRO_TIPO, novo === 'todas' ? undefined : novo)}
+            categoria={categoria}
+            hasCategorias={categorias.length > 0}
+            onCategoria={(id) => mudarParametro(PARAMETRO_CATEGORIA, id)}
           />
-          <Input
-            type="search"
-            value={termo}
-            onChange={(evento) =>
-              setParametros(evento.target.value ? { [PARAMETRO_BUSCA]: evento.target.value } : {}, {
-                replace: true,
-              })
-            }
-            placeholder="Buscar no título e no texto"
-            className="h-10 bg-papel pl-9"
-          />
-        </label>
+        </div>
       )}
 
-      <section aria-label="Lista de notas" className="mt-4">
+      <section aria-label="Lista de notas" className="mt-6">
         {!isCarregando && notas.length === 0 && (
-          <p className="rounded-md border border-pauta bg-papel px-4 py-6 text-grafite">
-            Nenhuma nota ainda. Use <strong>Nova nota</strong> para anotar uma ideia, colar uma foto
-            ou gravar um lembrete em áudio.
-          </p>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
+            <button
+              type="button"
+              onClick={() => void handleNova()}
+              className="flex min-h-32 flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-pauta text-grafite hover:border-caneta/60 hover:text-caneta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta"
+            >
+              <Plus aria-hidden className="size-5" />
+              Criar a primeira nota
+            </button>
+            <p className="self-center px-1 text-sm text-grafite">
+              Você também pode adicionar notas pelo menu ⋯ de uma tarefa ou grupo.
+            </p>
+          </div>
         )}
         {notas.length > 0 && encontradas.length === 0 && (
-          <p className="px-1 py-4 text-grafite">Nenhuma nota com “{termo}”.</p>
+          <p className="px-1 py-4 text-grafite">
+            {termo ? `Nenhuma nota com “${termo}”.` : 'Nenhuma nota com esses filtros.'}
+            {isFiltrando && (
+              <Button
+                variant="link"
+                className="ml-1 h-auto p-0"
+                onClick={() => setParametros({}, { replace: true })}
+              >
+                Limpar filtros
+              </Button>
+            )}
+          </p>
         )}
-        {encontradas.length > 0 && (
-          <ul className="rounded-md border border-pauta bg-papel">
-            {encontradas.map((nota) => {
-              const anexos = anexosPorNota.get(nota.id) ?? 0
-              return (
-                <li key={nota.id} className="border-b border-pauta last:border-b-0">
-                  <Link
-                    to={`/notas/${nota.id}`}
-                    className="block px-4 py-3 hover:bg-accent/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-caneta"
-                  >
-                    <span className="font-semibold">{tituloDaNota(nota)}</span>
-                    <span className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-grafite">
-                      <span>
-                        editada{' '}
-                        {formatDistanceToNow(parseISO(nota.atualizadoEm), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
-                      </span>
-                      {anexos > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Paperclip aria-hidden className="size-3.5" />
-                          {descreverQuantidade(anexos)}
-                        </span>
-                      )}
-                    </span>
-                    {nota.titulo.trim() && nota.conteudo.trim() && (
-                      <span className="mt-1 line-clamp-2 block text-[0.9375rem]">
-                        {nota.conteudo}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+        <ListaDeNotas blocos={blocos} anexosPorNota={anexosPorNota} />
       </section>
     </>
   )
