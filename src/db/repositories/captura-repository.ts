@@ -9,42 +9,54 @@ import {
   type ItensAdicionados,
 } from '@/db/repositories/group-repository'
 import { criarTarefa, excluirTarefa } from '@/db/repositories/task-repository'
-import { itensPreenchidos, type TipoCaptura } from '@/lib/captura'
+import { itensPreenchidos } from '@/lib/captura'
 
 /** Anexo escolhido na captura, gravado junto com a tarefa (foto já reduzida). */
 export type AnexoDaCaptura =
   { tipo: 'foto'; nome: string; blob: Blob } | { tipo: 'link'; nome: string; url: string }
 
-export interface NovaCaptura {
-  tipo: TipoCaptura
-  /** Título da tarefa ou do grupo novo; em "Em grupo…", o primeiro item. */
-  titulo: string
-  data: DataLocal
+interface CategoriaDaCaptura {
   categoryId?: string
   subcategoryId?: string
-  /** Série escolhida em "Em grupo…". */
-  seriesId?: string
-  /** Itens do grupo novo ou itens a mais em "Em grupo…". */
-  itens?: { titulo: string }[]
-  /** Só da tarefa. */
-  anexos?: AnexoDaCaptura[]
-  /** Só da tarefa: vira a anotação dela (as linhas depois do título). */
-  anotacao?: string
 }
+
+export type NovaCaptura =
+  | ({
+      tipo: 'tarefa'
+      titulo: string
+      data: DataLocal
+      anexos?: AnexoDaCaptura[]
+      /** Vira a anotação da tarefa (as linhas depois do título). */
+      anotacao?: string
+    } & CategoriaDaCaptura)
+  | ({
+      tipo: 'grupo'
+      /** Nome do grupo novo. */
+      titulo: string
+      data: DataLocal
+      /** Linhas de item, na ordem; as vazias são ignoradas. */
+      itens: string[]
+    } & CategoriaDaCaptura)
+  | {
+      /** Itens num grupo que já existe; o item usa a categoria do grupo. */
+      tipo: 'em-grupo'
+      seriesId: string
+      data: DataLocal
+      itens: string[]
+    }
 
 export type ResultadoCaptura =
   | { tipo: 'tarefa'; id: string; data: DataLocal }
   | ({ tipo: 'grupo' | 'em-grupo' } & ItensAdicionados)
 
 /**
- * Cria pela captura rápida, numa transação: tarefa solta (com anexos e anotação), grupo novo com itens
- * (nome de série existente reusa a série, regra de `criarGrupo`) ou itens num grupo que já
- * existe (`adicionarItensNaSerie`).
+ * Cria pela captura rápida, numa transação: tarefa solta (com anexos e anotação), grupo novo já
+ * com os itens (série, card e itens juntos; nome de série existente reusa a série, regra de
+ * `criarGrupo`) ou itens num grupo que já existe (`adicionarItensNaSerie`).
  */
 export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
-  const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
-  const itens = itensPreenchidos(dados.itens ?? [])
   if (dados.tipo === 'tarefa') {
+    const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
     return db.transaction('rw', [db.tasks, db.groupCards, db.attachments, db.notes], async () => {
       const tarefa = await criarTarefa({ titulo: dados.titulo, data: dados.data, ...categoria })
       const dono = { tipo: 'task' as const, id: tarefa.id }
@@ -55,14 +67,12 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
       return { tipo: 'tarefa', id: tarefa.id, data: tarefa.data }
     })
   }
+  const itens = itensPreenchidos(dados.itens)
   if (dados.tipo === 'em-grupo') {
-    if (!dados.seriesId) throw new Error('Escolha o grupo.')
-    const adicionados = await adicionarItensNaSerie(dados.seriesId, dados.data, [
-      dados.titulo,
-      ...itens,
-    ])
+    const adicionados = await adicionarItensNaSerie(dados.seriesId, dados.data, itens)
     return { tipo: 'em-grupo', ...adicionados }
   }
+  const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
   return db.transaction(
     'rw',
     [db.tasks, db.groupSeries, db.groupCards, db.groupItems],

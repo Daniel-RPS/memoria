@@ -68,7 +68,7 @@ async function lerBanco(page: Page) {
 }
 
 function campoDeCaptura(page: Page) {
-  return page.getByRole('textbox', { name: 'O que precisa ser feito?' })
+  return page.getByRole('textbox', { name: 'Título da tarefa' })
 }
 
 function blocoHoje(page: Page) {
@@ -139,8 +139,13 @@ test('cria tarefa para amanhã com categoria nova e ela aparece no Dia sem recar
 test('cria grupo com 3 itens para hoje e marca pelo bloco Hoje', async ({ page }) => {
   await page.goto('/inicio')
   await page.getByRole('button', { name: 'Grupo', exact: true }).click()
-  // 1ª linha = nome do grupo; cada linha seguinte, um item.
-  await campoDeCaptura(page).fill('Mercado\nCafé\nPão\nLeite')
+  // Nome do grupo e, abaixo, uma linha por item (Enter abre a próxima).
+  await page.getByRole('textbox', { name: 'Nome do grupo' }).fill('Mercado')
+  await page.keyboard.press('Enter')
+  for (const [indice, item] of ['Café', 'Pão', 'Leite'].entries()) {
+    if (indice > 0) await page.keyboard.press('Enter')
+    await page.keyboard.type(item)
+  }
   await capturar(page, '3-antes')
   await page.getByRole('button', { name: 'Criar' }).click()
 

@@ -15,7 +15,7 @@ describe('Início', () => {
   it('o app abre no Início com o campo de captura focado', async () => {
     const router = renderizarApp('/')
 
-    const campo = await screen.findByRole('textbox', { name: 'O que precisa ser feito?' })
+    const campo = await screen.findByRole('textbox', { name: 'Título da tarefa' })
     expect(router.state.location.pathname).toBe('/inicio')
     await waitFor(() => expect(campo).toHaveFocus())
   })
@@ -24,7 +24,7 @@ describe('Início', () => {
     const usuario = userEvent.setup()
     renderizarApp('/inicio')
 
-    const campo = await screen.findByRole('textbox', { name: 'O que precisa ser feito?' })
+    const campo = await screen.findByRole('textbox', { name: 'Título da tarefa' })
     await usuario.type(campo, 'Pagar a luz{Enter}')
 
     const blocoHoje = screen.getByRole('region', { name: 'Hoje' })
@@ -37,14 +37,35 @@ describe('Início', () => {
     await waitFor(async () => expect(await db.tasks.count()).toBe(0))
   })
 
+  it('Grupo: nome, Enter, itens e Ctrl+Enter criam o grupo com os itens; desfazer tira tudo', async () => {
+    const usuario = userEvent.setup()
+    renderizarApp('/inicio')
+
+    await screen.findByRole('textbox', { name: 'Título da tarefa' })
+    await usuario.click(screen.getByRole('button', { name: 'Grupo', exact: true }))
+    const nome = screen.getByRole('textbox', { name: 'Nome do grupo' })
+    await waitFor(() => expect(nome).toHaveFocus())
+    await usuario.keyboard(
+      'Casa{Enter}Lavar roupa{Enter}{Enter}Regar plantas{Control>}{Enter}{/Control}',
+    )
+
+    const [dia, mes] = hoje().split('-').reverse()
+    expect(
+      await screen.findByText(`Grupo Casa criado com 2 itens · ${dia}/${mes}`),
+    ).toBeInTheDocument()
+    const itens = (await db.groupItems.toArray()).sort((a, b) => a.ordem - b.ordem)
+    expect(itens.map((item) => item.titulo)).toEqual(['Lavar roupa', 'Regar plantas'])
+
+    await usuario.click(screen.getByRole('button', { name: 'Desfazer' }))
+    await waitFor(async () => expect(await db.groupSeries.count()).toBe(0))
+    expect(await db.groupItems.count()).toBe(0)
+  })
+
   it('título vazio mostra o erro e não cria nada', async () => {
     const usuario = userEvent.setup()
     renderizarApp('/inicio')
 
-    await usuario.type(
-      await screen.findByRole('textbox', { name: 'O que precisa ser feito?' }),
-      '{Enter}',
-    )
+    await usuario.type(await screen.findByRole('textbox', { name: 'Título da tarefa' }), '{Enter}')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Escreva um nome.')
     expect(await db.tasks.count()).toBe(0)

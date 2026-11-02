@@ -67,8 +67,9 @@ async function lerCards(page: Page) {
   })
 }
 
-function campoDeCaptura(page: Page) {
-  return page.getByRole('textbox', { name: 'O que precisa ser feito?' })
+/** Em "Em grupo…" a captura é a lista de itens; a última linha é a que está sendo digitada. */
+function itemDaCaptura(page: Page) {
+  return page.getByRole('textbox', { name: 'Item do grupo', exact: true }).last()
 }
 
 function grupoNoHoje(page: Page, titulo: string) {
@@ -108,10 +109,10 @@ test('Em grupo… → Casa → Hoje: o item entra no card de hoje, sem segundo c
   await expect(lista.getByRole('button', { name: 'Casa já existe em 02/11' })).toBeVisible()
   await capturar(page, '1-seletor')
   await lista.getByRole('button', { name: /^Casa/ }).click()
-  await expect(campoDeCaptura(page)).toBeFocused()
+  await expect(itemDaCaptura(page)).toBeFocused()
   await expect(page.getByText('usa a categoria do grupo')).toBeVisible()
-  await campoDeCaptura(page).fill('fazer lasanha')
-  await campoDeCaptura(page).press('Enter')
+  await itemDaCaptura(page).fill('fazer lasanha')
+  await itemDaCaptura(page).press('Control+Enter')
 
   await expect(aviso(page).getByText('1 item adicionado a Casa · 02/11')).toBeVisible()
   await expect(
@@ -129,14 +130,16 @@ test('Em grupo… → Casa → Hoje: o item entra no card de hoje, sem segundo c
   await capturar(page, '1-no-dia')
 })
 
-test('Em grupo… → Casa → Amanhã, com duas linhas: cria o card de amanhã com os itens', async ({
+test('Em grupo… → Casa → Amanhã, com dois itens: cria o card de amanhã com os itens', async ({
   page,
 }) => {
   await page.goto('/inicio')
   await semearCasaHoje(page)
   await escolherEmGrupo(page, 'Casa')
   await page.getByRole('button', { name: 'Amanhã' }).click()
-  await campoDeCaptura(page).fill('fazer lasanha\ncomprar queijo')
+  await itemDaCaptura(page).fill('fazer lasanha')
+  await itemDaCaptura(page).press('Enter')
+  await itemDaCaptura(page).fill('comprar queijo')
   await capturar(page, '2-antes')
   await page.getByRole('button', { name: 'Criar' }).click()
 
@@ -179,8 +182,8 @@ test('Desfazer tira os itens e o card que a captura criou', async ({ page }) => 
 
   // No card de hoje: só o item sai.
   await escolherEmGrupo(page, 'Casa')
-  await campoDeCaptura(page).fill('fazer lasanha')
-  await campoDeCaptura(page).press('Enter')
+  await itemDaCaptura(page).fill('fazer lasanha')
+  await itemDaCaptura(page).press('Control+Enter')
   await expect(grupoNoHoje(page, 'Casa').getByText('fazer lasanha')).toBeVisible()
   await capturar(page, '4-antes')
   await aviso(page).getByRole('button', { name: 'Desfazer' }).click()
@@ -190,8 +193,8 @@ test('Desfazer tira os itens e o card que a captura criou', async ({ page }) => 
   // Card criado para amanhã: some junto (Ctrl+Z faz o mesmo que o botão).
   await escolherEmGrupo(page, 'Casa')
   await page.getByRole('button', { name: 'Amanhã' }).click()
-  await campoDeCaptura(page).fill('fazer lasanha')
-  await campoDeCaptura(page).press('Enter')
+  await itemDaCaptura(page).fill('fazer lasanha')
+  await itemDaCaptura(page).press('Control+Enter')
   await expect(aviso(page).getByText('1 item adicionado a Casa · 03/11')).toBeVisible()
   expect(await lerCards(page)).toHaveLength(3)
   await page.locator('body').click({ position: { x: 5, y: 5 } })

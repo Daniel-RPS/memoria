@@ -17,9 +17,10 @@ Legenda: ✅ pronto · 🔜 planejado
 ### Início
 
 - ✅ Tela principal do app (primeiro item da barra lateral): o app abre nela
-- ✅ Captura rápida: "O que precisa ser feito?" já focado, com espaço para várias linhas (o campo cresce sozinho). Enter cria e Shift+Enter quebra a linha: a 1ª linha é o título e as outras viram a anotação da tarefa ou, em Grupo, um item por linha. Categoria pelo seletor de sempre (com "+ Nova categoria" ali mesmo) e dia: Hoje, Amanhã ou Escolher data…
+- ✅ Captura rápida, já focada e sem texto de exemplo no campo (a estrutura mostra o modo). Tarefa: Enter cria e Shift+Enter quebra a linha (as linhas de baixo viram a anotação). Categoria pelo seletor de sempre (com "+ Nova categoria" ali mesmo) e dia: Hoje, Amanhã ou Escolher data…
+- ✅ **Grupo já com os itens**: o nome do grupo em destaque e, embaixo, uma linha com caixinha para cada item. Enter no nome desce para o 1º item; Enter num item abre o próximo; Backspace num item vazio apaga a linha e volta; ↑/↓ andam entre as linhas; colar várias linhas gera um item por linha; Ctrl+Enter (ou **Criar**) cria tudo de uma vez, na ordem, ignorando linhas vazias. Aviso "Grupo Casa criado com 3 itens · 02/11 · Ver no dia · Desfazer" (desfazer tira o grupo e os itens). Trocar entre Tarefa, Grupo e Em grupo… não perde o que foi digitado
 - ✅ Anexar foto/imagem ou link à tarefa já na captura
-- ✅ **Em grupo…**: o que você escreve vira item de um grupo que já existe (ex.: "fazer lasanha" no grupo Casa), no dia escolhido. Lista de grupos com busca, os usados por último primeiro, na cor da categoria do grupo e com "já existe em 01/11" quando o card do dia já existe; senão o card é criado. Aviso "1 item adicionado a Casa · 01/11 · Ver no dia · Desfazer"
+- ✅ **Em grupo…**: a mesma lista de itens (sem o nome) vai para um grupo que já existe (ex.: "fazer lasanha" no grupo Casa), no dia escolhido. Lista de grupos com busca, os usados por último primeiro, na cor da categoria do grupo e com "já existe em 01/11" quando o card do dia já existe; senão o card é criado. Aviso "1 item adicionado a Casa · 01/11 · Ver no dia · Desfazer"
 - ✅ **Ctrl+K** (ou **N**, fora de um campo de texto) abre o Início com a captura focada, de qualquer tela
 - ✅ Aviso "Tarefa criada para 03/11 · Ver no dia · Desfazer" (Ctrl+Z também desfaz)
 - ✅ Ao lado, discretos: **Hoje** (marcável ali mesmo, tarefas e itens de grupo; "+" ao passar o mouse num grupo adiciona item), **Atrasadas** ("há 5 dias", Trazer para hoje, uma ou todas) e **Próximos 7 dias** (faixa com quantos pendentes em cada dia, dica "4 pendentes em 04/11"; clicar abre o Dia)
@@ -126,7 +127,7 @@ Depois, abra no navegador **`http://localhost:5173`**.
 
 ### Usando
 
-- O app abre no **Início**. Escreva em **O que precisa ser feito?** e tecle Enter: vira uma tarefa de hoje. Shift+Enter abre outra linha: na tarefa, essas linhas viram a anotação. Antes, se quiser, escolha **Grupo** (1ª linha = nome do grupo, cada linha seguinte = um item), a categoria e o dia. Tab passa pelo tipo, categoria e dia. De qualquer tela, **Ctrl+K** (ou **N**) volta para cá com o campo pronto.
+- O app abre no **Início**, com o campo pronto: escreva e tecle Enter para criar uma tarefa de hoje. Shift+Enter abre outra linha, que vira a anotação da tarefa. Em **Grupo**, escreva o nome, Enter, e um item por linha (Enter abre a próxima, Backspace numa linha vazia volta); Ctrl+Enter cria o grupo com tudo. Escolha também a categoria e o dia. Tab passa pelo tipo, categoria e dia. De qualquer tela, **Ctrl+K** (ou **N**) volta para cá com o campo pronto.
 - Para pôr um item num grupo que já existe, escolha **Em grupo…**, o grupo (busque pelo nome) e o dia; a categoria vem do grupo. No bloco **Hoje**, o **+** que aparece ao passar o mouse num grupo também adiciona item.
 - No Início, marque o que é de hoje no bloco **Hoje** e traga o que ficou para trás em **Atrasadas**. Clique num dia dos **Próximos 7 dias** ou num quadrado do mapa para abrir aquele dia.
 - Na barra lateral, **Calendário** junta Dia, Semana, Mês e Ano. Clicar nele só abre e fecha (escolher uma visão não fecha o grupo); o app lembra a escolha e abre o grupo sozinho quando você está numa dessas visões. Pelo teclado: Tab até ele, Enter ou espaço abre e fecha, setas andam entre as visões.

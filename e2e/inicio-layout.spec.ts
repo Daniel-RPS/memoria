@@ -20,7 +20,7 @@ interface ModuloBanco {
 }
 
 function campoDeCaptura(page: Page) {
-  return page.getByRole('textbox', { name: 'O que precisa ser feito?' })
+  return page.getByRole('textbox', { name: 'Título da tarefa' })
 }
 
 function captura(page: Page) {
@@ -167,17 +167,18 @@ test('o campo cresce com as linhas; Shift+Enter quebra linha e Enter cria com an
   ])
 })
 
-test('no modo Grupo, a primeira linha é o nome e as outras viram itens', async ({ page }) => {
+test('no modo Grupo, o nome vem primeiro e cada linha é um item (as vazias saem)', async ({
+  page,
+}) => {
   await page.goto('/inicio')
   await captura(page).getByRole('button', { name: 'Grupo', exact: true }).click()
-  const campo = campoDeCaptura(page)
-  await campo.pressSequentially('Feira')
+  await page.keyboard.type('Feira')
   for (const linha of ['Banana', '', 'Alface', 'Tomate']) {
-    await campo.press('Shift+Enter')
-    if (linha) await campo.pressSequentially(linha)
+    await page.keyboard.press('Enter')
+    if (linha) await page.keyboard.type(linha)
   }
-  await campo.press('Enter')
-  await expect(page.getByText('Grupo criado para 02/11')).toBeVisible()
+  await page.keyboard.press('Control+Enter')
+  await expect(page.getByText('Grupo Feira criado com 3 itens · 02/11')).toBeVisible()
 
   const { series, itens } = await lerBanco(page)
   expect(series.map((serie) => serie.titulo)).toEqual(['Feira'])
