@@ -71,9 +71,9 @@ export function FormularioProcedimento({
           await onEnviar?.(dados)
         })}
         noValidate
-        className="mt-2 flex flex-col gap-10"
+        className="mt-2 flex flex-col gap-6"
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <Field data-invalid={errors.titulo ? true : undefined}>
             <FieldLabel htmlFor="titulo" className="sr-only">
               Título
@@ -84,14 +84,16 @@ export function FormularioProcedimento({
               aria-invalid={errors.titulo ? true : undefined}
               placeholder="Título do procedimento"
               autoComplete="off"
-              className="h-auto border-transparent bg-transparent px-1 py-1 text-4xl font-extrabold tracking-[-0.02em] shadow-none [font-stretch:80%] placeholder:text-grafite/55 hover:border-pauta md:text-4xl"
+              className="-mx-1 h-auto rounded-sm border-transparent bg-transparent px-1 py-0.5 text-3xl font-extrabold tracking-[-0.02em] shadow-none [font-stretch:80%] placeholder:text-grafite/55 hover:bg-accent/40 focus-visible:border-caneta/50 focus-visible:bg-card focus-visible:ring-0 md:text-3xl dark:bg-transparent dark:focus-visible:bg-card"
             />
             <FieldError errors={[errors.titulo]} />
           </Field>
 
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <Field className="w-full sm:w-72">
-              <FieldLabel htmlFor="categoria">Categoria</FieldLabel>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <FieldLabel htmlFor="categoria" className="text-sm text-grafite">
+              Categoria
+            </FieldLabel>
+            <div className="w-full max-w-64 min-w-0 flex-1 sm:flex-none">
               <Controller
                 control={control}
                 name="categoryId"
@@ -111,8 +113,8 @@ export function FormularioProcedimento({
                   />
                 )}
               />
-            </Field>
-            {situacao}
+            </div>
+            {situacao && <div className="ml-auto">{situacao}</div>}
           </div>
         </div>
 

@@ -102,7 +102,8 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Arquivar card = arquivar os pendentes (sai do calendário se não sobrar feito/transferido); excluir card apaga os itens e a série que ficar sem card
 - "+ Novo grupo" (ao lado de "+ Nova tarefa", no Dia e na Semana) com nome de série existente reusa a série; já existindo no dia, `ErroDeValidacao`
 - Procedimento = título, categoria (e subcategoria) e etapas numeradas pela posição; SÓ isso (sem execução, versões, campos variáveis, anexos ou ligação com o calendário — removidos em 01/11/2026, não reintroduza sem o usuário pedir)
-- Lista de procedimentos: um bloco por categoria (`agruparPorCategoria`), "Sem categoria" no fim; busca por título e texto das etapas (`buscarProcedimentos`, `src/lib/procedimentos.ts`)
+- Lista de procedimentos: um bloco por categoria (`agruparPorCategoria`), "Sem categoria" no fim; busca por título e texto das etapas (`buscarProcedimentos`, `src/lib/procedimentos.ts`). Cada bloco = grade `auto-fill/minmax(13rem)` de `CartaoProcedimento` (um `Link`; faixa de 3px em `corDeTraco`, neutra = `grafite`); prévia, "+ N etapas", contagem e "editado em" SÓ em `previaDoProcedimento` (puro)
+- Editor de etapas: `LinhaEtapa` (rótulo "Etapa N" em linha, largura fixa, alinhado à 1ª linha; texto sem caixa até hover/foco; lixeira só no hover/foco). Enter insere a próxima logo depois e foca; Shift+Enter quebra; Backspace em etapa vazia apaga e volta para o fim da anterior
 - Novo procedimento grava ao clicar "Criar procedimento"; na página dele a edição grava sozinha (`useSalvarComAtraso` + `salvarProcedimento` com a lista inteira de etapas); excluir pede confirmação
 - NUNCA crie campo de senha no app
 - Interface toda em português do Brasil
@@ -152,6 +153,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 01/11/2026: layout do Início — sem "Próxima semana", Próximos 7 dias na lateral (faixa discreta), captura multilinha (linhas extras = anotação ou itens) e mapa logo abaixo
 - Ajuste 01/11/2026: captura cria o grupo já com os itens (nome em destaque + linhas com caixinha, teclado próprio, colar = vários itens) e "Em grupo…" usa a mesma lista
 - Ajuste 01/11/2026: um texto apagado por modo no campo da captura ("Escreva a tarefa a ser feita" etc.)
+- Ajuste 01/11/2026: Procedimentos em cartões (grade por categoria, prévia de 3 etapas) e editor de etapas compacto com Enter/Backspace — só camada visual, sem mudar o banco
 - Ajuste 01/11/2026: Hoje e Atrasadas do Início em cards por tipo (um por grupo + "Tarefas soltas"), Atrasadas com título laranja e "Tudo em dia"
 
 ## Armadilhas

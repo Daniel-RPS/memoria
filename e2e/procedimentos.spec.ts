@@ -44,7 +44,7 @@ test.beforeEach(async ({ page }) => {
     const categorias = (await import(/* @vite-ignore */ caminho)) as ModuloCategorias
     await categorias.criarCategoria({ nome: 'Casa' })
   })
-  await expect(page.getByText('Nenhum procedimento ainda.')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Criar o primeiro procedimento/ })).toBeVisible()
 })
 
 test('criar, editar e excluir um procedimento', async ({ page }) => {
@@ -92,7 +92,7 @@ test('criar, editar e excluir um procedimento', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Trocar o filtro de água/ })).toBeVisible()
   await capturar(page, '4-lista-busca')
   await page.getByRole('searchbox', { name: 'Buscar procedimentos' }).fill('impressora')
-  await expect(page.getByText('Nenhum procedimento com “impressora”.')).toBeVisible()
+  await expect(page.getByText('Nenhum procedimento encontrado.')).toBeVisible()
   await page.getByRole('searchbox', { name: 'Buscar procedimentos' }).fill('')
 
   // Excluir pede confirmação.
@@ -103,7 +103,7 @@ test('criar, editar e excluir um procedimento', async ({ page }) => {
   await page.getByRole('button', { name: 'Excluir procedimento', exact: true }).click()
 
   await expect(page).toHaveURL(/\/procedimentos$/)
-  await expect(page.getByText('Nenhum procedimento ainda.')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Criar o primeiro procedimento/ })).toBeVisible()
   expect(await lerProcedimentos(page)).toEqual([])
   await capturar(page, '6-excluido')
 })

@@ -51,13 +51,20 @@ export function ProcedimentosPage() {
 
       <div aria-label="Lista de procedimentos" role="region" className="mt-6">
         {!isCarregando && procedimentos.length === 0 && (
-          <p className="rounded-md border border-pauta bg-papel px-4 py-6 text-grafite">
-            Nenhum procedimento ainda. Crie o primeiro com <strong>Novo procedimento</strong>, por
-            exemplo as etapas de um backup ou de uma renovação de documento.
-          </p>
+          <Link
+            to="/procedimentos/novo"
+            className="flex min-h-32 flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-grafite/40 px-4 py-6 text-center transition-colors hover:border-caneta/45 hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta motion-reduce:transition-none"
+          >
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Plus aria-hidden className="size-4" /> Criar o primeiro procedimento
+            </span>
+            <span className="text-sm text-grafite">
+              Por exemplo, as etapas de um backup ou de uma renovação de documento.
+            </span>
+          </Link>
         )}
         {procedimentos.length > 0 && blocos.length === 0 && (
-          <p className="px-1 py-4 text-grafite">Nenhum procedimento com “{termo}”.</p>
+          <p className="px-1 py-4 text-grafite">Nenhum procedimento encontrado.</p>
         )}
         <ListaProcedimentos blocos={blocos} />
       </div>

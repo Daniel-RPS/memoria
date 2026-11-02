@@ -48,12 +48,12 @@ export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProced
         valoresIniciais={valoresIniciais}
         onAlterar={mudar}
         situacao={
-          <p role="status" className="pb-2 text-sm text-grafite">
+          <p role="status" className="text-sm text-grafite">
             {isPendente ? 'Salvando…' : 'Salvo'}
           </p>
         }
         rodape={
-          <div className="border-t border-pauta pt-4">
+          <div className="-mt-2 border-t border-pauta pt-2">
             <Button
               type="button"
               variant="ghost"

@@ -75,9 +75,9 @@ Legenda: ✅ pronto · 🔜 planejado
 ### Procedimentos
 
 - ✅ Procedimento = título, categoria e etapas numeradas sozinhas (Etapa 1, 2, 3…)
-- ✅ Adicionar, renomear (ali mesmo) e excluir etapas; a numeração se ajusta
+- ✅ Adicionar, renomear (ali mesmo) e excluir etapas; a numeração se ajusta. Editor compacto: uma linha por etapa, Enter cria a próxima e Backspace numa etapa vazia apaga
 - ✅ Edição grava sozinha; excluir o procedimento pede confirmação
-- ✅ Lista separada por categoria, com a cor dela, e "Sem categoria" no fim
+- ✅ Lista separada por categoria, com a cor dela, e "Sem categoria" no fim, em cartões com as 3 primeiras etapas (01/11/2026)
 - ✅ Busca em títulos e etapas, sem diferenciar acentos
 
 ### Conteúdo e dados
@@ -151,7 +151,7 @@ Depois, abra no navegador **`http://localhost:5173`**.
 - Tarefas soltas continuam sendo **movidas** (não copiadas).
 - Grupos com o mesmo nome são o mesmo grupo em dias diferentes: se o destino já tem o card "Casa", os itens entram nele. Renomear ou trocar a categoria do card vale para todos os dias.
 - Arraste uma tarefa solta para dentro de um card, ou um item para fora (vira tarefa solta). Pelo menu **⋯** também: **Colocar no grupo** e **Tirar do grupo**. Subtarefas, anotação e anexos da tarefa não passam para o item.
-- Em **Procedimentos**, **Novo procedimento** pede título, categoria (e subcategoria, se quiser) e etapas (**Adicionar etapa** quantas vezes quiser). Depois de criado, clique nele na lista para ver e editar: o texto das etapas se edita ali mesmo e tudo grava sozinho ("Salvo"). A lixeira exclui a etapa e a numeração se ajusta.
+- Em **Procedimentos**, **Novo procedimento** pede título, categoria (e subcategoria, se quiser) e etapas (**Adicionar etapa** quantas vezes quiser). A lista mostra um cartão por procedimento, com as 3 primeiras etapas. Clique no cartão (ou Tab até ele e Enter) para ver e editar: o texto das etapas se edita ali mesmo e tudo grava sozinho ("Salvo"). Enter cria a próxima etapa (Shift+Enter quebra a linha) e Backspace numa etapa vazia apaga e volta para a anterior. A lixeira, que aparece ao passar o mouse, exclui a etapa e a numeração se ajusta.
 - Em **Mês**, cada dia mostra até 3 pendentes (atrasadas com marca-texto) e o resto como "+N". Arraste uma tarefa para outro dia; pelo teclado, foque a tarefa, tecle espaço, use as setas (lados = um dia, cima/baixo = uma semana) e espaço de novo.
 - Em **Ano**, o tom de cada dia indica quantas tarefas há, e um ponto amarelo marca pendência atrasada. Clique no mês ou no dia para abrir.
 - Em **Notas**, **Nova nota** abre uma página que se salva sozinha enquanto você escreve.

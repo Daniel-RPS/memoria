@@ -116,7 +116,8 @@ describe('Procedimentos', () => {
 
     await usuario.clear(busca)
     await usuario.type(busca, 'impressora')
-    expect(screen.getByText('Nenhum procedimento com “impressora”.')).toBeInTheDocument()
+    expect(screen.getByText('Nenhum procedimento encontrado.')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Sem categoria' })).not.toBeInTheDocument()
   })
 
   it('excluir o procedimento pede confirmação', async () => {
@@ -158,6 +159,70 @@ describe('Procedimentos', () => {
       })
     })
     expect(screen.getByRole('button', { name: 'Categoria' })).toHaveTextContent('Casa › Jardim')
+  })
+
+  it('cartão: título, 3 primeiras etapas, "+ N etapas" e contagem; sem etapas avisa', async () => {
+    await criarProcedimento({
+      titulo: 'Fechamento do mês',
+      categoryId: '',
+      etapas: ['Baixar o extrato', 'Conferir notas', 'Lançar', 'Enviar', 'Arquivar'].map(
+        (texto, indice) => ({ id: `e${indice}`, texto }),
+      ),
+    })
+    await criarProcedimento({ titulo: 'Regar', categoryId: '', etapas: [] })
+    renderizarApp('/procedimentos')
+
+    const cartao = await screen.findByRole('link', { name: /Fechamento do mês/ })
+    expect(within(cartao).getByText('1. Baixar o extrato')).toBeInTheDocument()
+    expect(within(cartao).getByText('3. Lançar')).toBeInTheDocument()
+    expect(within(cartao).queryByText(/4\. Enviar/)).not.toBeInTheDocument()
+    expect(within(cartao).getByText('+ 2 etapas')).toBeInTheDocument()
+    expect(within(cartao).getByText('5 etapas')).toBeInTheDocument()
+    expect(within(cartao).getByText(/^editado em \d\d\/\d\d$/)).toBeInTheDocument()
+    const vazio = screen.getByRole('link', { name: /Regar/ })
+    expect(within(vazio).getByText('Nenhuma etapa ainda')).toBeInTheDocument()
+  })
+
+  it('lista vazia: cartão "Criar o primeiro procedimento" abre o novo', async () => {
+    const usuario = userEvent.setup()
+    const router = renderizarApp('/procedimentos')
+
+    await usuario.click(await screen.findByRole('link', { name: /Criar o primeiro procedimento/ }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/procedimentos/novo'))
+  })
+
+  it('Enter cria a próxima etapa focada; Backspace em etapa vazia apaga e volta', async () => {
+    const usuario = userEvent.setup()
+    renderizarApp('/procedimentos/novo')
+
+    await usuario.type(await screen.findByLabelText('Título'), 'Deploy')
+    await usuario.click(screen.getByRole('button', { name: 'Adicionar etapa' }))
+    await usuario.keyboard('Acessar github{Enter}Fazer deploy')
+    expect(etapasNaTela()).toEqual([
+      ['Etapa 1', 'Acessar github'],
+      ['Etapa 2', 'Fazer deploy'],
+    ])
+
+    // Enter no meio insere logo depois da atual.
+    await usuario.click(screen.getByLabelText('Etapa 1'))
+    await usuario.keyboard('{Enter}')
+    expect(screen.getByLabelText('Etapa 2')).toHaveFocus()
+    expect(etapasNaTela()).toEqual([
+      ['Etapa 1', 'Acessar github'],
+      ['Etapa 2', ''],
+      ['Etapa 3', 'Fazer deploy'],
+    ])
+
+    await usuario.keyboard('{Backspace}')
+    expect(etapasNaTela()).toEqual([
+      ['Etapa 1', 'Acessar github'],
+      ['Etapa 2', 'Fazer deploy'],
+    ])
+    await waitFor(() => expect(screen.getByLabelText('Etapa 1')).toHaveFocus())
+    // Backspace com texto só apaga a letra.
+    await usuario.keyboard('{Backspace}')
+    expect(screen.getByLabelText('Etapa 1')).toHaveValue('Acessar githu')
+    expect(etapasNaTela()).toHaveLength(2)
   })
 
   it('os blocos seguem a ordem das categorias definida pelo usuário', async () => {

@@ -6,6 +6,7 @@ import {
   buscarProcedimentos,
   etapasEmOrdem,
   numerarEtapas,
+  previaDoProcedimento,
 } from '@/lib/procedimentos'
 
 function procedimento(id: string, titulo: string, extras: Partial<Procedure> = {}): Procedure {
@@ -154,5 +155,54 @@ describe('converterProcedimentoAntigo', () => {
     })
     expect(convertido).not.toHaveProperty('categoryId')
     expect(convertido.etapas).toEqual([])
+  })
+})
+
+describe('previaDoProcedimento', () => {
+  const etapas = (...textos: string[]) =>
+    textos.map((texto, ordem) => ({ id: `e${ordem}`, texto, ordem }))
+
+  it('traz no máximo 3 etapas, na ordem, numeradas, e "+ N etapas" com o resto', () => {
+    const fora = etapas('A', 'B', 'C', 'D', 'E', 'F', 'G').reverse()
+    const previa = previaDoProcedimento(procedimento('p', 'Fechamento', { etapas: fora }))
+
+    expect(previa.etapas).toEqual(['1. A', '2. B', '3. C'])
+    expect(previa.restantes).toBe('+ 4 etapas')
+    expect(previa.total).toBe('7 etapas')
+    expect(previa.isVazio).toBe(false)
+  })
+
+  it('"+ 1 etapa" no singular e nada a mais com 3 ou menos', () => {
+    expect(
+      previaDoProcedimento(procedimento('p', 'X', { etapas: etapas('A', 'B', 'C', 'D') }))
+        .restantes,
+    ).toBe('+ 1 etapa')
+    const tres = previaDoProcedimento(procedimento('p', 'X', { etapas: etapas('A', 'B', 'C') }))
+    expect(tres.restantes).toBeUndefined()
+    expect(tres.etapas).toHaveLength(3)
+    expect(previaDoProcedimento(procedimento('p', 'X', { etapas: etapas('A') })).total).toBe(
+      '1 etapa',
+    )
+  })
+
+  it('sem etapas: prévia vazia e marcada como vazia', () => {
+    const previa = previaDoProcedimento(procedimento('p', 'Regar'))
+    expect(previa).toMatchObject({ etapas: [], total: '0 etapas', isVazio: true })
+    expect(previa.restantes).toBeUndefined()
+  })
+
+  it('etapa em branco aparece como "Etapa sem texto"', () => {
+    expect(
+      previaDoProcedimento(procedimento('p', 'X', { etapas: etapas('  ', 'B') })).etapas,
+    ).toEqual(['1. Etapa sem texto', '2. B'])
+  })
+
+  it('"editado em" pelo dia local de atualizadoEm; sem data, nada', () => {
+    // 01:30 UTC de 02/11 = 22:30 de 01/11 em São Paulo.
+    expect(
+      previaDoProcedimento(procedimento('p', 'X', { atualizadoEm: '2026-11-02T01:30:00.000Z' }))
+        .editadoEm,
+    ).toBe('editado em 01/11')
+    expect(previaDoProcedimento(procedimento('p', 'X')).editadoEm).toBeUndefined()
   })
 })
