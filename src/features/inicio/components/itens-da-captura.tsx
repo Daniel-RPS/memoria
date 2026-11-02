@@ -49,10 +49,13 @@ export function ItensDaCaptura({
   return (
     <div>
       {nome && (
-        <input
+        // `textarea` só para o texto apagado quebrar a linha quando o campo é estreito; o nome
+        // é uma linha só (Enter desce para os itens e quebras coladas viram espaço).
+        <textarea
           ref={nomeRef}
+          rows={1}
           value={nome.valor}
-          onChange={(evento) => nome.onMudar(evento.target.value)}
+          onChange={(evento) => nome.onMudar(evento.target.value.replace(/\r?\n/g, ' '))}
           onKeyDown={handleKeyDownNoNome}
           autoComplete="off"
           aria-label="Nome do grupo"
@@ -60,7 +63,7 @@ export function ItensDaCaptura({
           aria-describedby={nome.isInvalido ? idErro : undefined}
           aria-keyshortcuts="Control+K N"
           placeholder={dica}
-          className="h-9 w-full min-w-0 bg-transparent text-2xl leading-9 font-semibold tracking-[-0.02em] caret-caneta outline-none placeholder:font-normal placeholder:text-grafite/70"
+          className="field-sizing-content block min-h-9 w-full min-w-0 resize-none bg-transparent text-2xl leading-9 font-semibold tracking-[-0.02em] caret-caneta outline-none placeholder:text-xl placeholder:leading-8 placeholder:font-normal placeholder:tracking-[-0.01em] placeholder:text-grafite/70"
         />
       )}
       <ul aria-label="Itens do grupo" className={cn(nome && 'mt-1')}>

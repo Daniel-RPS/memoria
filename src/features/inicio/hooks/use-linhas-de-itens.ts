@@ -21,7 +21,7 @@ function isCriar(evento: KeyboardEvent) {
  * as linhas (o nome é a linha -1), Ctrl+Enter cria e colar várias linhas gera um item por linha.
  */
 export function useLinhasDeItens({ itens, onMudarItens, temNome, onCriar }: UseLinhasDeItensProps) {
-  const nomeRef = useRef<HTMLInputElement>(null)
+  const nomeRef = useRef<HTMLTextAreaElement>(null)
   const linhasRef = useRef<Campo[]>([])
   // A linha nova só existe depois de desenhar: o foco espera a lista mudar.
   const focoPendenteRef = useRef<Omit<EdicaoDeItens, 'itens'> | null>(null)
@@ -47,7 +47,7 @@ export function useLinhasDeItens({ itens, onMudarItens, temNome, onCriar }: UseL
     onMudarItens(novos)
   }
 
-  function handleKeyDownNoNome(evento: KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDownNoNome(evento: KeyboardEvent<HTMLTextAreaElement>) {
     if (evento.nativeEvent.isComposing) return
     if (isCriar(evento)) onCriar()
     else if (evento.key === 'Enter' || evento.key === 'ArrowDown') focar(0)

@@ -213,6 +213,24 @@ const DICAS = {
   emGrupo: 'Escolha o grupo e coloque a tarefa',
 }
 
+/**
+ * O texto apagado aparece inteiro: o campo tem altura para as linhas que o texto ocupa na
+ * largura dele (mede com a fonte do `::placeholder`).
+ */
+function isDicaInteira(campo: Locator) {
+  return campo.evaluate((elemento) => {
+    const textarea = elemento as HTMLTextAreaElement
+    const estilo = getComputedStyle(textarea, '::placeholder')
+    const contexto = document.createElement('canvas').getContext('2d')
+    if (!contexto) return false
+    contexto.font = `${estilo.fontWeight} ${estilo.fontSize} ${estilo.fontFamily}`
+    contexto.letterSpacing = estilo.letterSpacing
+    const largura = contexto.measureText(textarea.placeholder).width
+    const linhas = Math.round(textarea.clientHeight / parseFloat(estilo.lineHeight))
+    return largura <= textarea.clientWidth * linhas
+  })
+}
+
 /** O texto apagado aparece só com o campo vazio (`:placeholder-shown`). */
 function isDicaVisivel(campo: Locator) {
   return campo.evaluate((elemento) => elemento.matches(':placeholder-shown'))
@@ -283,7 +301,15 @@ for (const tema of ['claro', 'escuro'] as const) {
     await fotografar('tarefa')
     await escolherModo(page, 'Grupo')
     await fotografar('grupo')
-    await page.setViewportSize({ width: 820, height: 1100 })
+    // O texto do nome cabe inteiro também com a tela estreita (a letra dele diminui).
+    for (const [largura, altura] of [
+      [1366, 900],
+      [1024, 900],
+      [820, 1100],
+    ] as const) {
+      await page.setViewportSize({ width: largura, height: altura })
+      expect(await isDicaInteira(nomeDoGrupo(page)), `largura ${largura}`).toBe(true)
+    }
     await fotografar('grupo-estreita')
     await page.setViewportSize({ width: 1366, height: 900 })
     await escolherGrupo(page, 'Casa')
