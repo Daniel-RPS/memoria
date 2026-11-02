@@ -39,6 +39,8 @@ Mais a barra lateral (`--barra` `#FBFAFD` / `#121017`), os apelidos do shadcn (`
 
 **Categorias:** as 12 cores que o usuário escolhe para categorias (Tomate, Laranja, Mostarda… Grafite) **não são cores da marca**. No tema escuro elas aparecem clareadas 28%.
 
+**Ícones:** a interface usa os ícones de traço do [lucide](https://lucide.dev) (ISC). Procedimentos e categorias podem ter um ícone escolhido pelo usuário: emoji (seletor frimousse com dados do Emojibase em português, MIT) ou logotipo de serviço do [Simple Icons](https://simpleicons.org) (CC0). Os logotipos **não são da marca MemorIA**: aparecem monocromáticos na cor oficial de cada marca, ajustada pela mesma regra das faixas de categoria (`corDeTraco`: no mínimo 3:1 sobre o papel em cada tema), sem mudar o desenho.
+
 ## As 3 cores mais usadas
 
 ### Por código (referências)

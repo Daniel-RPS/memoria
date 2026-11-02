@@ -199,7 +199,7 @@ describe('aba Notas', () => {
     blocos.map((bloco) => `${bloco.titulo}: ${bloco.notas.map((n) => n.nota.id).join(' ')}`)
 
   it('"Por categoria": categorias na ordem do usuário, "Sem categoria" e avulsas no fim', () => {
-    expect(resumo(agruparNotas(notas(), 'categoria', categorias))).toEqual([
+    expect(resumo(agruparNotas(notas(), 'categoria', categorias, HOJE))).toEqual([
       'Hostinger: deploy host',
       'Casa: ligar',
       'Sem categoria: mercado',
@@ -208,7 +208,7 @@ describe('aba Notas', () => {
   })
 
   it('"Por grupo": notas do grupo e dos itens juntas, depois tarefas soltas e avulsas', () => {
-    expect(resumo(agruparNotas(notas(), 'grupo', categorias))).toEqual([
+    expect(resumo(agruparNotas(notas(), 'grupo', categorias, HOJE))).toEqual([
       'Hostinger: host deploy',
       'Mercado: mercado',
       'Tarefas soltas: ligar',
@@ -216,9 +216,23 @@ describe('aba Notas', () => {
     ])
   })
 
-  it('"Recentes": uma lista só, mais recente primeiro', () => {
-    expect(resumo(agruparNotas(notas(), 'recentes', categorias))).toEqual([
-      'null: deploy ligar solta host mercado',
+  it('"Recentes": um bloco por dia local da edição, mais recentes primeiro', () => {
+    const em = (local: string) => new Date(`${local}-03:00`).toISOString()
+    const lista = comDono(
+      [
+        nota('ontem-tarde', { atualizadoEm: em('2026-11-01T23:59:00') }),
+        nota('hoje-cedo', { atualizadoEm: em('2026-11-02T00:01:00') }),
+        nota('sexta', { atualizadoEm: em('2026-10-30T10:00:00') }),
+        nota('hoje-tarde', { atualizadoEm: em('2026-11-02T15:00:00') }),
+        nota('ano-passado', { atualizadoEm: em('2025-10-30T10:00:00') }),
+      ],
+      dadosDoExemplo(),
+    )
+    expect(resumo(agruparNotas(lista, 'recentes', categorias, HOJE))).toEqual([
+      'Hoje: hoje-tarde hoje-cedo',
+      'Ontem: ontem-tarde',
+      'sexta, 30/10: sexta',
+      '30/10/2025: ano-passado',
     ])
   })
 
@@ -247,6 +261,7 @@ describe('aba Notas', () => {
       comDono([nota('m', { vinculo: { tipo: 'grupo', id: 'mercado' } })], dados),
       'categoria',
       categorias,
+      HOJE,
     )
     expect(resumo(blocos)).toEqual(['Casa: m'])
   })

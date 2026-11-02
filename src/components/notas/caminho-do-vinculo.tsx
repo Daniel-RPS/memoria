@@ -42,7 +42,8 @@ function Trecho({ trecho, isComLink }: { trecho: TrechoDoCaminho; isComLink: boo
     <>
       <Icone aria-hidden className="size-3.5 shrink-0 self-center" />
       <span className="sr-only">{NOME[trecho.tipo]} </span>
-      <span className="min-w-0 break-words">{trecho.texto}</span>
+      {/* Quebra só entre palavras: nunca "09:0-" no meio de "09:00". */}
+      <span className="min-w-0 wrap-normal hyphens-none">{trecho.texto}</span>
     </>
   )
   if (isComLink && trecho.tipo !== 'categoria' && trecho.data) {

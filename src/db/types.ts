@@ -8,6 +8,15 @@ export interface EntidadeBase {
   atualizadoEm: string
 }
 
+/**
+ * Ícone escolhido no seletor, mostrado antes do título/nome: um emoji Unicode ou o slug de uma
+ * marca do Simple Icons (ex.: `github`). Emojis digitados no meio do texto ficam no texto.
+ */
+export interface Icone {
+  tipo: 'emoji' | 'marca'
+  valor: string
+}
+
 /** Onde a categoria é usada: em grupos e tarefas soltas, ou só na aba Procedimentos. */
 export type TipoCategoria = 'grupo' | 'procedimento'
 
@@ -17,6 +26,7 @@ export interface Category extends EntidadeBase {
   tipo: TipoCategoria
   /** Posição definida pelo usuário dentro do tipo (aceita decimais); vale em todo o app. */
   ordem: number
+  icone?: Icone
 }
 
 export interface Subcategory extends EntidadeBase {
@@ -110,6 +120,7 @@ export interface Etapa {
 
 export interface Procedure extends EntidadeBase {
   titulo: string
+  icone?: Icone
   categoryId?: string
   subcategoryId?: string
   etapas: Etapa[]

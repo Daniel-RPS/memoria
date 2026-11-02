@@ -1,10 +1,11 @@
 import { db } from '@/db/database'
-import type { Category, Subcategory, TipoCategoria } from '@/db/types'
+import type { Category, Icone, Subcategory, TipoCategoria } from '@/db/types'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 import { isMesmoNome, montarCategorias, NOMES_DO_TIPO, outroTipo, somarUso } from '@/lib/categorias'
 import { coresRecentes, proximaCor } from '@/lib/cores'
 import { ErroDeValidacao } from '@/lib/erros'
 import { esquemaNomeCategoria } from '@/lib/esquemas'
+import { iconeValido } from '@/lib/icones'
 
 /** Nome limpo e válido; senão lança `ErroDeValidacao` com a mensagem para o campo. */
 function nomeValido(nome: string) {
@@ -109,6 +110,13 @@ export async function atualizarCategoria(id: string, mudancas: { nome?: string; 
       atualizadoEm: agora(),
     })
   })
+}
+
+/** Troca o ícone da categoria; `undefined` = "Sem ícone" (o campo some do registro). */
+export async function definirIconeDaCategoria(id: string, icone: Icone | undefined) {
+  const valido = icone && iconeValido(icone)
+  if (icone && !valido) throw new ErroDeValidacao('Ícone inválido.')
+  await db.categories.update(id, { icone: valido, atualizadoEm: agora() })
 }
 
 /**

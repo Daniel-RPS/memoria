@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from 'cn'
+import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ export function CampoCategoria({
   const [isAberto, setIsAberto] = useState(false)
   const classificacao = classificarTarefa(atual, categorias)
   const texto = classificacao?.rotulo ?? 'Sem categoria'
+  const icone = categorias.find((categoria) => categoria.id === atual.categoryId)?.icone
 
   return (
     <DropdownMenu open={isAberto} onOpenChange={setIsAberto} modal={false}>
@@ -65,6 +67,7 @@ export function CampoCategoria({
             )}
             style={classificacao ? { backgroundColor: classificacao.cor } : undefined}
           />
+          {!isCompacto && <IconeDaEntidade icone={icone} tamanho="sm" />}
           {!isCompacto && <span className="truncate">{texto}</span>}
         </span>
         {!isCompacto && <ChevronDown aria-hidden className="size-4 shrink-0 text-grafite" />}

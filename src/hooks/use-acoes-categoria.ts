@@ -3,6 +3,7 @@ import {
   atualizarSubcategoria,
   criarCategoria,
   criarSubcategoria,
+  definirIconeDaCategoria,
   excluirCategoria,
   excluirSubcategoria,
   moverCategoriaDeTipo,
@@ -15,6 +16,7 @@ export function useAcoesCategoria() {
   return {
     criarCategoria,
     atualizarCategoria,
+    definirIconeDaCategoria,
     reordenarCategoria,
     excluirCategoria,
     moverCategoriaDeTipo,

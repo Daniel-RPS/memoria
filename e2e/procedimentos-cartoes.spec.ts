@@ -124,7 +124,7 @@ async function estreitar(page: Page) {
   await page.setViewportSize({ width: 420, height: 900 })
   await page.locator('body').click({ position: { x: 300, y: 5 } })
   await page.keyboard.press('Control+b')
-  await expect(page.getByRole('button', { name: /Expandir/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Expandir menu' })).toBeVisible()
   // Espera a barra terminar de recolher (a captura não pega o meio da animação).
   await page.waitForTimeout(400)
 }
@@ -222,7 +222,8 @@ test('cartão mostra título, prévia e contagem; clicar e Enter abrem o editor'
   // Teclado: o foco chega no cartão (anel visível) e Enter abre.
   await page.getByRole('searchbox', { name: 'Buscar procedimentos' }).focus()
   const backup = cartao(page, /Backup do notebook/)
-  for (let passo = 0; passo < 10; passo++) {
+  // Passa pelo filtro de dia, "Expandir/Recolher tudo" e cabeçalhos dos blocos.
+  for (let passo = 0; passo < 20; passo++) {
     await page.keyboard.press('Tab')
     if (await backup.evaluate((link) => link === document.activeElement)) break
   }

@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { cn } from 'cn'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { CampoNovoItem } from '@/components/campo-novo-item'
+import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, GroupItem } from '@/db/types'
@@ -131,8 +132,9 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 py-1.5 pl-1">
           <div
             data-sem-arrasto={isEditando ? '' : undefined}
-            className="flex min-w-0 flex-1 basis-16"
+            className="flex min-w-0 flex-1 basis-16 items-center gap-1"
           >
+            <IconeDaEntidade icone={classificacao?.icone} tamanho="sm" />
             {isSobreposto ? (
               <span className="min-w-0 font-extrabold break-words [font-stretch:85%]">
                 {serie.titulo}

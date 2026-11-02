@@ -8,7 +8,7 @@ App pessoal de organização em formato de calendário. Reúne tarefas do dia, s
 
 Feito para **uso pessoal, num computador**. Funciona **sem servidor e sem banco externo**: todos os dados (inclusive fotos, desenhos e áudios) ficam no banco de dados do próprio navegador (IndexedDB). Não precisa de MySQL, de SSL nem de internet.
 
-> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias (em cards por grupo e tarefas soltas), e o mapa de conclusões do último ano (01/11/2026). Modo claro e escuro (ou seguindo o sistema) e um fundo animado discreto, com a logo ajustada a cada tema (01/11/2026). Notas ligadas a tarefas, grupos e itens, com a aba Notas organizada por categoria, grupo ou data (02/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
+> **Status:** completo para o uso planejado. Fases 1 a 8 concluídas (dia, subtarefas, categorias, semana, mover tarefas, procedimentos, mês, ano, backup, notas e anexos), mais os grupos de tarefas e as categorias criadas ali mesmo (01/11/2026). Interface nova na paleta violeta, com barra lateral e telas em folha pautada (01/11/2026); Dia, Semana, Mês e Ano agrupados em **Calendário** na barra lateral, que recolhe só quando você manda, com a logo oficial na barra e na aba do navegador (01/11/2026). O app abre no **Início**: anotar tarefas e grupos sem escolher uma visão, resumo de hoje, atrasadas e próximos dias (em cards por grupo e tarefas soltas), e o mapa de conclusões do último ano (01/11/2026). Modo claro e escuro (ou seguindo o sistema) e um fundo animado discreto, com a logo ajustada a cada tema (01/11/2026). Notas ligadas a tarefas, grupos e itens, com a aba Notas organizada por categoria, grupo ou data (02/11/2026). Blocos recolhíveis e filtro por dia em Notas e Procedimentos, e ícones (emoji ou logotipo de serviço) em procedimentos e categorias (02/11/2026). Compartilhamento e versão para celular ficaram fora do escopo (veja abaixo).
 
 ## Funcionalidades
 
@@ -38,6 +38,7 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Criar e aplicar categoria ou subcategoria ali mesmo, no seletor de categoria (menu ⋯ do card e da tarefa, "+ Novo grupo" e editor de procedimento)
 - ✅ Ordem das categorias e subcategorias definida por você, arrastando; vale em todo o app
 - ✅ Categorias de dois tipos, independentes: **Grupos** (grupos e tarefas do Início e do calendário) e **Procedimentos** (só na aba Procedimentos); cada seletor mostra só as do seu tipo
+- ✅ Ícone por categoria: um emoji ou o logotipo de um serviço (ex.: GitHub), mostrado antes do nome em todo o app (02/11/2026)
 - ✅ Cor personalizada: além das 12 cores, um misturador (área de saturação e brilho, barra de matiz, código hexadecimal e prévia nos dois temas) e as últimas 6 cores personalizadas usadas
 - ✅ Visão de semana (segunda a domingo)
 - ✅ Grupos de tarefas: um card (ex.: "Casa") com itens; levar a outro dia cria uma cópia só com os pendentes e o card original fica como registro
@@ -80,13 +81,16 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Adicionar, renomear (ali mesmo) e excluir etapas; a numeração se ajusta. Editor compacto: uma linha por etapa, Enter cria a próxima e Backspace numa etapa vazia apaga
 - ✅ Edição grava sozinha; excluir o procedimento pede confirmação
 - ✅ Lista separada por categoria, com a cor dela, e "Sem categoria" no fim, em cartões com as 3 primeiras etapas (01/11/2026)
-- ✅ Busca em títulos e etapas, sem diferenciar acentos
+- ✅ Busca em títulos e etapas, sem diferenciar acentos (e pelo nome da marca do ícone: "github")
+- ✅ Ícone antes do título: emoji (busca em português, categorias e usados recentemente) ou marca (logotipos de serviços) (02/11/2026)
+- ✅ Filtro pelo dia de criação (hoje, ontem, últimos 7 dias, este mês, um dia ou um intervalo); blocos de categoria recolhíveis e lembrados (02/11/2026)
 
 ### Conteúdo e dados
 
 - ✅ Notas com texto livre que se salva sozinho, busca e anexos
 - ✅ Notas ligadas a uma tarefa, a um grupo (valem em todos os dias dele) ou a um item (acompanham o item levado a outro dia), abertas numa gaveta lateral sem sair da tela
 - ✅ Aba Notas em cartões, por categoria, por grupo ou recentes, com filtros e busca também pelos nomes da tarefa, do grupo e da categoria
+- ✅ Blocos recolhíveis (lembrados entre sessões, com "Expandir tudo" e "Recolher tudo"), filtro pelo dia da última edição e Recentes separadas por dia ("Hoje", "Ontem", "sexta, 30/10") (02/11/2026)
 - ✅ Anexos em tarefas e notas: fotos, desenhos à mão livre, gravações de áudio e links
 - ✅ Backup: exportar e importar todos os dados, incluindo anexos
 
@@ -106,11 +110,19 @@ Legenda: ✅ pronto · 🔜 planejado
 | Dados locais        | IndexedDB com Dexie 4            |
 | Arrastar e soltar   | dnd-kit                          |
 | Datas               | date-fns 4 (pt-BR)               |
+| Emojis              | frimousse + Emojibase (pt)       |
+| Ícones de marca     | Simple Icons                     |
 | Testes              | Vitest + Testing Library         |
 | Testes no navegador | Playwright                       |
 | Qualidade           | oxlint + Prettier                |
 
 Não há servidor nem banco externo: o app roda inteiro no navegador.
+
+### Ícones de marca e emojis
+
+- Os logotipos de serviços vêm do [Simple Icons](https://simpleicons.org) (pacote `simple-icons`, licença [CC0 1.0](https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md)). As marcas pertencem aos seus donos; o app segue as regras da biblioteca e não usa nenhuma marca que ela não tenha (Microsoft, LinkedIn, Windows e Amazon estão entre as que ela proíbe). Nenhum logotipo é desenhado ou baixado de outro lugar.
+- Os desenhos são servidos pelo próprio app (`/marcas/<slug>.svg`) e baixados só quando aparecem; um índice leve (`/marcas/indice.json`, ~51 kB compactado) é carregado quando o primeiro ícone de marca aparece ou o seletor abre. Marca que sair da biblioteca numa atualização vira um ícone neutro.
+- Emojis: seletor [frimousse](https://frimousse.liveblocks.io) (MIT) com os dados em português do [Emojibase](https://emojibase.dev) (MIT), servidos pelo próprio app (funciona sem internet).
 
 Cores, fontes e logo: [docs/branding/README.md](docs/branding/README.md).
 

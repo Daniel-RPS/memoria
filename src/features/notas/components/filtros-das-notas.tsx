@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from 'cn'
+import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { SeletorCategoria } from '@/components/seletor-categoria/seletor-categoria'
+import { GATILHO_DE_FILTRO, SeletorDeDia } from '@/components/seletor-de-dia'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +11,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { Category } from '@/db/types'
+import type { Category, DataLocal } from '@/db/types'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
+import { ATALHOS_DAS_NOTAS, type FiltroDeData } from '@/lib/filtro-de-data'
 import type { FiltroDeTipo, ModoDasNotas } from '@/lib/notas'
 
 const MODOS: { valor: ModoDasNotas; rotulo: string }[] = [
@@ -27,8 +30,7 @@ const TIPOS: { valor: FiltroDeTipo; rotulo: string }[] = [
   { valor: 'avulsa', rotulo: 'Avulsas' },
 ]
 
-const GATILHO =
-  'flex h-8 items-center gap-1.5 rounded-md px-2 text-sm text-grafite outline-none hover:bg-accent hover:text-tinta focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-accent'
+const GATILHO = GATILHO_DE_FILTRO
 
 interface FiltrosDasNotasProps {
   modo: ModoDasNotas
@@ -36,12 +38,15 @@ interface FiltrosDasNotasProps {
   tipo: FiltroDeTipo
   onTipo: (tipo: FiltroDeTipo) => void
   /** Categoria escolhida (já conferida: existe). */
-  categoria?: Pick<Category, 'id' | 'nome' | 'cor'>
+  categoria?: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>
   hasCategorias: boolean
   onCategoria: (categoryId: string | undefined) => void
+  filtroDeDia: FiltroDeData
+  onFiltroDeDia: (filtro: FiltroDeData) => void
+  hoje: DataLocal
 }
 
-/** Organização (Por categoria · Por grupo · Recentes), tipo de vínculo e categoria. */
+/** Organização (Por categoria · Por grupo · Recentes), tipo de vínculo, categoria e dia. */
 export function FiltrosDasNotas({
   modo,
   onModo,
@@ -50,6 +55,9 @@ export function FiltrosDasNotas({
   categoria,
   hasCategorias,
   onCategoria,
+  filtroDeDia,
+  onFiltroDeDia,
+  hoje,
 }: FiltrosDasNotasProps) {
   const corNaTela = useCorNaTela()
   const [isCategoriaAberta, setIsCategoriaAberta] = useState(false)
@@ -80,7 +88,7 @@ export function FiltrosDasNotas({
         ))}
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger aria-label={`Tipo de vínculo: ${rotuloTipo}`} className={GATILHO}>
             {rotuloTipo}
@@ -113,6 +121,7 @@ export function FiltrosDasNotas({
                   style={{ backgroundColor: corNaTela(categoria.cor) }}
                 />
               )}
+              <IconeDaEntidade icone={categoria?.icone} tamanho="sm" />
               <span className="max-w-40 truncate">{categoria?.nome ?? 'Todas as categorias'}</span>
               <ChevronDown aria-hidden className="size-3.5" />
             </DropdownMenuTrigger>
@@ -134,6 +143,14 @@ export function FiltrosDasNotas({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        <SeletorDeDia
+          filtro={filtroDeDia}
+          onMudar={onFiltroDeDia}
+          atalhos={ATALHOS_DAS_NOTAS}
+          hoje={hoje}
+          rotulo="Filtrar pelo dia da edição"
+        />
       </div>
     </div>
   )

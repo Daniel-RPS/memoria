@@ -4,17 +4,20 @@ import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
 import { converterGruposAntigos } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 import { preencherCadeias } from '@/lib/grupos'
+import { esquemaIcone } from '@/lib/icones'
 import { converterNotaAntiga } from '@/lib/notas'
 
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 7
+export const FORMATO_ATUAL = 8
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
 const id = z.string().min(1)
 const base = { id, criadoEm: texto, atualizadoEm: texto }
+// Formato 8. Ícone quebrado (ou de uma versão futura) é ignorado: o registro entra sem ícone.
+const icone = esquemaIcone.optional().catch(undefined)
 
 // `ordem` desde o formato 5 e `tipo` desde o 6; antes, preenchidos ao ler (`preencherOrdem`,
 // `separarPorTipo`, a mesma regra da migração do banco).
@@ -24,6 +27,7 @@ const categoria = z.object({
   cor: texto,
   tipo: z.enum(['grupo', 'procedimento']).optional(),
   ordem: z.number().optional(),
+  icone,
 })
 const subcategoria = z.object({
   ...base,
@@ -93,6 +97,7 @@ const procedimento = z.object({
   // Formato 5.
   subcategoryId: texto.optional(),
   etapas: z.array(z.object({ id, texto, ordem: z.number() })),
+  icone,
 })
 
 // Formatos 1 a 3: seções com passos e subpassos. Viram etapas como na migração do banco (v7).

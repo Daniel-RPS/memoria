@@ -1,10 +1,13 @@
 import { z } from 'zod'
 import type { Procedure } from '@/db/types'
+import { esquemaIcone } from '@/lib/icones'
 import { etapasEmOrdem } from '@/lib/procedimentos'
 
 /** Formulário de criar/editar procedimento. `categoryId` vazio = sem categoria. */
 export const esquemaProcedimento = z.object({
   titulo: z.string().trim().min(1, 'Dê um título ao procedimento.'),
+  /** Emoji ou marca antes do título; ausente = sem ícone. */
+  icone: esquemaIcone.optional(),
   categoryId: z.string(),
   /** Vazio = sem subcategoria; só vale junto com uma categoria. */
   subcategoryId: z.string().optional(),
@@ -19,6 +22,7 @@ export function valoresDoFormulario(procedimento?: Procedure): ValoresProcedimen
   if (!procedimento) return { titulo: '', categoryId: '', subcategoryId: '', etapas: [] }
   return {
     titulo: procedimento.titulo,
+    icone: procedimento.icone,
     categoryId: procedimento.categoryId ?? '',
     subcategoryId: procedimento.subcategoryId ?? '',
     etapas: etapasEmOrdem(procedimento).map(({ id, texto }) => ({ id, texto })),

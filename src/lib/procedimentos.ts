@@ -21,8 +21,10 @@ export function numerarEtapas(etapas: Pick<Etapa, 'id' | 'texto'>[]): Etapa[] {
 }
 
 function textoPesquisavel(procedimento: Procedure) {
+  // O slug da marca do ícone também conta: "github" acha o procedimento com o ícone do GitHub.
+  const marca = procedimento.icone?.tipo === 'marca' ? procedimento.icone.valor : ''
   return normalizar(
-    [procedimento.titulo, ...procedimento.etapas.map((etapa) => etapa.texto)].join('\n'),
+    [procedimento.titulo, marca, ...procedimento.etapas.map((etapa) => etapa.texto)].join('\n'),
   )
 }
 
@@ -50,7 +52,7 @@ export function buscarProcedimentos(procedimentos: Procedure[], termo: string) {
 
 export interface BlocoDeProcedimentos {
   /** `null` = bloco "Sem categoria". */
-  categoria: Pick<Category, 'id' | 'nome' | 'cor'> | null
+  categoria: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'> | null
   procedimentos: Procedure[]
 }
 
@@ -61,10 +63,15 @@ export interface BlocoDeProcedimentos {
  */
 export function agruparPorCategoria(
   procedimentos: Procedure[],
-  categorias: Pick<Category, 'id' | 'nome' | 'cor'>[],
+  categorias: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>[],
 ): BlocoDeProcedimentos[] {
   const blocos: BlocoDeProcedimentos[] = categorias.map((categoria) => ({
-    categoria: { id: categoria.id, nome: categoria.nome, cor: categoria.cor },
+    categoria: {
+      id: categoria.id,
+      nome: categoria.nome,
+      cor: categoria.cor,
+      ...(categoria.icone && { icone: categoria.icone }),
+    },
     procedimentos: procedimentos.filter((procedimento) => procedimento.categoryId === categoria.id),
   }))
   const idsDasCategorias = new Set(categorias.map((categoria) => categoria.id))
@@ -89,8 +96,9 @@ export interface PreviaDoProcedimento {
   total: string
   /** Sem nenhuma etapa: o cartão mostra "Nenhuma etapa ainda". */
   isVazio: boolean
-  /** "editado em 01/11"; `undefined` sem data válida. */
-  editadoEm?: string
+  /** "criado em 01/11" ou, com a edição em outro dia, "criado 01/11 · editado 02/11" (cabe no
+   * rodapé do cartão estreito); `undefined` sem data válida. */
+  datas?: string
 }
 
 function textoEtapas(total: number) {
@@ -99,11 +107,13 @@ function textoEtapas(total: number) {
 
 /** Prévia e contagens do cartão da lista: o componente só desenha. */
 export function previaDoProcedimento(
-  procedimento: Pick<Procedure, 'etapas' | 'atualizadoEm'>,
+  procedimento: Pick<Procedure, 'etapas' | 'criadoEm' | 'atualizadoEm'>,
 ): PreviaDoProcedimento {
   const etapas = etapasEmOrdem(procedimento)
   const sobra = etapas.length - ETAPAS_NA_PREVIA
-  const editado = new Date(procedimento.atualizadoEm)
+  // O momento gravado é UTC; `format` mostra o dia local.
+  const diaCriado = diaCurto(procedimento.criadoEm)
+  const diaEditado = diaCurto(procedimento.atualizadoEm)
   return {
     etapas: etapas
       .slice(0, ETAPAS_NA_PREVIA)
@@ -111,7 +121,18 @@ export function previaDoProcedimento(
     restantes: sobra > 0 ? `+ ${textoEtapas(sobra)}` : undefined,
     total: textoEtapas(etapas.length),
     isVazio: etapas.length === 0,
-    // O momento gravado é UTC; `format` mostra o dia local.
-    editadoEm: isValid(editado) ? `editado em ${format(editado, 'dd/MM')}` : undefined,
+    datas: textoDasDatas(diaCriado, diaEditado),
   }
+}
+
+function textoDasDatas(criado?: string, editado?: string) {
+  if (criado && editado && editado !== criado) return `criado ${criado} · editado ${editado}`
+  if (criado) return `criado em ${criado}`
+  return editado && `editado em ${editado}`
+}
+
+/** "01/11" (dia local) de um momento gravado; `undefined` sem data válida. */
+function diaCurto(momento: string) {
+  const data = new Date(momento)
+  return isValid(data) ? format(data, 'dd/MM') : undefined
 }

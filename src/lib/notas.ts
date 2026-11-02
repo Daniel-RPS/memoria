@@ -4,13 +4,17 @@ import type {
   GroupCard,
   GroupItem,
   GroupSeries,
+  Icone,
   Note,
   Task,
   TipoVinculo,
   Vinculo,
 } from '@/db/types'
 import { corDaSubcategoria, type CategoriaComSubcategorias } from '@/lib/categorias'
-import { diasEntre } from '@/lib/datas'
+import { format, isSameYear } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { deDataLocal, diasEntre, nomeRelativo } from '@/lib/datas'
+import { diaLocalDoMomento } from '@/lib/filtro-de-data'
 import { normalizar } from '@/lib/procedimentos'
 
 /**
@@ -116,7 +120,7 @@ export interface DonoDaNota {
   /** `avulsa` também quando o alvo não existe mais. */
   tipo: TipoVinculo | 'avulsa'
   /** Categoria do alvo (a do grupo, para o item). */
-  categoria?: Pick<Category, 'id' | 'nome' | 'cor'>
+  categoria?: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>
   /** Cor da faixa: subcategoria (ou variação), senão a categoria. */
   cor?: string
   /** Série do grupo (grupo e item). */
@@ -178,7 +182,12 @@ function categoriaECor(
   if (!categoria) return {}
   const cor = alvo.subcategoryId ? corDaSubcategoria(categoria, alvo.subcategoryId) : categoria.cor
   return {
-    categoria: { id: categoria.id, nome: categoria.nome, cor: categoria.cor },
+    categoria: {
+      id: categoria.id,
+      nome: categoria.nome,
+      cor: categoria.cor,
+      ...(categoria.icone && { icone: categoria.icone }),
+    },
     cor,
   }
 }
@@ -257,11 +266,12 @@ export const MODOS_DAS_NOTAS: ModoDasNotas[] = ['categoria', 'grupo', 'recentes'
 export type FiltroDeTipo = 'todas' | TipoVinculo | 'avulsa'
 
 export interface BlocoDeNotas {
-  /** Chave estável do bloco. */
+  /** Chave estável do bloco (também a do estado aberto/recolhido guardado). */
   id: string
-  /** `null` = sem cabeçalho (modo Recentes). */
-  titulo: string | null
+  titulo: string
   cor?: string
+  /** Ícone da categoria do bloco ("Por categoria") ou do grupo ("Por grupo"). */
+  icone?: Icone
   notas: NotaComDono[]
 }
 
@@ -283,29 +293,27 @@ const porAlvoERecencia = (a: NotaComDono, b: NotaComDono) =>
  *   grupo/tarefa; depois "Sem categoria" e "Notas avulsas".
  * - `grupo`: um por grupo (notas do grupo e dos itens), por nome; depois "Tarefas soltas" e
  *   "Notas avulsas".
- * - `recentes`: um bloco só, mais recentes primeiro.
+ * - `recentes`: um bloco por dia da última edição (`agruparPorDia`).
  * Blocos vazios não aparecem.
  */
 export function agruparNotas(
   notas: NotaComDono[],
   modo: ModoDasNotas,
-  categorias: Pick<Category, 'id' | 'nome' | 'cor'>[],
+  categorias: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>[],
+  hoje: DataLocal,
 ): BlocoDeNotas[] {
   const avulsas = notas.filter((item) => item.dono.tipo === 'avulsa').sort(maisRecentePrimeiro)
   const ligadas = notas.filter((item) => item.dono.tipo !== 'avulsa')
   const blocoAvulsas: BlocoDeNotas = { id: 'avulsas', titulo: 'Notas avulsas', notas: avulsas }
 
-  if (modo === 'recentes') {
-    return [{ id: 'recentes', titulo: null, notas: [...notas].sort(maisRecentePrimeiro) }].filter(
-      (bloco) => bloco.notas.length > 0,
-    )
-  }
+  if (modo === 'recentes') return agruparPorDia(notas, hoje)
 
   if (modo === 'categoria') {
     const blocos: BlocoDeNotas[] = categorias.map((categoria) => ({
       id: `categoria:${categoria.id}`,
       titulo: categoria.nome,
       cor: categoria.cor,
+      icone: categoria.icone,
       notas: ligadas
         .filter((item) => item.dono.categoria?.id === categoria.id)
         .sort(porAlvoERecencia),
@@ -329,6 +337,7 @@ export function agruparNotas(
       id: `grupo:${item.dono.serie.id}`,
       titulo: item.dono.serie.titulo,
       cor: item.dono.categoria?.cor,
+      icone: item.dono.categoria?.icone,
       notas: [],
     }
     bloco.notas.push(item)
@@ -339,7 +348,7 @@ export function agruparNotas(
     Number(a.dono.tipo === 'item') - Number(b.dono.tipo === 'item') || porAlvoERecencia(a, b)
   const blocosDeGrupo = [...porSerie.values()]
     .map((bloco) => ({ ...bloco, notas: bloco.notas.sort(doGrupoPrimeiro) }))
-    .sort((a, b) => (a.titulo ?? '').localeCompare(b.titulo ?? '', 'pt-BR'))
+    .sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'))
   return [
     ...blocosDeGrupo,
     {
@@ -349,6 +358,34 @@ export function agruparNotas(
     },
     blocoAvulsas,
   ].filter((bloco) => bloco.notas.length > 0)
+}
+
+/**
+ * Cabeçalho de um dia em Recentes: "Hoje", "Ontem", "sexta, 30/10"; de outro ano, "30/10/2025".
+ */
+export function rotuloDoDia(dia: DataLocal, hoje: DataLocal) {
+  const relativo = nomeRelativo(dia, hoje)
+  if (relativo === 'hoje') return 'Hoje'
+  if (relativo === 'ontem') return 'Ontem'
+  const data = deDataLocal(dia)
+  if (!isSameYear(data, deDataLocal(hoje))) return format(data, 'dd/MM/yyyy')
+  // pt-BR do date-fns 4: `EEE` = "sexta" (sem "-feira" e sem ponto).
+  return format(data, "EEE', 'dd/MM", { locale: ptBR })
+}
+
+/** Modo Recentes: um bloco por dia local da última edição, dias e notas mais recentes primeiro. */
+export function agruparPorDia(notas: NotaComDono[], hoje: DataLocal): BlocoDeNotas[] {
+  const porDia = new Map<string, NotaComDono[]>()
+  for (const item of [...notas].sort(maisRecentePrimeiro)) {
+    const dia = diaLocalDoMomento(item.nota.atualizadoEm) ?? ''
+    porDia.set(dia, [...(porDia.get(dia) ?? []), item])
+  }
+  // A ordem de inserção já é do dia mais recente para o mais antigo.
+  return [...porDia].map(([dia, doDia]) => ({
+    id: `dia:${dia || 'sem-data'}`,
+    titulo: dia ? rotuloDoDia(dia, hoje) : 'Sem data',
+    notas: doDia,
+  }))
 }
 
 /** Filtros do topo da aba: tipo de vínculo e categoria (sem categoria = todas). */

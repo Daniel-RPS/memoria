@@ -3,6 +3,7 @@ import { ListChecks, Plus } from 'lucide-react'
 import { Link } from 'react-router'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
+import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { useCorDeTraco } from '@/hooks/use-cor-na-tela'
 import { classificarTarefa } from '@/lib/categorias'
@@ -43,7 +44,12 @@ export function CardDeGrupo({ resumo, onTrazer }: CardDeGrupoProps) {
         className="absolute inset-y-0 left-0 w-[3px] bg-(--cor-do-grupo)"
       />
       <div className="flex min-h-7 items-start gap-2 text-sm leading-5">
-        <ListChecks aria-hidden className="mt-0.5 size-4 shrink-0 text-grafite" />
+        {/* Com ícone na categoria, ele identifica o grupo no lugar do ícone genérico. */}
+        {classificacao?.icone ? (
+          <IconeDaEntidade icone={classificacao.icone} className="mt-0.5" />
+        ) : (
+          <ListChecks aria-hidden className="mt-0.5 size-4 shrink-0 text-grafite" />
+        )}
         <Link
           to={`/dia/${card.data}`}
           title={`Abrir ${serie.titulo} no dia`}

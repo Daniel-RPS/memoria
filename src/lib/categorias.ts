@@ -1,4 +1,4 @@
-import type { Category, Subcategory, Task, TipoCategoria } from '@/db/types'
+import type { Category, Icone, Subcategory, Task, TipoCategoria } from '@/db/types'
 import { variacaoCor } from '@/lib/cores'
 
 export interface CategoriaComSubcategorias extends Category {
@@ -233,6 +233,8 @@ export interface Classificacao {
   cor: string
   /** Ex.: "Casa" ou "Casa › Jardim". */
   rotulo: string
+  /** Ícone da categoria (a subcategoria não tem ícone próprio). */
+  icone?: Icone
 }
 
 /** Cor e rótulo da categoria de uma tarefa; `null` se não tiver (ou se a categoria sumiu). */
@@ -243,9 +245,10 @@ export function classificarTarefa(
   const categoria = categorias.find((item) => item.id === tarefa.categoryId)
   if (!categoria) return null
   const subcategoria = categoria.subcategorias.find((item) => item.id === tarefa.subcategoryId)
-  if (!subcategoria) return { cor: categoria.cor, rotulo: categoria.nome }
+  if (!subcategoria) return { cor: categoria.cor, rotulo: categoria.nome, icone: categoria.icone }
   return {
     cor: corDaSubcategoria(categoria, subcategoria.id),
     rotulo: `${categoria.nome} › ${subcategoria.nome}`,
+    icone: categoria.icone,
   }
 }

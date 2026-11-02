@@ -4,21 +4,31 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { criarNota } from '@/db/repositories/note-repository'
+import { useFiltroDeDia } from '@/hooks/use-filtro-de-dia'
+import { useHoje } from '@/hooks/use-hoje'
+import { ATALHOS_DAS_NOTAS, filtrarPorData, QUALQUER_DIA } from '@/lib/filtro-de-data'
 import { agruparNotas, buscarNotasComDono, filtrarNotas, type FiltroDeTipo } from '@/lib/notas'
 import { FiltrosDasNotas } from '@/features/notas/components/filtros-das-notas'
 import { ListaDeNotas } from '@/features/notas/components/lista-de-notas'
 import { useModoDasNotas, useNotas } from '@/features/notas/hooks/use-notas'
+import type { EstadoNotaNova } from '@/features/notas/nota-page'
 
 const PARAMETRO_BUSCA = 'q'
 const PARAMETRO_TIPO = 'tipo'
 const PARAMETRO_CATEGORIA = 'categoria'
 const TIPOS_VALIDOS: FiltroDeTipo[] = ['todas', 'tarefa', 'grupo', 'item', 'avulsa']
+const CHAVE_FILTRO_DE_DIA_DAS_NOTAS = 'memoria:notas-dia'
 
 export function NotasPage() {
   const navigate = useNavigate()
   const [parametros, setParametros] = useSearchParams()
   const { notas, anexosPorNota, categorias, isCarregando } = useNotas()
   const { modo, handleEscolher: handleModo } = useModoDasNotas()
+  const hoje = useHoje()
+  const { filtro: filtroDeDia, handleMudar: handleFiltroDeDia } = useFiltroDeDia(
+    CHAVE_FILTRO_DE_DIA_DAS_NOTAS,
+    ATALHOS_DAS_NOTAS,
+  )
 
   const termo = parametros.get(PARAMETRO_BUSCA) ?? ''
   const tipoLido = parametros.get(PARAMETRO_TIPO) as FiltroDeTipo | null
@@ -26,12 +36,19 @@ export function NotasPage() {
   // Categoria do endereço que não existe mais: volta para todas.
   const categoria = categorias.find((opcao) => opcao.id === parametros.get(PARAMETRO_CATEGORIA))
 
+  // Dia = o da última edição (o mesmo do "editada há…").
   const encontradas = buscarNotasComDono(
-    filtrarNotas(notas, { tipo, categoryId: categoria?.id }),
+    filtrarPorData(
+      filtrarNotas(notas, { tipo, categoryId: categoria?.id }),
+      (item) => item.nota.atualizadoEm,
+      filtroDeDia,
+      hoje,
+    ),
     termo,
   )
-  const blocos = agruparNotas(encontradas, modo, categorias)
-  const isFiltrando = termo !== '' || tipo !== 'todas' || categoria !== undefined
+  const blocos = agruparNotas(encontradas, modo, categorias, hoje)
+  const isFiltrando =
+    termo !== '' || tipo !== 'todas' || categoria !== undefined || filtroDeDia.tipo !== 'qualquer'
 
   function mudarParametro(chave: string, valor: string | undefined) {
     setParametros(
@@ -47,7 +64,7 @@ export function NotasPage() {
 
   async function handleNova() {
     const nota = await criarNota()
-    navigate(`/notas/${nota.id}`)
+    navigate(`/notas/${nota.id}`, { state: { isNova: true } satisfies EstadoNotaNova })
   }
 
   return (
@@ -86,6 +103,9 @@ export function NotasPage() {
             categoria={categoria}
             hasCategorias={categorias.length > 0}
             onCategoria={(id) => mudarParametro(PARAMETRO_CATEGORIA, id)}
+            filtroDeDia={filtroDeDia}
+            onFiltroDeDia={handleFiltroDeDia}
+            hoje={hoje}
           />
         </div>
       )}
@@ -113,14 +133,22 @@ export function NotasPage() {
               <Button
                 variant="link"
                 className="ml-1 h-auto p-0"
-                onClick={() => setParametros({}, { replace: true })}
+                onClick={() => {
+                  setParametros({}, { replace: true })
+                  handleFiltroDeDia(QUALQUER_DIA)
+                }}
               >
                 Limpar filtros
               </Button>
             )}
           </p>
         )}
-        <ListaDeNotas blocos={blocos} anexosPorNota={anexosPorNota} />
+        <ListaDeNotas
+          blocos={blocos}
+          anexosPorNota={anexosPorNota}
+          escopo={`notas:${modo}`}
+          isFiltrando={isFiltrando}
+        />
       </section>
     </>
   )

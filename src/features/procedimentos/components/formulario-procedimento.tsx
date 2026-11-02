@@ -4,6 +4,7 @@ import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { CampoCategoria } from '@/components/seletor-categoria/campo-categoria'
+import { SeletorIcone } from '@/components/icones/seletor-icone'
 import {
   esquemaProcedimento,
   type DadosProcedimento,
@@ -23,7 +24,7 @@ interface FormularioProcedimentoProps {
   rodape?: ReactNode
 }
 
-/** Título, categoria e etapas. */
+/** Ícone, título, categoria e etapas. */
 export function FormularioProcedimento({
   valoresIniciais,
   onEnviar,
@@ -74,20 +75,35 @@ export function FormularioProcedimento({
         className="mt-2 flex flex-col gap-6"
       >
         <div className="flex flex-col gap-2">
-          <Field data-invalid={errors.titulo ? true : undefined}>
-            <FieldLabel htmlFor="titulo" className="sr-only">
-              Título
-            </FieldLabel>
-            <Input
-              id="titulo"
-              {...register('titulo')}
-              aria-invalid={errors.titulo ? true : undefined}
-              placeholder="Título do procedimento"
-              autoComplete="off"
-              className="-mx-1 h-auto rounded-sm border-transparent bg-transparent px-1 py-0.5 text-3xl font-extrabold tracking-[-0.02em] shadow-none [font-stretch:80%] placeholder:text-grafite/55 hover:bg-accent/40 focus-visible:border-caneta/50 focus-visible:bg-card focus-visible:ring-0 md:text-3xl dark:bg-transparent dark:focus-visible:bg-card"
+          <div className="flex items-start gap-1">
+            <Controller
+              control={control}
+              name="icone"
+              render={({ field }) => (
+                <SeletorIcone
+                  icone={field.value}
+                  onEscolher={field.onChange}
+                  rotulo="Ícone do procedimento"
+                  tamanho="lg"
+                  className="mt-0.5 -ml-1"
+                />
+              )}
             />
-            <FieldError errors={[errors.titulo]} />
-          </Field>
+            <Field className="min-w-0 flex-1" data-invalid={errors.titulo ? true : undefined}>
+              <FieldLabel htmlFor="titulo" className="sr-only">
+                Título
+              </FieldLabel>
+              <Input
+                id="titulo"
+                {...register('titulo')}
+                aria-invalid={errors.titulo ? true : undefined}
+                placeholder="Título do procedimento"
+                autoComplete="off"
+                className="-mx-1 h-auto rounded-sm border-transparent bg-transparent px-1 py-0.5 text-3xl font-extrabold tracking-[-0.02em] shadow-none [font-stretch:80%] placeholder:text-grafite/55 hover:bg-accent/40 focus-visible:border-caneta/50 focus-visible:bg-card focus-visible:ring-0 md:text-3xl dark:bg-transparent dark:focus-visible:bg-card"
+              />
+              <FieldError errors={[errors.titulo]} />
+            </Field>
+          </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <FieldLabel htmlFor="categoria" className="text-sm text-grafite">

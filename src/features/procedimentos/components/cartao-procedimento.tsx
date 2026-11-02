@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
+import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import type { Procedure } from '@/db/types'
 import { previaDoProcedimento } from '@/lib/procedimentos'
 
@@ -19,8 +20,11 @@ export function CartaoProcedimento({ procedimento, cor }: CartaoProcedimentoProp
       style={{ '--cor-do-cartao': cor } as CSSProperties}
     >
       <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-(--cor-do-cartao)" />
-      <span className="line-clamp-2 font-semibold leading-snug break-words">
-        {procedimento.titulo}
+      <span className="flex items-start gap-1.5">
+        <IconeDaEntidade icone={procedimento.icone} className="mt-[0.2rem]" />
+        <span className="line-clamp-2 min-w-0 font-semibold leading-snug break-words">
+          {procedimento.titulo}
+        </span>
       </span>
       {previa.isVazio ? (
         <span className="mt-2 text-sm text-grafite">Nenhuma etapa ainda</span>
@@ -34,9 +38,12 @@ export function CartaoProcedimento({ procedimento, cor }: CartaoProcedimentoProp
           {previa.restantes && <span>{previa.restantes}</span>}
         </span>
       )}
-      <span className="mt-auto flex items-baseline justify-between gap-2 pt-3 text-xs text-grafite tabular-nums">
-        <span>{previa.total}</span>
-        {previa.editadoEm && <span>{previa.editadoEm}</span>}
+      {/* Uma linha só: as datas encolhem antes de quebrar (o cartão não cresce). */}
+      <span className="mt-auto flex items-baseline justify-between gap-2 pt-3 text-xs whitespace-nowrap text-grafite tabular-nums">
+        <span className="shrink-0">{previa.total}</span>
+        <span className="min-w-0 truncate" title={previa.datas}>
+          {previa.datas}
+        </span>
       </span>
     </Link>
   )

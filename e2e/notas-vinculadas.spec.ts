@@ -252,7 +252,8 @@ test('aba Notas: modos, filtros, busca e troca de categoria ao vivo', async ({ p
   await capturar(page, '9-aba-grupo')
 
   await page.getByRole('radio', { name: 'Recentes' }).click()
-  await expect(listaDeNotas(page).getByRole('heading', { level: 2 })).toHaveCount(0)
+  // Recentes: um bloco por dia (todas editadas hoje).
+  await expect(listaDeNotas(page).getByRole('heading', { level: 2 })).toHaveText(['Hoje5'])
   await expect(listaDeNotas(page).getByRole('article')).toHaveCount(5)
   await capturar(page, '10-aba-recentes')
 

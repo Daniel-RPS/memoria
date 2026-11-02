@@ -178,7 +178,8 @@ describe('Procedimentos', () => {
     expect(within(cartao).queryByText(/4\. Enviar/)).not.toBeInTheDocument()
     expect(within(cartao).getByText('+ 2 etapas')).toBeInTheDocument()
     expect(within(cartao).getByText('5 etapas')).toBeInTheDocument()
-    expect(within(cartao).getByText(/^editado em \d\d\/\d\d$/)).toBeInTheDocument()
+    // Criado e editado no mesmo dia: só "criado em".
+    expect(within(cartao).getByText(/^criado em \d\d\/\d\d$/)).toBeInTheDocument()
     const vazio = screen.getByRole('link', { name: /Regar/ })
     expect(within(vazio).getByText('Nenhuma etapa ainda')).toBeInTheDocument()
   })

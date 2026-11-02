@@ -197,12 +197,29 @@ describe('previaDoProcedimento', () => {
     ).toEqual(['1. Etapa sem texto', '2. B'])
   })
 
-  it('"editado em" pelo dia local de atualizadoEm; sem data, nada', () => {
+  it('datas pelo dia local; sem data, nada', () => {
     // 01:30 UTC de 02/11 = 22:30 de 01/11 em São Paulo.
     expect(
       previaDoProcedimento(procedimento('p', 'X', { atualizadoEm: '2026-11-02T01:30:00.000Z' }))
-        .editadoEm,
+        .datas,
     ).toBe('editado em 01/11')
-    expect(previaDoProcedimento(procedimento('p', 'X')).editadoEm).toBeUndefined()
+    expect(previaDoProcedimento(procedimento('p', 'X')).datas).toBeUndefined()
+  })
+
+  it('"criado em" sempre; "editado em" só quando o dia é outro', () => {
+    const mesmoDia = previaDoProcedimento(
+      procedimento('p', 'X', {
+        criadoEm: '2026-11-01T12:00:00.000Z',
+        atualizadoEm: '2026-11-02T01:30:00.000Z', // 22:30 de 01/11 local
+      }),
+    )
+    expect(mesmoDia.datas).toBe('criado em 01/11')
+    const outroDia = previaDoProcedimento(
+      procedimento('p', 'X', {
+        criadoEm: '2026-11-01T12:00:00.000Z',
+        atualizadoEm: '2026-11-02T12:00:00.000Z',
+      }),
+    )
+    expect(outroDia.datas).toBe('criado 01/11 · editado 02/11')
   })
 })

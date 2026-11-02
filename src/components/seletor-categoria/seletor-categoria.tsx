@@ -7,6 +7,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { FormularioNovaCategoria } from '@/components/seletor-categoria/formulario-nova-categoria'
 import { useAcoesCategoria } from '@/hooks/use-acoes-categoria'
 import { useCategorias } from '@/hooks/use-categorias'
@@ -134,6 +135,7 @@ export function SeletorCategoria({
           <DropdownMenuGroup key={categoria.id} className="group/categoria">
             <DropdownMenuRadioItem value={categoria.id}>
               <Amostra cor={categoria.cor} />
+              <IconeDaEntidade icone={categoria.icone} tamanho="sm" />
               <span className="min-w-0 break-words">{categoria.nome}</span>
             </DropdownMenuRadioItem>
             {categoria.subcategorias.map((subcategoria) => (
@@ -224,6 +226,7 @@ function FiltroDeCategorias({
         {visiveis.map((categoria) => (
           <DropdownMenuRadioItem key={categoria.id} value={categoria.id}>
             <Amostra cor={categoria.cor} />
+            <IconeDaEntidade icone={categoria.icone} tamanho="sm" />
             <span className="min-w-0 break-words">{categoria.nome}</span>
           </DropdownMenuRadioItem>
         ))}

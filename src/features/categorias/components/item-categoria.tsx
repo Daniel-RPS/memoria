@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { cn } from 'cn'
 import { AlcaArrastar } from '@/components/alca-arrastar'
 import { CampoNovoItem } from '@/components/campo-novo-item'
+import { SeletorIcone } from '@/components/icones/seletor-icone'
 import { ListaOrdenavel } from '@/components/lista-ordenavel'
 import { SeletorCor } from '@/components/seletor-cor'
 import { TituloEditavel } from '@/components/titulo-editavel'
@@ -58,12 +59,13 @@ function descreverMudancaDeTipo(categoria: CategoriaComSubcategorias, uso: UsoDa
 }
 
 /**
- * Categoria arrastável pela alça: cor, nome editável, "+" de subcategoria, uso e menu ⋯
+ * Categoria arrastável pela alça: cor, ícone (emoji ou marca), nome editável, "+" de subcategoria, uso e menu ⋯
  * (mover para o outro tipo, excluir), com as subcategorias (também reordenáveis) abaixo.
  */
 export function ItemCategoria({ categoria, uso }: ItemCategoriaProps) {
   const {
     atualizarCategoria,
+    definirIconeDaCategoria,
     criarSubcategoria,
     excluirCategoria,
     moverCategoriaDeTipo,
@@ -125,6 +127,19 @@ export function ItemCategoria({ categoria, uso }: ItemCategoriaProps) {
           corEscolhida={categoria.cor}
           nomeItem={categoria.nome}
           onEscolher={(cor) => void atualizarCategoria(categoria.id, { cor })}
+        />
+        <SeletorIcone
+          icone={categoria.icone}
+          rotulo={`Ícone da categoria ${categoria.nome}`}
+          onEscolher={(icone) =>
+            definirIconeDaCategoria(categoria.id, icone).catch(mostrarErroAoSalvar)
+          }
+          // Sem ícone, a carinha só aparece ao passar o mouse ou focar a linha.
+          className={cn(
+            '-mx-1.5',
+            !categoria.icone &&
+              'opacity-0 group-hover/linha:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100',
+          )}
         />
         {/* Base mínima: na tela estreita, uso e ⋯ descem de linha em vez de esmagar o nome. */}
         <div className="flex min-w-0 flex-1 basis-24 items-center gap-1">

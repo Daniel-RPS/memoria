@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { cn } from 'cn'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { CampoNovoItem } from '@/components/campo-novo-item'
+import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal } from '@/db/types'
@@ -120,6 +121,9 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
           </button>
         )}
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 py-2 pl-1">
+          {classificacao?.icone && (
+            <IconeDaEntidade icone={classificacao.icone} className="-mr-1.5 self-center" />
+          )}
           <TituloEditavel
             titulo={serie.titulo}
             isEditando={isEditando}
