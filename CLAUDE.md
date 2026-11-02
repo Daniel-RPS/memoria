@@ -134,6 +134,7 @@ App pessoal de organização em formato de calendário: tarefas, subtarefas, cat
 - Uma fase por vez; ao terminar, PARE e mostre ao usuário antes de seguir
 - Antes de cada fase, liste em poucas linhas o que será feito
 - Ao concluir fase: testes + build, atualizar status no README (e este arquivo se a estrutura mudar), commit
+- IMPORTANTE: alteração que muda o esquema do banco (nova `version()` do Dexie, migração ou mudança de formato dos dados) → no resumo final, em destaque: **"Faça backup antes de publicar esta versão"**
 - Commits: Conventional Commits (`feat:`, `fix:`, `chore:`)
 - Testes obrigatórios: mover tarefas, contagem de dias pendentes, etapas e migração de procedimentos, copiar/mesclar grupos, contagem do mapa de conclusões, notas vinculadas (cadeia do item, excluir vira avulsa)
 - Ambiguidade na proposta: pergunte, não suponha
