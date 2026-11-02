@@ -1,95 +1,68 @@
-import { CalendarPlus } from 'lucide-react'
-import { Link } from 'react-router'
+import { CircleCheck } from 'lucide-react'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
-import { textoHaDias, type Atrasada } from '@/lib/inicio'
+import type { ResumoDoDia } from '@/lib/inicio'
+import { CardsDoResumo } from '@/features/inicio/components/cards-do-resumo'
 import { ResumoLateral } from '@/features/inicio/components/resumo-lateral'
 
 interface BlocoAtrasadasProps {
-  atrasadas: Atrasada[]
-}
-
-/** Quantas linhas mostrar; o resto vira "e mais N". */
-const MAXIMO_DE_LINHAS = 8
-
-function idDa(atrasada: Atrasada) {
-  return atrasada.tipo === 'tarefa' ? atrasada.tarefa.id : atrasada.grupo.card.id
+  resumo: ResumoDoDia
 }
 
 /**
- * Pendentes de dias que passaram, com "há X dias" e "Trazer para hoje" (tarefa solta é
- * movida; card leva os pendentes para o card de hoje, como no resto do app).
+ * Pendentes de dias que passaram, nos mesmos cards de Hoje, com "há X dias" e "Trazer para
+ * hoje" (tarefa solta é movida; card leva os pendentes para o card de hoje, como no resto do
+ * app).
  */
-export function BlocoAtrasadas({ atrasadas }: BlocoAtrasadasProps) {
+export function BlocoAtrasadas({ resumo }: BlocoAtrasadasProps) {
   const { hoje, mover } = useMoverTarefas()
-  const visiveis = atrasadas.slice(0, MAXIMO_DE_LINHAS)
-  const restantes = atrasadas.length - visiveis.length
+  const { pendentes } = resumo
+  const quantidade = resumo.grupos.length + resumo.soltas.length
 
-  function handleTrazer(lista: Atrasada[]) {
-    const tarefas = lista.flatMap((item) => (item.tipo === 'tarefa' ? [item.tarefa.id] : []))
-    const grupos = lista.flatMap((item) => (item.tipo === 'grupo' ? [item.grupo.card.id] : []))
+  function handleTrazer(tarefas: string[], grupos: string[]) {
     void mover(tarefas, hoje, { grupos })
+  }
+
+  function handleTrazerTodas() {
+    handleTrazer(
+      resumo.soltas.map(({ tarefa }) => tarefa.id),
+      resumo.grupos.map(({ grupo }) => grupo.card.id),
+    )
   }
 
   return (
     <ResumoLateral
       titulo="Atrasadas"
+      tom="alerta"
       extra={
-        atrasadas.length > 1 && (
-          <button
-            type="button"
-            onClick={() => handleTrazer(atrasadas)}
-            className="text-xs font-medium text-violeta-profundo hover:underline"
-          >
-            Trazer todas para hoje
-          </button>
+        pendentes > 0 && (
+          <span className="text-xs text-alerta tabular-nums">
+            {pendentes} {pendentes === 1 ? 'pendente' : 'pendentes'}
+          </span>
         )
       }
     >
-      {atrasadas.length === 0 ? (
-        <p className="py-2 text-sm text-grafite">Nada atrasado.</p>
-      ) : (
-        <ul className="pt-1">
-          {visiveis.map((atrasada) => {
-            const titulo =
-              atrasada.tipo === 'tarefa' ? atrasada.tarefa.titulo : atrasada.grupo.serie.titulo
-            const data =
-              atrasada.tipo === 'tarefa' ? atrasada.tarefa.data : atrasada.grupo.card.data
-            return (
-              <li key={idDa(atrasada)} className="flex min-h-8 items-center gap-2 text-sm">
-                <Link
-                  to={`/dia/${data}`}
-                  className="min-w-0 flex-1 truncate hover:underline"
-                  title={`Abrir ${titulo} no dia`}
-                >
-                  {titulo}
-                  {atrasada.tipo === 'grupo' && (
-                    <span className="text-grafite">
-                      {' '}
-                      · {atrasada.pendentes} {atrasada.pendentes === 1 ? 'pendente' : 'pendentes'}
-                    </span>
-                  )}
-                </Link>
-                <span className="shrink-0 rounded-sm bg-marca-texto px-1.5 text-xs text-violeta-profundo">
-                  {textoHaDias(atrasada.dias)}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Trazer ${titulo} para hoje`}
-                  title="Trazer para hoje"
-                  onClick={() => handleTrazer([atrasada])}
-                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-grafite hover:bg-accent hover:text-tinta"
-                >
-                  <CalendarPlus aria-hidden className="size-4" />
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {restantes > 0 && (
-        <p className="pt-1 text-xs text-grafite">
-          e mais {restantes} {restantes === 1 ? 'atrasada' : 'atrasadas'}
+      {quantidade === 0 ? (
+        <p className="mt-2 flex items-center gap-2 rounded-md border border-dashed border-pauta px-3 py-2 text-sm text-grafite">
+          <CircleCheck aria-hidden className="size-4 shrink-0" />
+          Tudo em dia
         </p>
+      ) : (
+        <>
+          <CardsDoResumo
+            resumo={resumo}
+            onTrazerGrupo={(cardId) => handleTrazer([], [cardId])}
+            onTrazerTarefa={(tarefaId) => handleTrazer([tarefaId], [])}
+          />
+          {quantidade > 1 && (
+            <button
+              type="button"
+              onClick={handleTrazerTodas}
+              className="mt-2 text-xs font-medium text-violeta-profundo hover:underline"
+            >
+              Trazer todas para hoje
+            </button>
+          )}
+        </>
       )}
     </ResumoLateral>
   )

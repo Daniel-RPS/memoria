@@ -175,7 +175,7 @@ test('"Trazer para hoje" numa atrasada', async ({ page }) => {
   await capturar(page, '4-antes')
 
   await atrasadas.getByRole('button', { name: 'Trazer Renovar CNH para hoje' }).click()
-  await expect(atrasadas.getByText('Nada atrasado.')).toBeVisible()
+  await expect(atrasadas.getByText('Tudo em dia')).toBeVisible()
   await expect(blocoHoje(page).getByRole('checkbox', { name: 'Renovar CNH' })).toBeVisible()
   const banco = await lerBanco(page)
   expect(banco.tarefas[0]).toMatchObject({ data: HOJE, status: 'pendente' })

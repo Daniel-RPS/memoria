@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
 import { filtrarSeries, montarGrupos, ordenarParaEscolher } from '@/lib/grupos'
-import { contarProximosDias, montarAtrasadas, textoHaDias } from '@/lib/inicio'
+import { hoje as hojeLocal } from '@/lib/datas'
+import { contarProximosDias, montarResumoDoDia, textoHaDias } from '@/lib/inicio'
 
 const HOJE = '2026-11-02'
 
@@ -32,35 +33,133 @@ function item(
   return { id, cardId, titulo: id, ordem: 1, status, dataOriginal, criadoEm: '', atualizadoEm: '' }
 }
 
-describe('Atrasadas', () => {
-  it('tarefas soltas e cards com pendentes de dias passados, da mais atrasada à mais recente', () => {
+function rotulos(resumo: ReturnType<typeof montarResumoDoDia>) {
+  return {
+    grupos: resumo.grupos.map(
+      ({ grupo, itens, feitos, total }) =>
+        `${grupo.card.id} ${feitos}/${total}: ${itens
+          .map(({ item, dias }) => (dias === null ? item.id : `${item.id}(${dias})`))
+          .join(', ')}`,
+    ),
+    soltas: resumo.soltas.map(({ tarefa, dias }) =>
+      dias === null ? tarefa.id : `${tarefa.id}(${dias})`,
+    ),
+    pendentes: resumo.pendentes,
+  }
+}
+
+describe('Resumo do dia (Hoje e Atrasadas)', () => {
+  it('separa grupos e tarefas soltas, cada lista na ordem do dia', () => {
     const tarefas = [
-      tarefa({ id: 'ontem', data: '2026-11-01' }),
-      tarefa({ id: 'movida', data: '2026-10-31', dataOriginal: '2026-10-20' }),
-      tarefa({ id: 'feita', data: '2026-10-30', status: 'concluida' }),
-      tarefa({ id: 'hoje', data: HOJE }),
+      tarefa({ id: 'mandar', data: HOJE, ordem: 3 }),
+      tarefa({ id: 'ligar', data: HOJE, ordem: 1, status: 'concluida' }),
+      tarefa({ id: 'guardada', data: HOJE, ordem: 2, status: 'arquivada' }),
     ]
     const grupos = montarGrupos(
-      [card('c1', '2026-10-29'), card('c2', '2026-10-28')],
+      [
+        { ...card('casa', HOJE), ordem: 4 },
+        { ...card('mercado', HOJE), ordem: 0 },
+      ],
       [SERIE],
       [
-        item('i1', 'c1', 'pendente', '2026-10-27'),
-        item('i2', 'c1', 'pendente', '2026-10-29'),
-        item('i3', 'c2', 'concluido', '2026-10-28'),
+        { ...item('varrer', 'casa', 'concluido', HOJE), ordem: 1 },
+        { ...item('louca', 'casa', 'pendente', HOJE), ordem: 2 },
+        { ...item('plantas', 'casa', 'pendente', HOJE), ordem: 3 },
+        item('arroz', 'mercado', 'pendente', HOJE),
       ],
     )
 
-    const atrasadas = montarAtrasadas(tarefas, grupos, HOJE)
+    expect(rotulos(montarResumoDoDia(tarefas, grupos, HOJE))).toEqual({
+      grupos: ['mercado 0/1: arroz', 'casa 1/3: louca, plantas, varrer'],
+      soltas: ['ligar', 'mandar'],
+      pendentes: 4,
+    })
+  })
 
-    expect(
-      atrasadas.map((atrasada) =>
-        atrasada.tipo === 'tarefa'
-          ? `${atrasada.tarefa.id}:${atrasada.dias}`
-          : `${atrasada.grupo.card.id}:${atrasada.dias}:${atrasada.pendentes}`,
-      ),
-    ).toEqual(['movida:13', 'c1:6:2', 'ontem:1'])
+  it('sem tarefas soltas a lista de soltas vem vazia; card sem item real não aparece', () => {
+    const grupos = montarGrupos(
+      [card('casa', HOJE), card('vazio', HOJE)],
+      [SERIE],
+      [item('varrer', 'casa', 'pendente', HOJE), item('ido', 'vazio', 'transferido', HOJE)],
+    )
+
+    const resumo = montarResumoDoDia([], grupos, HOJE)
+
+    expect(resumo.soltas).toEqual([])
+    expect(rotulos(resumo).grupos).toEqual(['casa 0/1: varrer'])
+  })
+
+  it('progresso do grupo ignora itens transferidos', () => {
+    const grupos = montarGrupos(
+      [card('casa', HOJE)],
+      [SERIE],
+      [
+        item('feito', 'casa', 'concluido', HOJE),
+        item('pendente', 'casa', 'pendente', HOJE),
+        item('levado', 'casa', 'transferido', HOJE),
+        item('guardado', 'casa', 'arquivado', HOJE),
+      ],
+    )
+
+    const [casa] = montarResumoDoDia([], grupos, HOJE).grupos
+
+    expect({ feitos: casa?.feitos, total: casa?.total }).toEqual({ feitos: 1, total: 2 })
+  })
+
+  it('pendentes de Hoje = itens pendentes dos grupos + tarefas soltas pendentes', () => {
+    const tarefas = [
+      tarefa({ id: 'a', data: HOJE }),
+      tarefa({ id: 'b', data: HOJE, status: 'concluida' }),
+    ]
+    const grupos = montarGrupos(
+      [card('c1', HOJE), card('c2', HOJE)],
+      [SERIE],
+      [
+        item('i1', 'c1', 'pendente', HOJE),
+        item('i2', 'c1', 'concluido', HOJE),
+        item('i3', 'c2', 'pendente', HOJE),
+        item('i4', 'c2', 'transferido', HOJE),
+      ],
+    )
+
+    expect(montarResumoDoDia(tarefas, grupos, HOJE).pendentes).toBe(3)
+  })
+
+  it('atrasadas: "há X dias" pela dataOriginal, do dia mais antigo ao mais recente', () => {
+    const tarefas = [
+      tarefa({ id: 'ontem', data: '2026-11-01' }),
+      tarefa({ id: 'movida', data: '2026-10-31', dataOriginal: '2026-10-20' }),
+    ]
+    const grupos = montarGrupos(
+      [card('c1', '2026-10-30'), card('c2', '2026-10-28')],
+      [SERIE],
+      [
+        item('i1', 'c1', 'pendente', '2026-10-27'),
+        item('i2', 'c1', 'pendente', '2026-10-30'),
+        item('i3', 'c1', 'concluido', '2026-10-30'),
+        item('i4', 'c2', 'pendente', '2026-10-28'),
+      ],
+    )
+
+    expect(rotulos(montarResumoDoDia(tarefas, grupos, HOJE))).toEqual({
+      grupos: ['c2 0/1: i4(5)', 'c1 1/3: i1(6), i2(3), i3'],
+      soltas: ['movida(13)', 'ontem(1)'],
+      pendentes: 5,
+    })
     expect(textoHaDias(1)).toBe('há 1 dia')
     expect(textoHaDias(6)).toBe('há 6 dias')
+  })
+
+  it('na virada do dia conta pela data local de São Paulo, não pela UTC', () => {
+    const tarefas = [tarefa({ id: 'ontem', data: '2026-11-01' })]
+    // 23h30 de 01/11 em São Paulo já é 02/11 em UTC: ainda não está atrasada.
+    const antesDaMeiaNoite = hojeLocal(new Date('2026-11-01T23:30:00-03:00'))
+    // 00h10 de 02/11: virou o dia, atrasada há 1 dia.
+    const depoisDaMeiaNoite = hojeLocal(new Date('2026-11-02T00:10:00-03:00'))
+
+    expect(antesDaMeiaNoite).toBe('2026-11-01')
+    expect(rotulos(montarResumoDoDia(tarefas, [], antesDaMeiaNoite)).soltas).toEqual(['ontem'])
+    expect(rotulos(montarResumoDoDia(tarefas, [], depoisDaMeiaNoite)).soltas).toEqual(['ontem(1)'])
   })
 })
 

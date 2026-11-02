@@ -18,6 +18,7 @@
   --color-caneta: var(--caneta);
   --color-violeta-profundo: var(--violeta-profundo);
   --color-marca-texto: var(--marca-texto);
+  --color-alerta: var(--alerta);
 
   --color-barra: var(--barra);
   --color-barra-borda: var(--barra-borda);
@@ -110,6 +111,8 @@
   --caneta: #8b3dff;
   --violeta-profundo: #4b16a8;
   --marca-texto: #ece2ff;
+  /* Laranja suave só no título e no contador de Atrasadas. */
+  --alerta: #a84c0a;
 
   --background: var(--nevoa);
   --foreground: var(--tinta);
@@ -165,6 +168,7 @@
   --caneta: #a274ff;
   --violeta-profundo: #c6a8ff;
   --marca-texto: #2b2042;
+  --alerta: #f0a25e;
 
   --popover: #1e1a26;
   --primary-foreground: #14101f;

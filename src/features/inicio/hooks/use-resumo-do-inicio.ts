@@ -6,19 +6,21 @@ import type { DataLocal } from '@/db/types'
 import { useGruposDoPeriodo } from '@/hooks/use-grupos-do-periodo'
 import { useTarefasDoPeriodo } from '@/hooks/use-tarefas-do-periodo'
 import { somarDias } from '@/lib/datas'
-import { intercalarNoDia, montarGrupos } from '@/lib/grupos'
-import { contarProximosDias, montarAtrasadas } from '@/lib/inicio'
+import { montarGrupos } from '@/lib/grupos'
+import { contarProximosDias, montarResumoDoDia, type ResumoDoDia } from '@/lib/inicio'
 
 const DIAS_A_FRENTE = 7
 
-/** Hoje (tarefas soltas e cards na ordem do dia), atualizado sozinho. */
+const RESUMO_VAZIO: ResumoDoDia = { grupos: [], soltas: [], pendentes: 0 }
+
+/** Hoje (cards e tarefas soltas, cada um na ordem do dia), atualizado sozinho. */
 export function useHojeNoInicio(hoje: DataLocal) {
   const { tarefas } = useTarefasDoPeriodo(hoje, hoje)
   const { grupos } = useGruposDoPeriodo(hoje, hoje)
-  return useMemo(() => intercalarNoDia(tarefas, grupos), [tarefas, grupos])
+  return useMemo(() => montarResumoDoDia(tarefas, grupos, hoje), [tarefas, grupos, hoje])
 }
 
-/** Pendentes de dias que já passaram, da mais atrasada para a mais recente. */
+/** Pendentes de dias que já passaram, do dia mais antigo ao mais recente. */
 export function useAtrasadas(hoje: DataLocal) {
   const resultado = useLiveQuery(async () => {
     const [tarefas, grupos] = await Promise.all([
@@ -28,9 +30,9 @@ export function useAtrasadas(hoje: DataLocal) {
     return { tarefas, grupos }
   }, [hoje])
   return useMemo(() => {
-    if (!resultado) return []
+    if (!resultado) return RESUMO_VAZIO
     const { cards, series, itens } = resultado.grupos
-    return montarAtrasadas(resultado.tarefas, montarGrupos(cards, series, itens), hoje)
+    return montarResumoDoDia(resultado.tarefas, montarGrupos(cards, series, itens), hoje)
   }, [resultado, hoje])
 }
 

@@ -82,7 +82,7 @@ describe('Início', () => {
       within(atrasadas).getByRole('button', { name: 'Trazer Renovar CNH para hoje' }),
     )
 
-    expect(await within(atrasadas).findByText('Nada atrasado.')).toBeInTheDocument()
+    expect(await within(atrasadas).findByText('Tudo em dia')).toBeInTheDocument()
     expect((await db.tasks.toArray())[0]).toMatchObject({ data: hoje() })
   })
 })

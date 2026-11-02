@@ -26,7 +26,7 @@ function capitalizar(texto: string) {
 export function InicioPage() {
   const hoje = useHoje()
   const { categorias } = useCategorias()
-  const entradasDeHoje = useHojeNoInicio(hoje)
+  const resumoDeHoje = useHojeNoInicio(hoje)
   const atrasadas = useAtrasadas(hoje)
   const proximos = useProximosDias(hoje)
   const dia = deDataLocal(hoje)
@@ -47,9 +47,12 @@ export function InicioPage() {
           <CapturaRapida key={hoje} hoje={hoje} />
           <MapaDeConclusoes hoje={hoje} />
         </div>
-        <aside aria-label="Hoje, atrasadas e próximos dias" className="flex flex-col gap-8 lg:pt-1">
-          <BlocoHoje entradas={entradasDeHoje} />
-          <BlocoAtrasadas atrasadas={atrasadas} />
+        <aside
+          aria-label="Hoje, atrasadas e próximos dias"
+          className="flex flex-col gap-10 lg:pt-1"
+        >
+          <BlocoHoje resumo={resumoDeHoje} />
+          <BlocoAtrasadas resumo={atrasadas} />
           <ProximosDias dias={proximos} />
         </aside>
       </div>

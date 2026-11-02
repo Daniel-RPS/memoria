@@ -80,3 +80,47 @@ export function corNaTela(hex: string, tema: Tema) {
       .join('')
   )
 }
+
+/** Papel de cada tema (mesmos valores de `--papel` em `src/index.css`). */
+const PAPEL_DO_TEMA: Record<Tema, string> = { claro: '#ffffff', escuro: '#19161f' }
+
+/** Contraste mínimo de elemento gráfico (faixa, barra) sobre o papel, pela WCAG. */
+const CONTRASTE_DE_TRACO = 3
+
+function canais(hex: string) {
+  return [1, 3, 5].map((inicio) => parseInt(hex.slice(inicio, inicio + 2), 16))
+}
+
+function luminancia(hex: string) {
+  const [r = 0, g = 0, b = 0] = canais(hex).map((canal) => {
+    const linear = canal / 255
+    return linear <= 0.03928 ? linear / 12.92 : ((linear + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+export function contraste(a: string, b: string) {
+  const [clara, escura] = [luminancia(a), luminancia(b)].sort((x, y) => y - x)
+  return ((clara ?? 0) + 0.05) / ((escura ?? 0) + 0.05)
+}
+
+/**
+ * Cor de categoria para faixa e barra de progresso: a da tela (`corNaTela`) e, se ela some no
+ * papel (ex.: amarelo claro no tema claro), escurecida (ou clareada, no escuro) aos poucos até
+ * chegar a 3:1. Só exibição.
+ */
+export function corDeTraco(hex: string, tema: Tema) {
+  const base = corNaTela(hex, tema)
+  if (!isCorValida(base)) return base
+  const papel = PAPEL_DO_TEMA[tema]
+  const alvo = tema === 'claro' ? 0 : 255
+  let cor = base
+  for (let quanto = 0.1; contraste(cor, papel) < CONTRASTE_DE_TRACO && quanto <= 1; quanto += 0.1) {
+    cor =
+      '#' +
+      canais(base)
+        .map((canal) => misturar(canal, alvo, quanto).toString(16).padStart(2, '0'))
+        .join('')
+  }
+  return cor
+}
