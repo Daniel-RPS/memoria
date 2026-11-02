@@ -9,6 +9,16 @@ import { esquemaTituloTarefa } from '@/lib/esquemas'
 export type TipoCaptura = 'tarefa' | 'grupo' | 'em-grupo'
 
 /**
+ * Texto apagado do campo, um por modo: na Tarefa, no campo do título; no Grupo, na linha do nome;
+ * em "Em grupo…", só na 1ª linha de item (a caixinha já indica as outras).
+ */
+export const DICA_DO_CAMPO: Record<TipoCaptura, string> = {
+  tarefa: 'Escreva a tarefa a ser feita',
+  grupo: 'Crie o grupo e coloque a(s) tarefa(s) a ser(em) feita(s)',
+  'em-grupo': 'Escolha o grupo e coloque a tarefa',
+}
+
+/**
  * Tarefa: a 1ª linha preenchida do texto é o título e as seguintes viram a anotação (só as linhas
  * em branco das pontas saem).
  */

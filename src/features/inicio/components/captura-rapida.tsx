@@ -11,6 +11,7 @@ import type { DataLocal } from '@/db/types'
 import { isPedidoDeFocarCaptura } from '@/app/use-atalho-captura'
 import { nomeDoLink, type LinkInput } from '@/lib/anexos'
 import {
+  DICA_DO_CAMPO,
   dividirTexto,
   esquemaCaptura,
   primeiraLinha,
@@ -43,8 +44,8 @@ function valoresIniciais(hoje: DataLocal): CapturaInput {
  * Anotar sem sair do Início: texto, tipo (tarefa, grupo novo com itens ou item num grupo
  * que já existe), categoria, dia e, na tarefa, anexos. Tarefa: Enter cria e Shift+Enter quebra
  * a linha (as linhas de baixo viram a anotação). Grupo: nome em destaque e uma linha por item
- * (`ItensDaCaptura`); "Em grupo…" usa a mesma lista, sem o nome. Sem placeholder: a estrutura
- * explica o modo. Trocar de modo não perde o texto nem os itens.
+ * (`ItensDaCaptura`); "Em grupo…" usa a mesma lista, sem o nome. Um texto apagado por modo
+ * (`DICA_DO_CAMPO`). Trocar de modo não perde o texto nem os itens.
  */
 export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   const idErro = useId()
@@ -192,7 +193,8 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
                 aria-invalid={erro ? true : undefined}
                 aria-describedby={erro ? idErro : undefined}
                 aria-keyshortcuts="Control+K N"
-                className="field-sizing-content block max-h-80 min-h-[3lh] w-full resize-none bg-transparent text-xl leading-8 font-medium tracking-[-0.01em] caret-caneta outline-none"
+                placeholder={DICA_DO_CAMPO.tarefa}
+                className="field-sizing-content block max-h-80 min-h-[3lh] w-full resize-none bg-transparent text-xl leading-8 font-medium tracking-[-0.01em] caret-caneta outline-none placeholder:font-normal placeholder:text-grafite/70"
               />
             ) : (
               <ItensDaCaptura
@@ -209,6 +211,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
                       }
                     : undefined
                 }
+                dica={DICA_DO_CAMPO[tipo]}
                 itens={itens}
                 onMudarItens={(novos) =>
                   setValue('itens', novos, { shouldValidate: Boolean(errors.itens) })

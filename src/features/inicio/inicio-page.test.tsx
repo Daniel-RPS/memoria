@@ -42,7 +42,7 @@ describe('Início', () => {
     renderizarApp('/inicio')
 
     await screen.findByRole('textbox', { name: 'Título da tarefa' })
-    await usuario.click(screen.getByRole('button', { name: 'Grupo', exact: true }))
+    await usuario.click(screen.getByRole('button', { name: 'Grupo' }))
     const nome = screen.getByRole('textbox', { name: 'Nome do grupo' })
     await waitFor(() => expect(nome).toHaveFocus())
     await usuario.keyboard(

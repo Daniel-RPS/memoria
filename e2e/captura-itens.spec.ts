@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 /**
  * Captura do Início com a lista de itens: nome do grupo em destaque e uma linha com caixinha por
@@ -207,21 +207,64 @@ test('trocar entre Tarefa, Grupo e "Em grupo…" não perde o texto nem os itens
   await expect(itens(page).first()).toHaveValue('Varrer')
 })
 
-test('o campo não tem placeholder em nenhum modo', async ({ page }) => {
+const DICAS = {
+  tarefa: 'Escreva a tarefa a ser feita',
+  grupo: 'Crie o grupo e coloque a(s) tarefa(s) a ser(em) feita(s)',
+  emGrupo: 'Escolha o grupo e coloque a tarefa',
+}
+
+/** O texto apagado aparece só com o campo vazio (`:placeholder-shown`). */
+function isDicaVisivel(campo: Locator) {
+  return campo.evaluate((elemento) => elemento.matches(':placeholder-shown'))
+}
+
+test('cada modo mostra o seu texto no campo, que some ao digitar e troca com o modo', async ({
+  page,
+}) => {
   await page.goto('/inicio')
   await semearCasa(page)
-  const semPlaceholder = async () => {
-    const campos = captura(page).locator('textarea, input:not([aria-label="Buscar grupo"])')
-    for (const campo of await campos.all()) {
-      await expect(campo).not.toHaveAttribute('placeholder')
-    }
-  }
-  await semPlaceholder()
+  const tarefa = captura(page).getByRole('textbox', { name: 'Título da tarefa' })
+
+  // Tarefa: o texto no campo do título.
+  await expect(tarefa).toHaveAttribute('placeholder', DICAS.tarefa)
+  expect(await isDicaVisivel(tarefa)).toBe(true)
+  await page.keyboard.type('Pagar')
+  expect(await isDicaVisivel(tarefa)).toBe(false)
+  await tarefa.fill('')
+
+  // Grupo: só na linha do nome; as linhas de item ficam sem texto.
   await escolherModo(page, 'Grupo')
-  await semPlaceholder()
+  await expect(nomeDoGrupo(page)).toHaveAttribute('placeholder', DICAS.grupo)
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Lavar roupa')
+  await page.keyboard.press('Enter')
+  await expect(itens(page)).toHaveCount(2)
+  for (const item of await itens(page).all()) {
+    await expect(item).not.toHaveAttribute('placeholder')
+  }
+  await nomeDoGrupo(page).fill('Casa nova')
+  expect(await isDicaVisivel(nomeDoGrupo(page))).toBe(false)
+
+  // Em grupo…: só na 1ª linha de item.
   await escolherGrupo(page, 'Casa')
-  await semPlaceholder()
-  await expect(captura(page).getByText('O que precisa ser feito?')).toHaveCount(0)
+  await expect(itens(page).first()).toHaveAttribute('placeholder', DICAS.emGrupo)
+  await expect(itens(page).nth(1)).not.toHaveAttribute('placeholder')
+  // Os itens vieram do Grupo: a 1ª linha tem texto, então o seu texto apagado não aparece.
+  expect(await isDicaVisivel(itens(page).first())).toBe(false)
+  await itens(page).first().fill('')
+  expect(await isDicaVisivel(itens(page).first())).toBe(true)
+
+  // Um texto só por vez, e nenhum dos antigos.
+  const dicas = await captura(page)
+    .locator('[placeholder]')
+    .evaluateAll((campos) => campos.map((campo) => campo.getAttribute('placeholder')))
+  expect(dicas).toEqual([DICAS.emGrupo])
+  await escolherModo(page, 'Tarefa')
+  await expect(tarefa).toHaveAttribute('placeholder', DICAS.tarefa)
+  for (const antigo of ['O que precisa ser feito?', 'Nome do grupo', 'Um item por linha']) {
+    await expect(captura(page).locator(`[placeholder*="${antigo}"]`)).toHaveCount(0)
+    await expect(captura(page).getByText(antigo)).toHaveCount(0)
+  }
 })
 
 for (const tema of ['claro', 'escuro'] as const) {
@@ -240,6 +283,9 @@ for (const tema of ['claro', 'escuro'] as const) {
     await fotografar('tarefa')
     await escolherModo(page, 'Grupo')
     await fotografar('grupo')
+    await page.setViewportSize({ width: 820, height: 1100 })
+    await fotografar('grupo-estreita')
+    await page.setViewportSize({ width: 1366, height: 900 })
     await escolherGrupo(page, 'Casa')
     await fotografar('em-grupo')
     if (fase === 'antes') return

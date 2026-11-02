@@ -11,6 +11,8 @@ interface ItensDaCapturaProps {
   ref?: Ref<ItensDaCapturaHandle>
   /** Só no modo Grupo: a linha do nome, em destaque, acima dos itens. */
   nome?: { valor: string; onMudar: (valor: string) => void; isInvalido: boolean }
+  /** Texto apagado do modo: na linha do nome ou, sem ela, só na 1ª linha de item. */
+  dica: string
   itens: string[]
   onMudarItens: (itens: string[]) => void
   isItensInvalidos: boolean
@@ -27,6 +29,7 @@ interface ItensDaCapturaProps {
 export function ItensDaCaptura({
   ref,
   nome,
+  dica,
   itens,
   onMudarItens,
   isItensInvalidos,
@@ -56,7 +59,8 @@ export function ItensDaCaptura({
           aria-invalid={nome.isInvalido || undefined}
           aria-describedby={nome.isInvalido ? idErro : undefined}
           aria-keyshortcuts="Control+K N"
-          className="h-9 w-full min-w-0 bg-transparent text-2xl leading-9 font-semibold tracking-[-0.02em] caret-caneta outline-none"
+          placeholder={dica}
+          className="h-9 w-full min-w-0 bg-transparent text-2xl leading-9 font-semibold tracking-[-0.02em] caret-caneta outline-none placeholder:font-normal placeholder:text-grafite/70"
         />
       )}
       <ul aria-label="Itens do grupo" className={cn(nome && 'mt-1')}>
@@ -78,9 +82,10 @@ export function ItensDaCaptura({
               onPaste={(evento) => handlePasteNoItem(indice, evento)}
               autoComplete="off"
               aria-label="Item do grupo"
+              placeholder={!nome && indice === 0 ? dica : undefined}
               aria-invalid={isItensInvalidos || undefined}
               aria-describedby={isItensInvalidos ? idErro : undefined}
-              className="h-full min-w-0 flex-1 bg-transparent text-base caret-caneta outline-none"
+              className="h-full min-w-0 flex-1 bg-transparent text-base caret-caneta outline-none placeholder:text-grafite/70"
             />
           </li>
         ))}
