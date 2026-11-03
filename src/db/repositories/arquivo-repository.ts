@@ -7,6 +7,7 @@ import { carregarDadosDosVinculos, excluirNota } from '@/db/repositories/note-re
 import { agora } from '@/db/repositories/ordenacao'
 import { excluirProcedimento } from '@/db/repositories/procedure-repository'
 import { excluirTarefa, maiorOrdemDoDia } from '@/db/repositories/task-repository'
+import { semAndamento } from '@/lib/andamento'
 import type { Alvos, DadosDoArquivo } from '@/lib/arquivados'
 import { deDataLocal } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -27,6 +28,8 @@ export interface EstadoAnterior {
   itens: GroupItem[]
   notas: Note[]
   procedimentos: Procedure[]
+  /** Itens dos cards arquivados que estavam em andamento (a marca sai ao arquivar o card). */
+  itensEmAndamento?: GroupItem[]
 }
 
 const TABELAS = [
@@ -66,15 +69,27 @@ export async function arquivar(alvos: Alvos): Promise<EstadoAnterior> {
     const anteriores = await lerAnteriores(alvos)
     const momento = agora()
     const quando = { arquivadoEm: momento, atualizadoEm: momento }
+    // Arquivado não é "o que estou fazendo agora": a marca de andamento sai.
     await db.tasks.bulkPut(
-      anteriores.tarefas.map((tarefa) => ({ ...tarefa, status: 'arquivada' as const, ...quando })),
+      anteriores.tarefas.map((tarefa) =>
+        semAndamento({ ...tarefa, status: 'arquivada' as const, ...quando }),
+      ),
     )
     await db.groupCards.bulkPut(
       anteriores.cards.map((card) => ({ ...card, arquivado: true, ...quando })),
     )
     await db.groupItems.bulkPut(
-      anteriores.itens.map((item) => ({ ...item, status: 'arquivado' as const, ...quando })),
+      anteriores.itens.map((item) =>
+        semAndamento({ ...item, status: 'arquivado' as const, ...quando }),
+      ),
     )
+    const itensEmAndamento = await db.groupItems
+      .where('cardId')
+      .anyOf(anteriores.cards.map((card) => card.id))
+      .filter((item) => item.emAndamento === true)
+      .toArray()
+    await db.groupItems.bulkPut(itensEmAndamento.map(semAndamento))
+    anteriores.itensEmAndamento = itensEmAndamento
     await db.notes.bulkPut(
       anteriores.notas.map((nota) => ({ ...nota, arquivado: true, ...quando })),
     )
@@ -179,6 +194,7 @@ export async function restaurarEstado(anteriores: EstadoAnterior) {
     await db.tasks.bulkPut(anteriores.tarefas)
     await db.groupCards.bulkPut(anteriores.cards)
     await db.groupItems.bulkPut(anteriores.itens)
+    await db.groupItems.bulkPut(anteriores.itensEmAndamento ?? [])
     await db.notes.bulkPut(anteriores.notas)
     await db.procedures.bulkPut(anteriores.procedimentos)
   })

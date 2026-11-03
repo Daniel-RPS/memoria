@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
 import {
@@ -38,7 +38,7 @@ describe('Grupos na visão do dia', () => {
     window.localStorage.clear()
   })
 
-  it('grupos que já existem abrem recolhidos; o criado na visita, aberto', async () => {
+  it('grupo sem estado salvo abre recolhido; o que o usuário abre é lembrado', async () => {
     const usuario = userEvent.setup()
     const casa = await criarGrupo({ titulo: 'Casa', data: HOJE })
     await criarItem(casa.id, 'Varrer')
@@ -50,12 +50,19 @@ describe('Grupos na visão do dia', () => {
     await usuario.click(abrir)
     expect(screen.getByRole('checkbox', { name: 'Concluir Varrer' })).toBeVisible()
 
+    // Grupo novo, sem estado salvo, também abre recolhido.
     await usuario.click(screen.getByRole('button', { name: 'Novo grupo' }))
     await usuario.type(screen.getByRole('textbox', { name: 'Novo grupo' }), 'Mercado{Enter}')
-    expect(await screen.findByRole('button', { name: 'Recolher Mercado' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: 'Abrir Mercado' })).toHaveAttribute(
       'aria-expanded',
-      'true',
+      'false',
     )
+
+    // Outra visita (a tela é montada de novo): Casa continua aberta e Mercado recolhido.
+    cleanup()
+    renderizarApp(`/dia/${HOJE}`)
+    expect(await screen.findByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abrir Mercado' })).toBeInTheDocument()
   })
 
   it('cria o grupo pelo "+ Novo grupo", adiciona itens e mostra o progresso', async () => {
@@ -65,6 +72,7 @@ describe('Grupos na visão do dia', () => {
     await usuario.click(await screen.findByRole('button', { name: 'Novo grupo' }))
     await usuario.type(screen.getByRole('textbox', { name: 'Novo grupo' }), 'Casa{Enter}')
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
+    await usuario.click(within(card).getByRole('button', { name: 'Abrir Casa' }))
     const campo = within(card).getByRole('textbox', { name: 'Adicionar item em Casa' })
     await usuario.type(campo, 'Arrumar o quarto{Enter}')
     await usuario.type(campo, 'Fazer comida{Enter}')
@@ -101,8 +109,8 @@ describe('Grupos na visão do dia', () => {
     expect(within(card).getByText('encerrado')).toBeInTheDocument()
 
     await usuario.click(transferido)
-    // Outro dia: o card volta a abrir recolhido.
-    await usuario.click(await screen.findByRole('button', { name: 'Abrir Casa' }))
+    // Outro dia: a cópia é da mesma série e herda o estado do original (aberto).
+    expect(await screen.findByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
     const cardAmanha = screen.getByRole('region', { name: 'Grupo Casa' })
     expect(
       await within(cardAmanha).findByRole('checkbox', { name: 'Concluir Fazer comida' }),
@@ -163,6 +171,7 @@ describe('Grupos na visão do dia', () => {
 
     expect(await screen.findByText('1 tarefa movida e 1 item levado para hoje')).toBeInTheDocument()
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
+    await usuario.click(within(card).getByRole('button', { name: 'Abrir Casa' }))
     // Card e itens vêm de consultas diferentes: o item pode desenhar depois do card.
     expect(
       await within(card).findByRole('checkbox', { name: 'Concluir Fazer comida' }),

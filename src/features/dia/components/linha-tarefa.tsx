@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Paperclip } from 'lucide-react'
 import { cn } from 'cn'
 import { PainelAnexos } from '@/components/anexos/painel-anexos'
+import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, Subtask, Task } from '@/db/types'
@@ -37,6 +38,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const [isAnexosAbertos, setIsAnexosAbertos] = useState(false)
   const { quantidadeAnexos } = useExtrasDaTarefa(tarefa.id)
   const isConcluida = tarefa.status === 'concluida'
+  const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
   const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
@@ -70,11 +72,13 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   return (
     <div className="relative border-b border-pauta">
       <div
+        data-em-andamento={isEmAndamento || undefined}
         className={cn(
-          'group/linha flex min-h-12 items-center gap-2 pr-2 pl-1',
+          'group/linha relative flex min-h-12 items-center gap-2 pr-2 pl-1',
           isSelecionada && 'bg-accent',
         )}
       >
+        {isEmAndamento && <FileteDeAndamento />}
         <span className="flex w-5 shrink-0 justify-center">{!isSelecionavel && alca}</span>
         {isSelecionavel ? (
           <Checkbox
@@ -111,6 +115,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               className={cn(isConcluida && 'text-grafite line-through decoration-tinta/50')}
             />
           )}
+          {isEmAndamento && !isEditando && <IndicadorAndamento />}
           {!isEditando && (
             <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />
           )}

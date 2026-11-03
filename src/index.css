@@ -351,3 +351,24 @@
     display: none;
   }
 }
+
+/* "Em andamento": o ponto respira devagar; sem movimento, fica parado. */
+.ponto-andamento {
+  animation: pulso-andamento 2.4s ease-in-out infinite;
+}
+@keyframes pulso-andamento {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ponto-andamento {
+    animation: none;
+  }
+}

@@ -8,6 +8,8 @@ import {
   MoreHorizontal,
   Paperclip,
   Pencil,
+  Play,
+  Square,
   Trash2,
 } from 'lucide-react'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
@@ -36,6 +38,7 @@ import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
 import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal, Task } from '@/db/types'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
+import { useAndamento } from '@/hooks/use-andamento'
 import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
@@ -64,6 +67,7 @@ export function MenuTarefa({
   const { arquivarComAviso } = useAcoesDeArquivo()
   const gruposDoDia = useGruposDoDia()
   const { mover, adiar } = useMoverTarefas()
+  const { marcarEmAndamento, pararAndamento } = useAndamento()
   const [isMenuAberto, setIsMenuAberto] = useState(false)
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
@@ -104,9 +108,21 @@ export function MenuTarefa({
           }}
         >
           {isPendente && (
-            <DropdownMenuItem onSelect={() => void adiar([tarefa.id])}>
-              <CalendarArrowUp /> {isFutura ? 'Adiar um dia' : 'Adiar para amanhã'}
-            </DropdownMenuItem>
+            <>
+              {tarefa.emAndamento ? (
+                <DropdownMenuItem onSelect={() => void pararAndamento({ tarefas: [tarefa.id] })}>
+                  <Square /> Parar andamento
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => void marcarEmAndamento({ tarefas: [tarefa.id] })}>
+                  <Play /> Marcar como em andamento
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void adiar([tarefa.id])}>
+                <CalendarArrowUp /> {isFutura ? 'Adiar um dia' : 'Adiar para amanhã'}
+              </DropdownMenuItem>
+            </>
           )}
           <DropdownMenuItem onSelect={() => setIsEscolhendoDia(true)}>
             <CalendarDays /> Mover para outro dia…

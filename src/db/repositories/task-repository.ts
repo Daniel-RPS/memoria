@@ -3,6 +3,7 @@ import type { DataLocal, Task } from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
 import { soltarNotasSemAlvo } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
+import { SEM_ANDAMENTO, type CamposDeAndamento } from '@/lib/andamento'
 import { somarDias } from '@/lib/datas'
 import { destinoDoAdiamento, pendenciasDeOntem, planejarMovimento } from '@/lib/mover'
 
@@ -61,7 +62,7 @@ export async function definirConclusao(id: string, concluida: boolean) {
   await db.tasks.update(
     id,
     concluida
-      ? { status: 'concluida', concluidaEm: momento, atualizadoEm: momento }
+      ? { status: 'concluida', concluidaEm: momento, atualizadoEm: momento, ...SEM_ANDAMENTO }
       : { status: 'pendente', concluidaEm: undefined, atualizadoEm: momento },
   )
 }
@@ -81,7 +82,12 @@ export async function definirCategoria(
 /** Tira do calendário sem concluir. */
 export async function arquivarTarefa(id: string) {
   const momento = agora()
-  await db.tasks.update(id, { status: 'arquivada', arquivadoEm: momento, atualizadoEm: momento })
+  await db.tasks.update(id, {
+    status: 'arquivada',
+    arquivadoEm: momento,
+    atualizadoEm: momento,
+    ...SEM_ANDAMENTO,
+  })
 }
 
 /**
@@ -132,7 +138,7 @@ export async function maiorOrdemDoDia(data: DataLocal, ignorar = new Set<string>
 }
 
 /** Onde a tarefa estava antes de mover; permite "Desfazer". */
-export interface PosicaoAnterior {
+export interface PosicaoAnterior extends CamposDeAndamento {
   id: string
   data: DataLocal
   ordem: number
@@ -144,9 +150,9 @@ export interface ResultadoMovimento {
 }
 
 /**
- * Move tarefas soltas para outro dia: só troca `data` (e `ordem`, entrando no fim do dia).
- * NUNCA copia, apaga ou altera `dataOriginal`. (Cards de grupo são copiados, não movidos:
- * ver `copiarItens` em `group-repository`.)
+ * Move tarefas soltas para outro dia: só troca `data` (e `ordem`, entrando no fim do dia) e
+ * tira a marca de "em andamento". NUNCA copia, apaga ou altera `dataOriginal`. (Cards de grupo
+ * são copiados, não movidos: ver `copiarItens` em `group-repository`.)
  */
 export async function moverTarefas(ids: string[], destino: DataLocal): Promise<ResultadoMovimento> {
   return db.transaction('rw', db.tasks, db.groupCards, async () => {
@@ -157,14 +163,14 @@ export async function moverTarefas(ids: string[], destino: DataLocal): Promise<R
     const momento = agora()
     await Promise.all(
       movimentos.map(({ id, data, ordem }) =>
-        db.tasks.update(id, { data, ordem, atualizadoEm: momento }),
+        db.tasks.update(id, { data, ordem, atualizadoEm: momento, ...SEM_ANDAMENTO }),
       ),
     )
     return {
       quantidade: movimentos.length,
       anteriores: movimentos.map(({ id }) => {
-        const { data, ordem } = porId.get(id)!
-        return { id, data, ordem }
+        const { data, ordem, emAndamento, emAndamentoDesde } = porId.get(id)!
+        return { id, data, ordem, emAndamento, emAndamentoDesde }
       }),
     }
   })
@@ -196,8 +202,8 @@ export async function restaurarPosicoes(anteriores: PosicaoAnterior[]) {
   const momento = agora()
   await db.transaction('rw', db.tasks, () =>
     Promise.all(
-      anteriores.map(({ id, data, ordem }) =>
-        db.tasks.update(id, { data, ordem, atualizadoEm: momento }),
+      anteriores.map(({ id, data, ordem, emAndamento, emAndamentoDesde }) =>
+        db.tasks.update(id, { data, ordem, emAndamento, emAndamentoDesde, atualizadoEm: momento }),
       ),
     ),
   )
@@ -233,7 +239,7 @@ export async function trazerPendenciasDeOntem(hoje: DataLocal): Promise<Resultad
 /**
  * Solta uma tarefa arrastada em `destino`, na posição em que ela aparece em
  * `idsEmOrdemNoDestino` (tarefas e cards do dia de destino, já com ela no lugar).
- * Só troca `data` e `ordem`.
+ * Só troca `data` e `ordem` (e tira a marca de "em andamento" se o dia mudou).
  */
 export async function soltarTarefaNoDia(
   id: string,
@@ -241,7 +247,12 @@ export async function soltarTarefaNoDia(
   idsEmOrdemNoDestino: string[],
 ) {
   await db.transaction('rw', db.tasks, db.groupCards, async () => {
-    await db.tasks.update(id, { data: destino, atualizadoEm: agora() })
+    const tarefa = await db.tasks.get(id)
+    await db.tasks.update(id, {
+      data: destino,
+      atualizadoEm: agora(),
+      ...(tarefa && tarefa.data !== destino && SEM_ANDAMENTO),
+    })
     await gravarNovaPosicao(tabelaDoDia, idsEmOrdemNoDestino, id)
   })
 }

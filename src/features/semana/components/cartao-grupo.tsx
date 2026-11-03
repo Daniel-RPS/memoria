@@ -13,8 +13,14 @@ import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, GroupItem } from '@/db/types'
-import { useGrupoDaVisita } from '@/hooks/use-grupos-da-visita'
+import {
+  FileteDeAndamento,
+  IndicadorAndamento,
+  PontoDeAndamento,
+} from '@/components/indicador-andamento'
+import { useGrupoLembrado } from '@/hooks/use-grupos-lembrados'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
+import { contarEmAndamento } from '@/lib/andamento'
 import { vinculoDoItem } from '@/lib/notas'
 import { classificarTarefa } from '@/lib/categorias'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -78,8 +84,9 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
   const textoProgresso = grupo.itens.length > 0 ? textoProgressoGrupo(progresso) : ''
   const pendentes = grupo.itens.filter((item) => item.status === 'pendente')
   const isItensOrdenaveis = !isSobreposto && arrasto !== undefined
-  const { isAberto, handleAlternar, isRecolhivel } = useGrupoDaVisita(card.id)
+  const { isAberto, handleAlternar, isRecolhivel } = useGrupoLembrado(serie.id)
   const idConteudo = useId()
+  const emAndamento = contarEmAndamento(grupo.itens)
 
   async function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -101,7 +108,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
         }
       }}
       className={cn(
-        'relative my-1.5 rounded-md border border-pauta bg-papel text-[0.9375rem]',
+        'relative my-1.5 rounded-md border border-pauta bg-papel text-[0.8125rem] leading-snug',
         !isEncerrado && 'shadow-[3px_3px_0_var(--marca-texto)]',
         isArrastavel && 'cursor-grab touch-none active:cursor-grabbing',
         isSobreposto && 'rotate-1 cursor-grabbing shadow-lg ring-2 ring-caneta/40',
@@ -160,7 +167,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
           >
             <IconeDaEntidade icone={classificacao?.icone} tamanho="sm" />
             {isSobreposto ? (
-              <span className="min-w-0 font-extrabold break-words [font-stretch:85%]">
+              <span className="min-w-0 text-sm font-semibold break-words [font-stretch:85%]">
                 {serie.titulo}
               </span>
             ) : (
@@ -171,7 +178,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
                 onSalvar={(titulo) => void handleSalvarTitulo(titulo)}
                 onCancelar={() => setIsEditando(false)}
                 className={cn(
-                  'text-[0.9375rem] font-extrabold [font-stretch:85%]',
+                  'text-sm font-semibold [font-stretch:85%]',
                   isEncerrado && 'text-grafite',
                 )}
               />
@@ -185,8 +192,17 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
             />
           )}
           {!isEditando && textoProgresso && (
-            <span className="text-xs text-grafite tabular-nums">
+            <span className="flex items-center gap-1 text-xs text-grafite tabular-nums">
               {isEncerrado && !isSobreposto ? `${textoProgresso} · encerrado` : textoProgresso}
+              {/* Recolhido, o ponto avisa que há item em andamento lá dentro. */}
+              {!isAberto && emAndamento > 0 && (
+                <PontoDeAndamento
+                  className="size-1"
+                  rotulo={
+                    emAndamento === 1 ? '1 item em andamento' : `${emAndamento} itens em andamento`
+                  }
+                />
+              )}
             </span>
           )}
         </div>
@@ -217,7 +233,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
                         hoje={hoje}
                       />
                     ) : (
-                      <li key={item.id} className="group/linha">
+                      <li key={item.id} className="group/linha border-b border-pauta">
                         <LinhaItem
                           item={item}
                           data={card.data}
@@ -280,7 +296,7 @@ function ItemArrastavel({ item, data, cardId, hoje }: ItemProps & { cardId: stri
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn('group/linha', isDragging && 'opacity-30')}
+      className={cn('group/linha border-b border-pauta', isDragging && 'opacity-30')}
     >
       <LinhaItem
         item={item}
@@ -316,6 +332,7 @@ function LinhaItem({
   const isTransferido = item.status === 'transferido'
   const isAtrasado = isPendenteDeAntes(item, data, hoje)
   const isEditavel = !isTransferido && !isSobreposto
+  const isEmAndamento = item.status === 'pendente' && item.emAndamento === true
 
   function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -323,21 +340,25 @@ function LinhaItem({
   }
 
   return (
-    <div className="flex items-start gap-1 py-0.5 pr-0.5 pl-1">
-      <span className="mt-1 flex w-4 shrink-0 justify-center">{alca}</span>
+    <div
+      data-em-andamento={isEmAndamento || undefined}
+      className="relative flex items-start gap-1 py-1 pr-0.5 pl-1"
+    >
+      {isEmAndamento && <FileteDeAndamento />}
+      <span className="mt-0.5 flex w-4 shrink-0 justify-center">{alca}</span>
       {isTransferido ? (
-        <CornerDownRight aria-hidden className="mt-1 size-4 shrink-0 text-grafite" />
+        <CornerDownRight aria-hidden className="mt-0.5 size-3.5 shrink-0 text-grafite" />
       ) : (
         <Checkbox
           checked={isConcluido}
           onCheckedChange={(marcada) => void definirConclusaoItem(item.id, marcada === true)}
           aria-label={isConcluido ? `Desmarcar ${item.titulo}` : `Concluir ${item.titulo}`}
-          className="mt-1 size-4 rounded-[3px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
+          className="mt-0.5 size-3.5 rounded-[3px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
         />
       )}
       <span
         className={cn(
-          'min-w-0 flex-1 py-0.5 pl-1 wrap-break-word',
+          'min-w-0 flex-1 pl-1 wrap-break-word',
           isConcluido && 'text-grafite',
           isTransferido && 'text-grafite',
         )}
@@ -350,13 +371,14 @@ function LinhaItem({
             onSalvar={handleSalvarTitulo}
             onCancelar={() => setIsEditando(false)}
             className={cn(
-              'text-[0.9375rem]',
+              'text-[0.8125rem]',
               isConcluido && 'text-grafite line-through decoration-tinta/50',
             )}
           />
         ) : (
           item.titulo
         )}
+        {isEmAndamento && !isEditando && <IndicadorAndamento isCompacto className="ml-1.5" />}
         {isAtrasado && !isEditando && (
           <span className="ml-1.5 rounded-[3px] bg-marca-texto px-1 text-xs font-medium whitespace-nowrap text-violeta-profundo no-underline">
             desde {diaCurto(item.dataOriginal)}
@@ -373,7 +395,13 @@ function LinhaItem({
         )}
       </span>
       {!isSobreposto && (
-        <MenuItemGrupo item={item} data={data} hoje={hoje} onRenomear={() => setIsEditando(true)} />
+        <MenuItemGrupo
+          item={item}
+          data={data}
+          hoje={hoje}
+          onRenomear={() => setIsEditando(true)}
+          isCompacto
+        />
       )}
     </div>
   )

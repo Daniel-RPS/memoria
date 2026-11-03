@@ -8,7 +8,9 @@ import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal } from '@/db/types'
-import { useGrupoDaVisita } from '@/hooks/use-grupos-da-visita'
+import { PontoDeAndamento } from '@/components/indicador-andamento'
+import { useGrupoLembrado } from '@/hooks/use-grupos-lembrados'
+import { contarEmAndamento } from '@/lib/andamento'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -42,8 +44,9 @@ interface CardGrupoProps {
 export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   const { card, serie } = grupo
   const isEncerrado = isGrupoEncerrado(grupo)
-  const { isAberto, handleAlternar } = useGrupoDaVisita(card.id)
+  const { isAberto, handleAlternar } = useGrupoLembrado(serie.id)
   const isRecolhido = !isAberto
+  const emAndamento = contarEmAndamento(grupo.itens)
   const [isEditando, setIsEditando] = useState(false)
   const { renomearGrupo, criarItem } = useAcoesGrupo()
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
@@ -132,8 +135,16 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
             />
           )}
           {!isEditando && total > 0 && (
-            <span className="text-sm text-grafite tabular-nums">
+            <span className="flex items-center gap-1.5 text-sm text-grafite tabular-nums">
               {textoProgressoGrupo(progresso)}
+              {/* Recolhido, o ponto avisa que há item em andamento lá dentro. */}
+              {isRecolhido && emAndamento > 0 && (
+                <PontoDeAndamento
+                  rotulo={
+                    emAndamento === 1 ? '1 item em andamento' : `${emAndamento} itens em andamento`
+                  }
+                />
+              )}
             </span>
           )}
           {!isEditando && isEncerrado && (

@@ -55,6 +55,10 @@ export interface Task extends EntidadeBase {
   concluidaEm?: string
   /** Momento em que foi arquivada (`status` `arquivada`); some ao desarquivar. */
   arquivadoEm?: string
+  /** É o que a pessoa está fazendo agora. Ausente = não; regras em `lib/andamento`. */
+  emAndamento?: boolean
+  /** Momento em que foi marcada em andamento (junto com `emAndamento`). */
+  emAndamentoDesde?: string
 }
 
 /**
@@ -110,6 +114,10 @@ export interface GroupItem extends EntidadeBase {
   dataOriginal: DataLocal
   /** Momento em que o item foi arquivado sozinho (`status` `arquivado`). */
   arquivadoEm?: string
+  /** É o que a pessoa está fazendo agora (só item pendente). Ausente = não. */
+  emAndamento?: boolean
+  /** Momento em que foi marcado em andamento (junto com `emAndamento`). */
+  emAndamentoDesde?: string
 }
 
 export interface Subtask extends EntidadeBase {

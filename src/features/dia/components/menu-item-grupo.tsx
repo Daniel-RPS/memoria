@@ -6,8 +6,11 @@ import {
   FolderOutput,
   MoreHorizontal,
   Pencil,
+  Play,
+  Square,
   Trash2,
 } from 'lucide-react'
+import { cn } from 'cn'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
 import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
 import {
@@ -30,6 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { DataLocal, GroupItem } from '@/db/types'
 import { contarNotasQueFicamAvulsas } from '@/db/repositories/note-repository'
+import { useAndamento } from '@/hooks/use-andamento'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { avisoNotasAvulsas, vinculoDoItem } from '@/lib/notas'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
@@ -40,15 +44,24 @@ interface MenuItemGrupoProps {
   data: DataLocal
   hoje: DataLocal
   onRenomear: () => void
+  /** Botão ⋯ menor, para a Semana (linhas mais baixas). */
+  isCompacto?: boolean
 }
 
 /**
  * Ações do item: adiar e mover copiam o item para o card da série no outro dia (aqui ele fica
  * como transferido); tirar do grupo o torna tarefa solta.
  */
-export function MenuItemGrupo({ item, data, hoje, onRenomear }: MenuItemGrupoProps) {
+export function MenuItemGrupo({
+  item,
+  data,
+  hoje,
+  onRenomear,
+  isCompacto = false,
+}: MenuItemGrupoProps) {
   const { tirarDoGrupo, arquivarItem, excluirItem } = useAcoesGrupo()
   const { mover, adiar } = useMoverTarefas()
+  const { marcarEmAndamento, pararAndamento } = useAndamento()
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   /** Notas que ficariam avulsas: só com elas o excluir pede confirmação. */
   const [notasAoExcluir, setNotasAoExcluir] = useState(0)
@@ -70,7 +83,10 @@ export function MenuItemGrupo({ item, data, hoje, onRenomear }: MenuItemGrupoPro
             variant="ghost"
             size="icon-sm"
             aria-label={`Mais ações para ${item.titulo}`}
-            className="text-grafite opacity-0 group-hover/linha:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+            className={cn(
+              'text-grafite opacity-0 group-hover/linha:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100',
+              isCompacto && 'size-5',
+            )}
           >
             <MoreHorizontal />
           </Button>
@@ -88,6 +104,16 @@ export function MenuItemGrupo({ item, data, hoje, onRenomear }: MenuItemGrupoPro
         >
           {isPendente && (
             <>
+              {item.emAndamento ? (
+                <DropdownMenuItem onSelect={() => void pararAndamento({ itens: [item.id] })}>
+                  <Square /> Parar andamento
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => void marcarEmAndamento({ itens: [item.id] })}>
+                  <Play /> Marcar como em andamento
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void adiar([], { itens: [item.id] })}>
                 <CalendarArrowUp /> {data > hoje ? 'Adiar um dia' : 'Adiar para amanhã'}
               </DropdownMenuItem>

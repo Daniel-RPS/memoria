@@ -205,7 +205,11 @@ export function planejarLevarItens(
     }
     itens.set(copia.id, copia)
     itensMudados.add(copia.id)
+    // O original vira registro do dia: não é mais o que se está fazendo agora. A cópia nasce
+    // sem a marca.
     mudarItem(item, { status: 'transferido', transferidoParaCardId: alvo.id })
+    delete item.emAndamento
+    delete item.emAndamentoDesde
     itensLevados += 1
   }
 

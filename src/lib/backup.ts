@@ -11,7 +11,7 @@ import { converterNotaAntiga } from '@/lib/notas'
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 10
+export const FORMATO_ATUAL = 11
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -50,6 +50,9 @@ const tarefa = z.object({
   concluidaEm: texto.optional(),
   // Formato 10; antes, quem estava arquivado ganha a data da última alteração ao ler.
   arquivadoEm: texto.optional(),
+  // Formato 11; backups anteriores entram como "não está em andamento".
+  emAndamento: z.boolean().optional(),
+  emAndamentoDesde: texto.optional(),
   // Formato 2: item de grupo era tarefa com card.
   groupInstanceId: texto.optional(),
 })
@@ -85,6 +88,9 @@ const itemDeGrupo = z.object({
   cadeiaId: texto.optional(),
   dataOriginal: dataLocal,
   arquivadoEm: texto.optional(),
+  // Formato 11.
+  emAndamento: z.boolean().optional(),
+  emAndamentoDesde: texto.optional(),
 })
 
 const subtarefa = z.object({

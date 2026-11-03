@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
 import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
+import { useAndamento } from '@/hooks/use-andamento'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 
@@ -19,6 +20,7 @@ interface BarraSelecaoProps {
 export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: BarraSelecaoProps) {
   const { selecionados, encerrar, selecionarTodos } = useSelecaoDaFolha()
   const { mover, adiar } = useMoverTarefas()
+  const { marcarEmAndamento, pararAndamento } = useAndamento()
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   // Só conta o que ainda está visível (uma tarefa pode ter saído da folha).
   const ids = idsPendentes.filter((id) => selecionados.has(id))
@@ -29,6 +31,15 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: 
     itens: ids.filter((id) => idsItens.includes(id)),
   }
   const tarefas = ids.filter((id) => !idsGrupos.includes(id) && !idsItens.includes(id))
+
+  /** Só tarefas soltas e itens têm "em andamento"; o card inteiro não. */
+  const alvosDeAndamento = { tarefas, itens: deGrupos.itens }
+  const temAlvoDeAndamento = tarefas.length + deGrupos.itens.length > 0
+
+  async function handleAndamento(isMarcar: boolean) {
+    await (isMarcar ? marcarEmAndamento(alvosDeAndamento) : pararAndamento(alvosDeAndamento))
+    encerrar()
+  }
 
   async function handleAdiar() {
     await adiar(tarefas, deGrupos)
@@ -60,6 +71,22 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: 
         onClick={() => selecionarTodos(idsPendentes)}
       >
         Todas
+      </Button>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={!temAlvoDeAndamento}
+        onClick={() => void handleAndamento(true)}
+      >
+        Em andamento
+      </Button>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={!temAlvoDeAndamento}
+        onClick={() => void handleAndamento(false)}
+      >
+        Parar andamento
       </Button>
       <Button size="sm" variant="secondary" disabled={quantidade === 0} onClick={handleAdiar}>
         {isFutura ? 'Adiar um dia' : 'Adiar para amanhã'}

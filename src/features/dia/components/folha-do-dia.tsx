@@ -1,15 +1,10 @@
-import { useState } from 'react'
 import { cn } from 'cn'
 import type { DataLocal } from '@/db/types'
-import { ContextoGruposDaVisita, useGruposDaVisita } from '@/hooks/use-grupos-da-visita'
+import { ContextoGruposLembrados, useGruposLembrados } from '@/hooks/use-grupos-lembrados'
+import { useLayoutDoDia } from '@/hooks/use-layout-do-dia'
 import { usePreferenciasDoDia } from '@/hooks/use-preferencias-do-dia'
 import { pendentesDo, podeCopiarGrupo } from '@/lib/grupos'
-import {
-  contagemDasSoltas,
-  secoesNaOrdem,
-  separarSecoes,
-  type SecaoDoDia as TipoDeSecao,
-} from '@/lib/visao-do-dia'
+import { contagemDasSoltas, secoesNaOrdem, separarSecoes } from '@/lib/visao-do-dia'
 import { ContextoExtras } from '@/features/dia/hooks/contexto-extras'
 import { ContextoSelecao, useSelecao } from '@/features/dia/hooks/use-selecao'
 import { useTarefasDoDia } from '@/features/dia/hooks/use-tarefas-do-dia'
@@ -37,13 +32,14 @@ const COLUNAS_DA_GRADE = {
 
 /**
  * A folha do dia em duas seções fixas, "Grupos" e "Tarefas soltas", empilhadas (Lista) ou lado
- * a lado (Colunas, só com espaço: estreita, volta a empilhar sem mudar a preferência). As
- * seções abrem expandidas a cada visita; os grupos dentro delas, recolhidos.
+ * a lado (Colunas, só com espaço: estreita, volta a empilhar sem mudar a preferência). Quais
+ * seções estão recolhidas e quais grupos estão abertos é lembrado entre visitas
+ * (`useLayoutDoDia`); grupo sem estado salvo abre recolhido.
  */
 export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
   const { entradas, concluidas, subtarefasPorTarefa, extras, isCarregando } = useTarefasDoDia(data)
   const { modo, ordem, handleEscolherModo, handleEscolherOrdem } = usePreferenciasDoDia()
-  const [recolhidas, setRecolhidas] = useState<ReadonlySet<TipoDeSecao>>(() => new Set())
+  const { isSecaoRecolhida, handleAlternarSecao } = useLayoutDoDia()
   const { grupos: cards, soltas } = separarSecoes(entradas)
   // O que dá para selecionar: tarefas soltas, cards com pendentes e itens pendentes.
   const gruposComPendentes = cards.filter(podeCopiarGrupo)
@@ -57,25 +53,14 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
         : [],
   )
   const selecao = useSelecao()
-  // A folha é montada de novo a cada dia (`key` na DiaPage): os grupos abrem recolhidos.
-  const gruposDaVisita = useGruposDaVisita(
-    isCarregando ? undefined : cards.map((grupo) => grupo.card.id),
-  )
+  const gruposLembrados = useGruposLembrados()
   const isColunas = modo === 'colunas'
   const [primeira, segunda] = secoesNaOrdem(ordem)
   const contagemSoltas = contagemDasSoltas(soltas.length, concluidas.length)
 
-  function handleAlternarSecao(secao: TipoDeSecao) {
-    setRecolhidas((atuais) => {
-      const novas = new Set(atuais)
-      if (!novas.delete(secao)) novas.add(secao)
-      return novas
-    })
-  }
-
   function colunasDaGrade() {
-    const isPrimeiraRecolhida = recolhidas.has(primeira)
-    const isSegundaRecolhida = recolhidas.has(segunda)
+    const isPrimeiraRecolhida = isSecaoRecolhida(primeira)
+    const isSegundaRecolhida = isSecaoRecolhida(segunda)
     if (isPrimeiraRecolhida && isSegundaRecolhida) return COLUNAS_DA_GRADE.ambas
     if (isPrimeiraRecolhida) return COLUNAS_DA_GRADE.primeira
     if (isSegundaRecolhida) return COLUNAS_DA_GRADE.segunda
@@ -85,7 +70,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
   return (
     <ContextoSelecao.Provider value={selecao}>
       <ContextoExtras.Provider value={extras}>
-        <ContextoGruposDaVisita.Provider value={gruposDaVisita}>
+        <ContextoGruposLembrados.Provider value={gruposLembrados}>
           <section aria-label="Tarefas do dia" className="@container">
             {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
             {!selecao.isSelecionando && (
@@ -114,7 +99,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                         rotulo: cards.length === 1 ? '1 grupo' : `${cards.length} grupos`,
                       }}
                       rotuloAdicionar="Novo grupo"
-                      isRecolhida={recolhidas.has('grupos')}
+                      isRecolhida={isSecaoRecolhida('grupos')}
                       onAlternar={() => handleAlternarSecao('grupos')}
                       isFaixa={isColunas}
                       isSemAdicionar={selecao.isSelecionando}
@@ -132,7 +117,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                       titulo="Tarefas soltas"
                       contagem={contagemSoltas}
                       rotuloAdicionar="Nova tarefa"
-                      isRecolhida={recolhidas.has('soltas')}
+                      isRecolhida={isSecaoRecolhida('soltas')}
                       onAlternar={() => handleAlternarSecao('soltas')}
                       isFaixa={isColunas}
                       isSemAdicionar={selecao.isSelecionando}
@@ -178,7 +163,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
               />
             )}
           </section>
-        </ContextoGruposDaVisita.Provider>
+        </ContextoGruposLembrados.Provider>
       </ContextoExtras.Provider>
     </ContextoSelecao.Provider>
   )

@@ -18,6 +18,7 @@ const HOJE = hoje()
 describe('Grupos nas visões de semana, mês e ano', () => {
   beforeEach(async () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
+    localStorage.clear()
   })
 
   it('semana: card compacto arrastável pelo cabeçalho, com "Novo grupo" na coluna', async () => {
@@ -38,26 +39,31 @@ describe('Grupos nas visões de semana, mês e ano', () => {
     expect(screen.getAllByRole('textbox', { name: /^Novo grupo em / })).toHaveLength(7)
   })
 
-  it('semana: todos os cards abrem recolhidos e o estado não é lembrado (nem o antigo)', async () => {
+  it('semana: cards abrem recolhidos; o estado é lembrado pela série e a chave antiga some', async () => {
     const usuario = userEvent.setup()
     const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
     await criarItem(card.id, 'Fazer comida')
     const outroDia = await criarGrupo({ titulo: 'Casa', data: somarDias(HOJE, 1) })
     await criarItem(outroDia.id, 'Lavar roupa')
-    // Lista antiga de recolhidos (até 03/11/2026): é apagada e não manda mais.
+    // Lista antiga de recolhidos (por card, até 03/11/2026): é apagada e não manda mais.
     localStorage.setItem('memoria:recolhidos:semana:cards', JSON.stringify(['outro']))
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
 
     const expandir = await screen.findAllByRole('button', { name: 'Expandir Casa' })
     expect(expandir).toHaveLength(2)
     expect(localStorage.getItem('memoria:recolhidos:semana:cards')).toBeNull()
+    // Os dois cards são da mesma série: abrir um abre o outro.
     await usuario.click(expandir[0])
-    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(1)
-    expect(screen.getByText('Fazer comida')).toBeVisible()
-    await usuario.click(screen.getByRole('button', { name: 'Expandir tudo' }))
     expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
+    expect(screen.getByText('Fazer comida')).toBeVisible()
     cleanup()
 
+    // Outra visita: continua aberto; "Recolher tudo" fecha e também é lembrado.
+    renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
+    expect(await screen.findAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
+    await usuario.click(screen.getByRole('button', { name: 'Recolher tudo' }))
+    expect(screen.getAllByRole('button', { name: 'Expandir Casa' })).toHaveLength(2)
+    cleanup()
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
     expect(await screen.findAllByRole('button', { name: 'Expandir Casa' })).toHaveLength(2)
   })

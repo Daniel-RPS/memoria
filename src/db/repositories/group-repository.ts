@@ -12,6 +12,7 @@ import {
   tabelaDoDia,
   type PosicaoAnterior,
 } from '@/db/repositories/task-repository'
+import { marcaDe, SEM_ANDAMENTO } from '@/lib/andamento'
 import { somarDias } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
 import { mesmoTituloDeSerie } from '@/lib/grupos'
@@ -249,6 +250,11 @@ export async function desfazerItensAdicionados(resultado: ItensAdicionados) {
 }
 
 /** Séries, cards e itens para escolher um grupo (ordem e busca em `lib/grupos`). */
+/** Ids de todas as séries (para esquecer o estado lembrado das que deixaram de existir). */
+export async function listarIdsDasSeries() {
+  return (await db.groupSeries.toCollection().primaryKeys()) as string[]
+}
+
 export async function carregarSeriesParaEscolher() {
   const [series, cards, itens] = await Promise.all([
     db.groupSeries.toArray(),
@@ -294,7 +300,7 @@ export async function definirConclusaoItem(id: string, concluido: boolean) {
     await db.groupItems.update(
       id,
       concluido
-        ? { status: 'concluido', concluidoEm: momento, atualizadoEm: momento }
+        ? { status: 'concluido', concluidoEm: momento, atualizadoEm: momento, ...SEM_ANDAMENTO }
         : { status: 'pendente', concluidoEm: undefined, atualizadoEm: momento },
     )
   })
@@ -313,6 +319,7 @@ export async function arquivarItem(id: string) {
     status: 'arquivado',
     arquivadoEm: momento,
     atualizadoEm: momento,
+    ...SEM_ANDAMENTO,
   })
 }
 
@@ -328,14 +335,22 @@ export async function excluirItem(id: string) {
 
 /**
  * Arquiva o card inteiro, com tudo o que há dentro: ele sai do calendário e aparece em
- * Arquivados. Os itens ficam como estão (desarquivar devolve o card igual).
+ * Arquivados. Os itens ficam como estão (desarquivar devolve o card igual), menos a marca de
+ * "em andamento", que sai.
  */
 export async function arquivarGrupo(cardId: string) {
   const momento = agora()
-  await db.groupCards.update(cardId, {
-    arquivado: true,
-    arquivadoEm: momento,
-    atualizadoEm: momento,
+  await db.transaction('rw', db.groupCards, db.groupItems, async () => {
+    await db.groupCards.update(cardId, {
+      arquivado: true,
+      arquivadoEm: momento,
+      atualizadoEm: momento,
+    })
+    await db.groupItems
+      .where('cardId')
+      .equals(cardId)
+      .filter((item) => item.emAndamento === true)
+      .modify({ ...SEM_ANDAMENTO, atualizadoEm: momento })
   })
 }
 
@@ -599,6 +614,7 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
         ordem: (await maiorOrdemDoCard(cardId)) + 1,
         status: tarefa.status === 'concluida' ? 'concluido' : 'pendente',
         ...(tarefa.concluidaEm && { concluidoEm: tarefa.concluidaEm }),
+        ...marcaDe(tarefa),
         dataOriginal: tarefa.dataOriginal,
         criadoEm: tarefa.criadoEm,
         atualizadoEm: agora(),
@@ -635,6 +651,7 @@ export async function tirarDoGrupo(itemId: string, idsEmOrdemNoDia?: string[]) {
       ordem: (await maiorOrdemDoDia(card.data)) + 1,
       status: item.status === 'concluido' ? 'concluida' : 'pendente',
       ...(item.concluidoEm && { concluidaEm: item.concluidoEm }),
+      ...marcaDe(item),
       criadoEm: item.criadoEm,
       atualizadoEm: agora(),
     }

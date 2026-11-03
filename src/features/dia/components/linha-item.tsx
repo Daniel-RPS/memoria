@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { CornerDownRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
+import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -40,6 +41,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
   const isSelecionavel = isSelecionando && isPendente
   const isSelecionado = isSelecionavel && selecionados.has(item.id)
   const isAtrasado = isPendenteDeAntes(item, data, hoje)
+  const isEmAndamento = isPendente && item.emAndamento === true
 
   function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -48,11 +50,13 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
 
   return (
     <div
+      data-em-andamento={isEmAndamento || undefined}
       className={cn(
-        'group/linha flex min-h-11 items-center gap-2 border-b border-pauta pr-2 pl-1',
+        'group/linha relative flex min-h-11 items-center gap-2 border-b border-pauta pr-2 pl-1',
         isSelecionado && 'bg-accent',
       )}
     >
+      {isEmAndamento && <FileteDeAndamento />}
       <span className="flex w-5 shrink-0 justify-center">{!isSelecionavel && alca}</span>
       {isTransferido ? (
         <CornerDownRight aria-hidden className="size-5 shrink-0 text-grafite" />
@@ -84,6 +88,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
             className={cn(isConcluido && 'text-grafite line-through decoration-tinta/50')}
           />
         )}
+        {isEmAndamento && !isEditando && <IndicadorAndamento />}
         {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
         {isAtrasado && !isEditando && (
           <span className={SELO_DE_ATRASO}>pendente desde {diaCurto(item.dataOriginal)}</span>
