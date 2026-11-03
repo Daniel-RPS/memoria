@@ -235,7 +235,11 @@ describe('Procedimentos', () => {
     renderizarApp('/procedimentos')
 
     await screen.findByRole('link', { name: /Regar/ })
-    const blocos = screen.getAllByRole('heading', { level: 2 }).map((titulo) => titulo.textContent)
-    expect(blocos).toEqual(['Trabalho1', 'Casa1'])
+    // Espera a lista final: as categorias e os procedimentos chegam em consultas separadas.
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('heading', { level: 2 }).map((titulo) => titulo.textContent),
+      ).toEqual(['Trabalho1', 'Casa1']),
+    )
   })
 })

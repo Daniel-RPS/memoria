@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Procedure } from '@/db/types'
 import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 import {
-  agruparPorCategoria,
   buscarProcedimentos,
+  montarBlocosDeProcedimentos,
   etapasEmOrdem,
   numerarEtapas,
   previaDoProcedimento,
@@ -47,23 +47,22 @@ describe('buscarProcedimentos', () => {
   })
 })
 
-describe('agruparPorCategoria', () => {
-  it('um bloco por categoria, na ordem das categorias, e "Sem categoria" no fim', () => {
-    const blocos = agruparPorCategoria(
-      [
-        procedimento('1', 'Solto'),
-        procedimento('2', 'Relatório', { categoryId: 'trabalho' }),
-        procedimento('3', 'Regar', { categoryId: 'casa' }),
-        procedimento('4', 'Limpar calhas', { categoryId: 'casa' }),
-      ],
-      [casa, trabalho],
-    )
-    expect(
-      blocos.map((bloco) => [
-        bloco.categoria?.nome ?? 'Sem categoria',
-        bloco.procedimentos.map((item) => item.id),
-      ]),
-    ).toEqual([
+describe('montarBlocosDeProcedimentos', () => {
+  const resumo = (blocos: ReturnType<typeof montarBlocosDeProcedimentos>['blocos']) =>
+    blocos.map((bloco) => [
+      bloco.categoria?.nome ?? 'Sem categoria',
+      bloco.procedimentos.map((item) => item.id),
+    ])
+
+  it('toda categoria vira bloco, na ordem das categorias, e "Sem categoria" no fim', () => {
+    const todos = [
+      procedimento('1', 'Solto'),
+      procedimento('2', 'Relatório', { categoryId: 'trabalho' }),
+      procedimento('3', 'Regar', { categoryId: 'casa' }),
+      procedimento('4', 'Limpar calhas', { categoryId: 'casa' }),
+    ]
+    const { blocos } = montarBlocosDeProcedimentos([casa, trabalho], todos, todos, false)
+    expect(resumo(blocos)).toEqual([
       ['Casa', ['3', '4']],
       ['Trabalho', ['2']],
       ['Sem categoria', ['1']],
@@ -71,19 +70,49 @@ describe('agruparPorCategoria', () => {
     expect(blocos[0].categoria?.cor).toBe('#2f7d4f')
   })
 
-  it('não mostra bloco vazio, nem "Sem categoria" quando todos têm categoria', () => {
-    const blocos = agruparPorCategoria(
-      [procedimento('1', 'Relatório', { categoryId: 'trabalho' })],
-      [casa, trabalho],
-    )
-    expect(blocos.map((bloco) => bloco.categoria?.id)).toEqual(['trabalho'])
+  it('categorias vazias aparecem na ordem; "Sem categoria" só com itens', () => {
+    const todos = [procedimento('1', 'Relatório', { categoryId: 'trabalho' })]
+    const resultado = montarBlocosDeProcedimentos([trabalho, casa], todos, todos, false)
+    expect(resumo(resultado.blocos)).toEqual([
+      ['Trabalho', ['1']],
+      ['Casa', []],
+    ])
+    expect(resultado).toMatchObject({ isVazia: false, isSemResultado: false })
+  })
+
+  it('só categorias, sem nenhum procedimento: blocos vazios, sem o convite grande', () => {
+    const resultado = montarBlocosDeProcedimentos([casa, trabalho], [], [], false)
+    expect(resumo(resultado.blocos)).toEqual([
+      ['Casa', []],
+      ['Trabalho', []],
+    ])
+    expect(resultado.isVazia).toBe(false)
+  })
+
+  it('convite grande só sem procedimentos e sem categorias', () => {
+    expect(montarBlocosDeProcedimentos([], [], [], false)).toEqual({
+      blocos: [],
+      isVazia: true,
+      isSemResultado: false,
+    })
+    const solto = [procedimento('1', 'Solto')]
+    expect(montarBlocosDeProcedimentos([], solto, solto, false).isVazia).toBe(false)
+  })
+
+  it('com busca ou filtro, blocos sem resultado somem (os vazios também)', () => {
+    const todos = [
+      procedimento('1', 'Relatório', { categoryId: 'trabalho' }),
+      procedimento('2', 'Regar', { categoryId: 'casa' }),
+    ]
+    const resultado = montarBlocosDeProcedimentos([casa, trabalho], todos, [todos[0]], true)
+    expect(resumo(resultado.blocos)).toEqual([['Trabalho', ['1']]])
+    const nada = montarBlocosDeProcedimentos([casa, trabalho], todos, [], true)
+    expect(nada).toEqual({ blocos: [], isVazia: false, isSemResultado: true })
   })
 
   it('categoria que não existe mais vai para "Sem categoria"', () => {
-    const blocos = agruparPorCategoria(
-      [procedimento('1', 'Órfão', { categoryId: 'apagada' })],
-      [casa],
-    )
+    const orfao = [procedimento('1', 'Órfão', { categoryId: 'apagada' })]
+    const { blocos } = montarBlocosDeProcedimentos([], orfao, orfao, false)
     expect(blocos).toEqual([
       { categoria: null, procedimentos: [expect.objectContaining({ id: '1' })] },
     ])

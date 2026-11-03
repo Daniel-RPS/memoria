@@ -9,7 +9,7 @@ import { useCategorias } from '@/hooks/use-categorias'
 import { useFiltroDeDia } from '@/hooks/use-filtro-de-dia'
 import { useHoje } from '@/hooks/use-hoje'
 import { ATALHOS_DOS_PROCEDIMENTOS, filtrarPorData } from '@/lib/filtro-de-data'
-import { agruparPorCategoria, buscarProcedimentos } from '@/lib/procedimentos'
+import { buscarProcedimentos, montarBlocosDeProcedimentos } from '@/lib/procedimentos'
 import { ListaProcedimentos } from '@/features/procedimentos/components/lista-procedimentos'
 import { useProcedimentos } from '@/features/procedimentos/hooks/use-procedimentos'
 
@@ -20,7 +20,7 @@ export function ProcedimentosPage() {
   const [parametros, setParametros] = useSearchParams()
   const termo = parametros.get(PARAMETRO_BUSCA) ?? ''
   const { procedimentos, isCarregando } = useProcedimentos()
-  const { categorias } = useCategorias('procedimento')
+  const { categorias, isCarregando: isCarregandoCategorias } = useCategorias('procedimento')
   const hoje = useHoje()
   const { filtro, handleMudar: handleFiltro } = useFiltroDeDia(
     CHAVE_FILTRO_DE_DIA_DOS_PROCEDIMENTOS,
@@ -32,8 +32,14 @@ export function ProcedimentosPage() {
     filtro,
     hoje,
   )
-  const blocos = agruparPorCategoria(encontrados, categorias)
   const isFiltrando = termo !== '' || filtro.tipo !== 'qualquer'
+  const { blocos, isVazia, isSemResultado } = montarBlocosDeProcedimentos(
+    categorias,
+    procedimentos,
+    encontrados,
+    isFiltrando,
+  )
+  const isPronta = !isCarregando && !isCarregandoCategorias
 
   function handleBuscar(texto: string) {
     setParametros(texto ? { [PARAMETRO_BUSCA]: texto } : {}, { replace: true })
@@ -81,7 +87,7 @@ export function ProcedimentosPage() {
       </div>
 
       <div aria-label="Lista de procedimentos" role="region" className="mt-6">
-        {!isCarregando && procedimentos.length === 0 && (
+        {isPronta && isVazia && (
           <Link
             to="/procedimentos/novo"
             className="flex min-h-32 flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-grafite/40 px-4 py-6 text-center transition-colors hover:border-caneta/45 hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta motion-reduce:transition-none"
@@ -94,7 +100,7 @@ export function ProcedimentosPage() {
             </span>
           </Link>
         )}
-        {procedimentos.length > 0 && blocos.length === 0 && (
+        {isSemResultado && (
           <p className="px-1 py-4 text-grafite">Nenhum procedimento encontrado.</p>
         )}
         <ListaProcedimentos blocos={blocos} isFiltrando={isFiltrando} />

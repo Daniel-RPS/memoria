@@ -44,14 +44,17 @@ test.beforeEach(async ({ page }) => {
     const categorias = (await import(/* @vite-ignore */ caminho)) as ModuloCategorias
     await categorias.criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
   })
-  await expect(page.getByRole('link', { name: /Criar o primeiro procedimento/ })).toBeVisible()
+  // Categoria sem procedimento já aparece como bloco vazio.
+  await expect(
+    page.getByRole('region', { name: 'Casa' }).getByText('Nenhum procedimento nesta categoria'),
+  ).toBeVisible()
 })
 
 test('criar, editar e excluir um procedimento', async ({ page }) => {
   await capturar(page, '1-lista-vazia')
 
   // Criar: título, categoria e 3 etapas.
-  await page.getByRole('link', { name: 'Novo procedimento' }).click()
+  await page.getByRole('link', { name: 'Novo procedimento', exact: true }).click()
   await page.getByLabel('Título').fill('Trocar o filtro de água')
   await page.getByRole('button', { name: 'Categoria' }).click()
   await page.getByRole('menuitemradio', { name: 'Casa' }).click()
@@ -103,7 +106,11 @@ test('criar, editar e excluir um procedimento', async ({ page }) => {
   await page.getByRole('button', { name: 'Excluir procedimento', exact: true }).click()
 
   await expect(page).toHaveURL(/\/procedimentos$/)
-  await expect(page.getByRole('link', { name: /Criar o primeiro procedimento/ })).toBeVisible()
+  // A categoria "Casa" continua existindo: fica o bloco vazio, não o convite grande.
+  await expect(
+    page.getByRole('region', { name: 'Casa' }).getByText('Nenhum procedimento nesta categoria'),
+  ).toBeVisible()
+  await expect(page.getByRole('link', { name: /Criar o primeiro procedimento/ })).toHaveCount(0)
   expect(await lerProcedimentos(page)).toEqual([])
   await capturar(page, '6-excluido')
 })

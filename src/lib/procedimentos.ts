@@ -56,12 +56,42 @@ export interface BlocoDeProcedimentos {
   procedimentos: Procedure[]
 }
 
+export interface BlocosDaAba {
+  blocos: BlocoDeProcedimentos[]
+  /** Nenhum procedimento e nenhuma categoria de Procedimento: o convite "Criar o primeiro". */
+  isVazia: boolean
+  /** Busca ou filtro ativo sem nada encontrado: "Nenhum procedimento encontrado". */
+  isSemResultado: boolean
+}
+
 /**
- * Um bloco por categoria, na ordem das categorias, e "Sem categoria" no fim. Blocos vazios
- * não aparecem; a ordem dos procedimentos dentro do bloco é a recebida (a da busca).
+ * Os blocos da aba Procedimentos: TODA categoria de Procedimento (na ordem da aba Categorias),
+ * mesmo sem procedimento, e "Sem categoria" no fim só quando tem algum. Com busca ou filtro
+ * (`isFiltrando`), só os blocos com resultado. `procedimentos` = todos; `encontrados` = os que
+ * passaram na busca e no filtro, na ordem da busca.
+ */
+export function montarBlocosDeProcedimentos(
+  categorias: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>[],
+  procedimentos: Procedure[],
+  encontrados: Procedure[],
+  isFiltrando: boolean,
+): BlocosDaAba {
+  const blocos = agruparPorCategoria(encontrados, categorias).filter(
+    (bloco) => bloco.procedimentos.length > 0 || (bloco.categoria !== null && !isFiltrando),
+  )
+  return {
+    blocos,
+    isVazia: procedimentos.length === 0 && categorias.length === 0,
+    isSemResultado: isFiltrando && blocos.length === 0,
+  }
+}
+
+/**
+ * Um bloco por categoria, na ordem das categorias, e "Sem categoria" no fim, vazios inclusive
+ * (quem chama decide o que mostrar); a ordem dos procedimentos dentro do bloco é a recebida.
  * Categoria que não existe mais conta como sem categoria.
  */
-export function agruparPorCategoria(
+function agruparPorCategoria(
   procedimentos: Procedure[],
   categorias: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>[],
 ): BlocoDeProcedimentos[] {
@@ -81,7 +111,7 @@ export function agruparPorCategoria(
       (procedimento) => !procedimento.categoryId || !idsDasCategorias.has(procedimento.categoryId),
     ),
   })
-  return blocos.filter((bloco) => bloco.procedimentos.length > 0)
+  return blocos
 }
 
 /** Quantas etapas a prévia do cartão mostra. */

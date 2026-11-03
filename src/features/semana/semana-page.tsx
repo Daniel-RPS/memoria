@@ -41,56 +41,59 @@ function Semana({ inicio, hoje }: { inicio: string; hoje: string }) {
       <ContextoCardsRecolhidos.Provider value={recolhidos}>
         {/* A folha da semana: cabeçalho e, abaixo do traço, os 7 dias lado a lado. */}
         <div className="rounded-lg border border-pauta bg-papel px-4 pt-5 pb-6 sm:px-6">
-          <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-            <h1 className="flex flex-col">
-              <span className="text-sm text-grafite">
-                {isEstaSemana ? 'Esta semana' : 'Semana'}, {format(deDataLocal(inicio), 'yyyy')}
-              </span>
-              <span className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">
-                {intervaloDaSemana(inicio)}
-              </span>
-            </h1>
-            <nav aria-label="Navegar entre semanas" className="flex items-center gap-1">
-              <Button asChild variant="ghost" size="icon">
-                <Link
-                  to={`/semana/${somarDias(inicio, -DIAS_NA_SEMANA)}`}
-                  aria-label="Semana anterior"
+          {/* O traço é do cabeçalho (fora da rolagem das colunas): vai de ponta a ponta. */}
+          <header className="border-b-2 border-tinta pb-4">
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+              <h1 className="flex flex-col">
+                <span className="text-sm text-grafite">
+                  {isEstaSemana ? 'Esta semana' : 'Semana'}, {format(deDataLocal(inicio), 'yyyy')}
+                </span>
+                <span className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">
+                  {intervaloDaSemana(inicio)}
+                </span>
+              </h1>
+              <nav aria-label="Navegar entre semanas" className="flex items-center gap-1">
+                <Button asChild variant="ghost" size="icon">
+                  <Link
+                    to={`/semana/${somarDias(inicio, -DIAS_NA_SEMANA)}`}
+                    aria-label="Semana anterior"
+                  >
+                    <ChevronLeft />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className={isEstaSemana ? 'pointer-events-none opacity-50' : undefined}
                 >
-                  <ChevronLeft />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className={isEstaSemana ? 'pointer-events-none opacity-50' : undefined}
-              >
-                <Link
-                  to={`/semana/${hoje}`}
-                  aria-disabled={isEstaSemana}
-                  tabIndex={isEstaSemana ? -1 : undefined}
-                >
-                  Esta semana
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="icon">
-                <Link
-                  to={`/semana/${somarDias(inicio, DIAS_NA_SEMANA)}`}
-                  aria-label="Próxima semana"
-                >
-                  <ChevronRight />
-                </Link>
-              </Button>
-            </nav>
+                  <Link
+                    to={`/semana/${hoje}`}
+                    aria-disabled={isEstaSemana}
+                    tabIndex={isEstaSemana ? -1 : undefined}
+                  >
+                    Esta semana
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" size="icon">
+                  <Link
+                    to={`/semana/${somarDias(inicio, DIAS_NA_SEMANA)}`}
+                    aria-label="Próxima semana"
+                  >
+                    <ChevronRight />
+                  </Link>
+                </Button>
+              </nav>
+            </div>
+            {idsDosCards.length > 0 && (
+              <AcoesDasSecoes
+                className="mt-2"
+                isTudoAberto={idsDosCards.every(recolhidos.isAberta)}
+                isTudoRecolhido={!idsDosCards.some(recolhidos.isAberta)}
+                onExpandirTudo={() => recolhidos.handleExpandirTudo(idsDosCards)}
+                onRecolherTudo={() => recolhidos.handleRecolherTudo(idsDosCards)}
+              />
+            )}
           </header>
-          {idsDosCards.length > 0 && (
-            <AcoesDasSecoes
-              className="mt-2"
-              isTudoAberto={idsDosCards.every(recolhidos.isAberta)}
-              isTudoRecolhido={!idsDosCards.some(recolhidos.isAberta)}
-              onExpandirTudo={() => recolhidos.handleExpandirTudo(idsDosCards)}
-              onRecolherTudo={() => recolhidos.handleRecolherTudo(idsDosCards)}
-            />
-          )}
 
           {!isCarregando && (
             <QuadroSemana

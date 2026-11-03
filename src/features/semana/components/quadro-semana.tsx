@@ -255,9 +255,9 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       onDragCancel={handleDragCancel}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
-      <div ref={rolagem} className="mt-5 md:overflow-x-auto">
+      <div ref={rolagem} className="md:overflow-x-auto">
         {/* Cada dia tem ao menos ~260px: sem espaço, a semana rola para o lado. */}
-        <div className="grid grid-cols-1 border-t-2 border-tinta md:grid-cols-[repeat(7,minmax(16.25rem,1fr))]">
+        <div className="grid grid-cols-1 md:grid-cols-[repeat(7,minmax(16.25rem,1fr))]">
           {semana.map((dia) => (
             <ColunaDia
               key={dia.data}
