@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expandirGrupos } from './expandir-grupos.ts'
 
 /**
  * Categorias criadas e aplicadas sem sair da tela, card editável na Semana e tudo
@@ -99,7 +100,9 @@ function coluna(page: Page) {
 function cardNaSemana(page: Page, titulo: string) {
   return coluna(page)
     .getByRole('listitem')
-    .filter({ has: page.getByRole('list', { name: `Itens de ${titulo}` }) })
+    .filter({
+      has: page.getByRole('button', { name: new RegExp(`^(Expandir|Recolher) ${titulo}$`) }),
+    })
 }
 
 /** Cor da faixa à esquerda do card (o primeiro `span` decorativo). */
@@ -199,6 +202,7 @@ test('Semana: renomeia o card e adiciona, renomeia e exclui um item', async ({ p
   await page.goto(`/semana/${SEGUNDA}`)
   await semearCard(page)
   await expect(cardNaSemana(page, 'Casa')).toBeVisible()
+  await expandirGrupos(page)
   await capturar(page, '3-antes')
 
   await coluna(page).getByRole('button', { name: 'Casa', exact: true }).click()

@@ -21,6 +21,7 @@ describe('Grupos nas visões de semana, mês e ano', () => {
   })
 
   it('semana: card compacto arrastável pelo cabeçalho, com "Novo grupo" na coluna', async () => {
+    const usuario = userEvent.setup()
     const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
     await definirConclusaoItem((await criarItem(card.id, 'Arrumar o quarto')).id, true)
     await criarItem(card.id, 'Fazer comida')
@@ -31,36 +32,34 @@ describe('Grupos nas visões de semana, mês e ano', () => {
         name: 'Grupo Casa, 1/2. Espaço para levar os pendentes a outro dia.',
       }),
     ).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Expandir Casa' }))
     const itens = screen.getByRole('list', { name: 'Itens de Casa' })
     expect(within(itens).getByText('Fazer comida')).toBeInTheDocument()
     expect(screen.getAllByRole('textbox', { name: /^Novo grupo em / })).toHaveLength(7)
   })
 
-  it('semana: recolher um card é lembrado por grupo e dia (sobrevive a recarregar)', async () => {
-    localStorage.clear()
+  it('semana: todos os cards abrem recolhidos e o estado não é lembrado (nem o antigo)', async () => {
     const usuario = userEvent.setup()
     const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
     await criarItem(card.id, 'Fazer comida')
     const outroDia = await criarGrupo({ titulo: 'Casa', data: somarDias(HOJE, 1) })
     await criarItem(outroDia.id, 'Lavar roupa')
+    // Lista antiga de recolhidos (até 03/11/2026): é apagada e não manda mais.
+    localStorage.setItem('memoria:recolhidos:semana:cards', JSON.stringify(['outro']))
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
 
-    const [recolherHoje] = await screen.findAllByRole('button', { name: 'Recolher Casa' })
-    await usuario.click(recolherHoje)
-    expect(JSON.parse(localStorage.getItem('memoria:recolhidos:semana:cards') ?? '[]')).toEqual([
-      card.id,
-    ])
+    const expandir = await screen.findAllByRole('button', { name: 'Expandir Casa' })
+    expect(expandir).toHaveLength(2)
+    expect(localStorage.getItem('memoria:recolhidos:semana:cards')).toBeNull()
+    await usuario.click(expandir[0])
+    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(1)
+    expect(screen.getByText('Fazer comida')).toBeVisible()
+    await usuario.click(screen.getByRole('button', { name: 'Expandir tudo' }))
+    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
     cleanup()
 
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
-    expect(await screen.findByRole('button', { name: 'Expandir Casa' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
-    // O mesmo grupo em outro dia continua aberto.
-    expect(screen.getByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
-    await usuario.click(screen.getByRole('button', { name: 'Expandir tudo' }))
-    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
+    expect(await screen.findAllByRole('button', { name: 'Expandir Casa' })).toHaveLength(2)
   })
 
   it('mês: itens pendentes e feitos contam; transferidos não', async () => {
@@ -84,6 +83,7 @@ describe('Grupos nas visões de semana, mês e ano', () => {
     await criarItem(card.id, 'Lavar roupa')
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
 
+    await usuario.click(await screen.findByRole('button', { name: 'Expandir Casa' }))
     // Cada item pendente tem a própria alça; o card inteiro arrasta o grupo.
     expect(
       await screen.findByRole('button', { name: /^Arrastar Fazer comida\./ }),

@@ -1,34 +1,43 @@
-import type { ResumoDoDia } from '@/lib/inicio'
-import { CardsDoResumo } from '@/features/inicio/components/cards-do-resumo'
+import type { DataLocal } from '@/db/types'
+import { fraseDoDia, type NumerosDoDia } from '@/lib/inicio'
+import {
+  BarraDoDia,
+  ContagemDeTipos,
+  FraseDoResumo,
+  LinkDoResumo,
+} from '@/features/inicio/components/partes-do-resumo'
 import { ResumoLateral } from '@/features/inicio/components/resumo-lateral'
 
 interface BlocoHojeProps {
-  resumo: ResumoDoDia
+  numeros: NumerosDoDia
+  hoje: DataLocal
 }
 
-/** O que está em hoje: um card por grupo e depois as tarefas soltas, marcáveis ali mesmo. */
-export function BlocoHoje({ resumo }: BlocoHojeProps) {
-  const { pendentes } = resumo
-  const isVazio = resumo.grupos.length === 0 && resumo.soltas.length === 0
+/** O dia em números (frase, grupos e soltas, progresso) e o link para o Dia, onde está o detalhe. */
+export function BlocoHoje({ numeros, hoje }: BlocoHojeProps) {
+  const { pendentes, feitos, total } = numeros
 
   return (
     <ResumoLateral
       titulo="Hoje"
       extra={
-        !isVazio && (
+        pendentes > 0 && (
           <span className="text-xs text-grafite tabular-nums">
-            {pendentes === 0
-              ? 'nada pendente'
-              : `${pendentes} ${pendentes === 1 ? 'pendente' : 'pendentes'}`}
+            {pendentes} {pendentes === 1 ? 'pendente' : 'pendentes'}
           </span>
         )
       }
     >
-      {isVazio ? (
-        <p className="py-2 text-sm text-grafite">Nada para hoje. Anote algo ao lado.</p>
-      ) : (
-        <CardsDoResumo resumo={resumo} />
-      )}
+      <FraseDoResumo>{fraseDoDia(numeros)}</FraseDoResumo>
+      <ContagemDeTipos
+        grupos={numeros.grupos}
+        itensDosGrupos={numeros.itensPendentesDosGrupos}
+        soltas={numeros.soltas}
+      />
+      {total > 0 && <BarraDoDia feitos={feitos} total={total} />}
+      <div className="mt-2">
+        <LinkDoResumo para={`/dia/${hoje}`}>Ver o dia</LinkDoResumo>
+      </div>
     </ResumoLateral>
   )
 }

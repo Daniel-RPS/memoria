@@ -1,21 +1,29 @@
 import { z } from 'zod'
 import type { DataLocal } from '@/db/types'
-import { isDataLocalValida, somarDias } from '@/lib/datas'
+import { isDataLocalValida } from '@/lib/datas'
 import { esquemaTituloTarefa } from '@/lib/esquemas'
 
 /** Regras da captura rápida do Início (o que criar, onde e quando). */
 
-/** Tarefa solta, grupo novo ou item(ns) num grupo que já existe ("Em grupo…"). */
-export type TipoCaptura = 'tarefa' | 'grupo' | 'em-grupo'
+/** Tarefa solta ou grupo novo (com itens). Item num grupo que já existe = Tarefa + grupo escolhido. */
+export type TipoCaptura = 'tarefa' | 'grupo'
+
+/** O que o campo mostra: texto da tarefa, nome + itens do grupo novo ou itens do grupo escolhido. */
+export type ModoDoCampo = 'tarefa' | 'grupo' | 'itens'
+
+export function modoDoCampo(tipo: TipoCaptura, seriesId?: string): ModoDoCampo {
+  if (tipo === 'grupo') return 'grupo'
+  return seriesId ? 'itens' : 'tarefa'
+}
 
 /**
  * Texto apagado do campo, um por modo: na Tarefa, no campo do título; no Grupo, na linha do nome;
- * em "Em grupo…", só na 1ª linha de item (a caixinha já indica as outras).
+ * com um grupo escolhido, só na 1ª linha de item (a caixinha já indica as outras).
  */
-export const DICA_DO_CAMPO: Record<TipoCaptura, string> = {
+export const DICA_DO_CAMPO: Record<ModoDoCampo, string> = {
   tarefa: 'Escreva a tarefa a ser feita',
   grupo: 'Crie o grupo e coloque a(s) tarefa(s) a ser(em) feita(s)',
-  'em-grupo': 'Escolha o grupo e coloque a tarefa',
+  itens: 'Escreva a tarefa do grupo',
 }
 
 /**
@@ -53,25 +61,49 @@ export function semLinhasVaziasNoTopo(texto: string) {
   return texto.replace(/^(?:[ \t]*\r?\n)+/, '')
 }
 
+/** Estado da captura que muda ao escolher (ou tirar) o grupo. */
+export interface CampoDaCaptura {
+  texto: string
+  itens: string[]
+  seriesId?: string
+}
+
+/**
+ * Escolher um grupo na Tarefa: cada linha preenchida do texto vira um item (o texto continua
+ * guardado). Voltar para "Sem grupo" faz o caminho inverso: os itens voltam a ser o texto, com o
+ * 1º como título. Trocar de um grupo para outro não mexe nos itens.
+ */
+export function escolherGrupoDaCaptura(
+  campo: CampoDaCaptura,
+  seriesId: string | undefined,
+): CampoDaCaptura {
+  if (seriesId && campo.seriesId) return { ...campo, seriesId }
+  if (seriesId) {
+    const linhas = campo.texto.split(/\r?\n/).filter((linha) => linha.trim() !== '')
+    return { ...campo, seriesId, itens: linhas.length > 0 ? linhas : [''] }
+  }
+  if (!campo.seriesId) return campo
+  return { texto: itensPreenchidos(campo.itens).join('\n'), itens: [''], seriesId: undefined }
+}
+
 export const esquemaCaptura = z
   .object({
     /** Texto da tarefa (título + anotação); no modo Grupo, a 1ª linha é o nome do grupo. */
     texto: z.string(),
-    /** Linhas de item do grupo novo ou de "Em grupo…", na ordem; as vazias são ignoradas. */
+    /** Linhas de item do grupo novo ou do grupo escolhido, na ordem; as vazias são ignoradas. */
     itens: z.array(z.string()),
-    tipo: z.enum(['tarefa', 'grupo', 'em-grupo']),
+    tipo: z.enum(['tarefa', 'grupo']),
     categoryId: z.string().optional(),
     subcategoryId: z.string().optional(),
-    /** Série escolhida em "Em grupo…". */
+    /** Grupo que já existe escolhido na Tarefa: o texto vira item dele. */
     seriesId: z.string().optional(),
     data: z.string().refine(isDataLocalValida, 'Escolha um dia.'),
   })
   .superRefine((captura, contexto) => {
-    if (captura.tipo !== 'em-grupo') {
+    const modo = modoDoCampo(captura.tipo, captura.seriesId)
+    if (modo !== 'itens') {
       const titulo =
-        captura.tipo === 'tarefa'
-          ? dividirTexto(captura.texto).titulo
-          : primeiraLinha(captura.texto)
+        modo === 'tarefa' ? dividirTexto(captura.texto).titulo : primeiraLinha(captura.texto)
       const resultado = esquemaTituloTarefa.safeParse(titulo)
       if (!resultado.success) {
         contexto.addIssue({
@@ -81,7 +113,7 @@ export const esquemaCaptura = z
         })
       }
     }
-    if (captura.tipo === 'tarefa') return
+    if (modo === 'tarefa') return
     for (const [indice, linha] of captura.itens.entries()) {
       if (linha.trim() === '') continue
       const resultado = esquemaTituloTarefa.safeParse(linha)
@@ -93,13 +125,8 @@ export const esquemaCaptura = z
       })
       break
     }
-    if (captura.tipo === 'em-grupo') {
-      if (itensPreenchidos(captura.itens).length === 0) {
-        contexto.addIssue({ code: 'custom', path: ['itens'], message: 'Escreva um item.' })
-      }
-      if (!captura.seriesId) {
-        contexto.addIssue({ code: 'custom', path: ['seriesId'], message: 'Escolha o grupo.' })
-      }
+    if (modo === 'itens' && itensPreenchidos(captura.itens).length === 0) {
+      contexto.addIssue({ code: 'custom', path: ['itens'], message: 'Escreva um item.' })
     }
   })
 
@@ -157,18 +184,6 @@ export function colarNoItem(
     foco: ultima,
     cursor: novas[novas.length - 1].length - depois.length,
   }
-}
-
-export type AtalhoDeDia = 'hoje' | 'amanha'
-
-/** Hoje e amanhã; outro dia sai do calendário ("Escolher data…"). */
-export function atalhosDeDia(
-  hoje: DataLocal,
-): { id: AtalhoDeDia; rotulo: string; data: DataLocal }[] {
-  return [
-    { id: 'hoje', rotulo: 'Hoje', data: hoje },
-    { id: 'amanha', rotulo: 'Amanhã', data: somarDias(hoje, 1) },
-  ]
 }
 
 /** "dd/MM" de uma data local. */

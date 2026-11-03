@@ -281,15 +281,12 @@ test('Ícones: GitHub no procedimento e emoji na categoria Casa aparecem em todo
   await expect(page.getByRole('menuitemradio', { name: /Casa/ })).toContainText('🏠')
   await page.keyboard.press('Escape')
 
-  // Cards de grupo: Dia, Semana e Início.
+  // Cards de grupo: Dia e Semana (o Início só resume o dia em números).
   await irPara(page, 'Dia')
   await expect(page.getByLabel('Grupo Casa', { exact: true }).first()).toContainText('🏠')
   await irPara(page, 'Semana')
   await expect(page.getByText('🏠').first()).toBeVisible()
   await capturar(page, 'semana-icone')
-  await irPara(page, 'Início')
-  await expect(page.getByRole('listitem', { name: 'Grupo Casa' }).first()).toContainText('🏠')
-  await capturar(page, 'inicio-icone')
 })
 
 test('Ícones: marca escura (GitHub) fica legível no tema escuro', async ({ page }) => {

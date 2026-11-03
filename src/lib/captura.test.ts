@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  atalhosDeDia,
   colarNoItem,
   dividirTexto,
+  escolherGrupoDaCaptura,
   esquemaCaptura,
   inserirItemDepois,
   itensPreenchidos,
+  modoDoCampo,
   primeiraLinha,
   removerItemVazio,
   semLinhasVaziasNoTopo,
@@ -17,11 +18,32 @@ import {
 import { TAMANHO_MAXIMO_TITULO } from '@/lib/esquemas'
 
 describe('captura rápida', () => {
-  it('atalhos: hoje e amanhã', () => {
-    expect(atalhosDeDia('2026-11-08').map((atalho) => atalho.data)).toEqual([
-      '2026-11-08',
-      '2026-11-09',
-    ])
+  it('modo do campo: Tarefa, Tarefa com grupo escolhido (itens) e Grupo novo', () => {
+    expect(modoDoCampo('tarefa')).toBe('tarefa')
+    expect(modoDoCampo('tarefa', 'casa')).toBe('itens')
+    expect(modoDoCampo('grupo', 'casa')).toBe('grupo')
+  })
+
+  it('escolher o grupo: as linhas do texto viram itens; voltar a "Sem grupo" devolve o texto', () => {
+    const tarefa = { texto: '\nLavar roupa\n\nFazer comida', itens: [''] }
+    const comGrupo = escolherGrupoDaCaptura(tarefa, 'casa')
+    expect(comGrupo).toEqual({
+      texto: tarefa.texto,
+      itens: ['Lavar roupa', 'Fazer comida'],
+      seriesId: 'casa',
+    })
+    // Trocar de grupo não mexe nos itens.
+    const outro = escolherGrupoDaCaptura({ ...comGrupo, itens: ['Lavar roupa', 'Regar'] }, 'jardim')
+    expect(outro.itens).toEqual(['Lavar roupa', 'Regar'])
+    expect(outro.seriesId).toBe('jardim')
+    // Sem grupo: a 1ª linha volta a ser o título da tarefa.
+    expect(
+      escolherGrupoDaCaptura({ ...outro, itens: [' Lavar roupa ', '', 'Regar'] }, undefined),
+    ).toEqual({ texto: 'Lavar roupa\nRegar', itens: [''], seriesId: undefined })
+    // Texto vazio: uma linha de item para digitar; sem grupo antes, "Sem grupo" não muda nada.
+    expect(escolherGrupoDaCaptura({ texto: ' ', itens: ['x'] }, 'casa').itens).toEqual([''])
+    const semGrupo = { texto: 'Pagar', itens: [''] }
+    expect(escolherGrupoDaCaptura(semGrupo, undefined)).toBe(semGrupo)
   })
 
   it('itens do grupo sem linhas vazias nem espaços nas pontas, na ordem', () => {
@@ -93,21 +115,23 @@ describe('captura rápida', () => {
     })
   })
 
-  it('"Em grupo…" exige o grupo escolhido e um item, e ignora o texto', () => {
+  it('Tarefa com grupo escolhido exige um item e ignora o texto; Grupo ignora o grupo', () => {
     const base = {
-      tipo: 'em-grupo' as const,
+      tipo: 'tarefa' as const,
       texto: '',
       itens: ['Fazer lasanha'],
+      seriesId: 'casa',
       data: '2026-11-02',
     }
-    expect(esquemaCaptura.safeParse(base).error?.issues[0]).toMatchObject({
-      path: ['seriesId'],
-      message: 'Escolha o grupo.',
+    expect(esquemaCaptura.safeParse(base).success).toBe(true)
+    expect(esquemaCaptura.safeParse({ ...base, itens: ['', ' '] }).error?.issues[0]).toMatchObject({
+      path: ['itens'],
+      message: 'Escreva um item.',
     })
-    expect(esquemaCaptura.safeParse({ ...base, seriesId: 'casa' }).success).toBe(true)
-    expect(
-      esquemaCaptura.safeParse({ ...base, seriesId: 'casa', itens: ['', ' '] }).error?.issues[0],
-    ).toMatchObject({ path: ['itens'], message: 'Escreva um item.' })
+    // No modo Grupo, o grupo escolhido não vale: o nome é obrigatório.
+    expect(esquemaCaptura.safeParse({ ...base, tipo: 'grupo' }).error?.issues[0]).toMatchObject({
+      path: ['texto'],
+    })
   })
 
   it('aviso depois de criar', () => {

@@ -24,7 +24,7 @@ interface ItensDaCapturaProps {
 
 /**
  * Grupo novo com os itens dentro (nome em destaque e uma linha com caixinha por item) ou só os
- * itens em "Em grupo…". A caixinha é a mesma dos itens nos cards, mas só ilustra: não marca nada.
+ * itens do grupo escolhido na Tarefa. A caixinha é a mesma dos itens nos cards, mas só ilustra: não marca nada.
  */
 export function ItensDaCaptura({
   ref,

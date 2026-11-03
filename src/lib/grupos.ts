@@ -165,7 +165,7 @@ export function isPendenteDeAntes(
   return item.status === 'pendente' && (item.dataOriginal < dataDoCard || item.dataOriginal < hoje)
 }
 
-/** Uma série na lista de "Em grupo…": quando foi usada por último e se tem card no dia. */
+/** Uma série no seletor de grupo da captura: quando foi usada por último e se tem card no dia. */
 export interface SerieParaEscolher {
   serie: GroupSeries
   ultimoUso: string

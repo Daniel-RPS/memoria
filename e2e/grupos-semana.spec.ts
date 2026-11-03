@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expandirGrupos } from './expandir-grupos.ts'
 
 /**
  * Arrastar de verdade na visão Semana: o card leva todos os pendentes; a alça ⋮⋮ leva só o
@@ -110,6 +111,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto(`/semana/${SEGUNDA}`)
   await semearCasa(page)
   await expect(cabecalhoDoCard(coluna(page, COLUNA_2))).toBeVisible()
+  await expandirGrupos(page)
 })
 
 test('arrastar o card pelo cabeçalho leva os 2 pendentes; arrastar de volta não deixa fantasma', async ({

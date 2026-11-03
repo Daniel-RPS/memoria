@@ -24,7 +24,7 @@ function mensagemDoAviso(resultado: ResultadoCaptura, nomeDoGrupo: string) {
 export function useCaptura() {
   const navigate = useNavigate()
 
-  /** `nomeDoGrupo`: o grupo escolhido em "Em grupo…", para o aviso (no grupo novo, o título). */
+  /** `nomeDoGrupo`: o grupo escolhido na captura, para o aviso (no grupo novo, o título). */
   async function handleCapturar(dados: NovaCaptura, nomeDoGrupo = '') {
     const resultado = await capturar(dados)
     const nome = dados.tipo === 'grupo' ? dados.titulo.trim() : nomeDoGrupo

@@ -28,7 +28,8 @@ describe('Início', () => {
     await usuario.type(campo, 'Pagar a luz{Enter}')
 
     const blocoHoje = screen.getByRole('region', { name: 'Hoje' })
-    expect(await within(blocoHoje).findByRole('checkbox', { name: 'Pagar a luz' })).toBeVisible()
+    expect(await within(blocoHoje).findByText('1 pendente para hoje.')).toBeVisible()
+    expect(within(blocoHoje).getByText('1 tarefa solta')).toBeVisible()
     await waitFor(() => expect(campo).toHaveValue(''))
     const [dia, mes] = hoje().split('-').reverse()
     expect(await screen.findByText(`Tarefa criada para ${dia}/${mes}`)).toBeInTheDocument()
@@ -71,16 +72,18 @@ describe('Início', () => {
     expect(await db.tasks.count()).toBe(0)
   })
 
-  it('"Trazer para hoje" move a atrasada para hoje', async () => {
+  it('Atrasadas: resumo e "Trazer todas para hoje" move a atrasada para hoje', async () => {
     const usuario = userEvent.setup()
     await criarTarefa({ titulo: 'Renovar CNH', data: somarDias(hoje(), -3) })
     renderizarApp('/inicio')
 
     const atrasadas = screen.getByRole('region', { name: 'Atrasadas' })
-    expect(await within(atrasadas).findByText('há 3 dias')).toBeInTheDocument()
-    await usuario.click(
-      within(atrasadas).getByRole('button', { name: 'Trazer Renovar CNH para hoje' }),
+    expect(await within(atrasadas).findByText(/^1 item atrasado, de /)).toBeInTheDocument()
+    expect(within(atrasadas).getByRole('link', { name: 'Ver atrasadas' })).toHaveAttribute(
+      'href',
+      `/dia/${somarDias(hoje(), -3)}`,
     )
+    await usuario.click(within(atrasadas).getByRole('button', { name: 'Trazer todas para hoje' }))
 
     expect(await within(atrasadas).findByText('Tudo em dia')).toBeInTheDocument()
     expect((await db.tasks.toArray())[0]).toMatchObject({ data: hoje() })

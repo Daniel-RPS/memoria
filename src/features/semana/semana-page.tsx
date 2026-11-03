@@ -1,44 +1,48 @@
+import { useEffect } from 'react'
 import { format } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link, Navigate, useParams } from 'react-router'
 import { AcoesDasSecoes } from '@/components/secao-recolhivel'
+import { removerPreferencia } from '@/app/preferencia-local'
 import { Button } from '@/components/ui/button'
 import { ContextoCategorias } from '@/hooks/contexto-categorias'
 import { useCategorias } from '@/hooks/use-categorias'
 import { useHoje } from '@/hooks/use-hoje'
-import { useSecoesRecolhidas } from '@/hooks/use-secoes-recolhidas'
+import { ContextoGruposDaVisita, useGruposDaVisita } from '@/hooks/use-grupos-da-visita'
 import { deDataLocal, isDataLocalValida, somarDias } from '@/lib/datas'
 import { inicioDaSemana, intervaloDaSemana } from '@/lib/semana'
 import { QuadroSemana } from '@/features/semana/components/quadro-semana'
-import {
-  ContextoCardsRecolhidos,
-  ESCOPO_CARDS_DA_SEMANA,
-} from '@/features/semana/hooks/use-cards-recolhidos'
 import { useTarefasDaSemana } from '@/features/semana/hooks/use-tarefas-da-semana'
 
 const DIAS_NA_SEMANA = 7
+/** Onde a Semana guardava os cards recolhidos (até 03/11/2026); hoje o estado é só da visita. */
+const CHAVE_ANTIGA_DOS_RECOLHIDOS = 'memoria:recolhidos:semana:cards'
 
 export function SemanaPage() {
   const { data } = useParams()
   const dataHoje = useHoje()
 
+  useEffect(() => removerPreferencia(CHAVE_ANTIGA_DOS_RECOLHIDOS), [])
+
   if (!isDataLocalValida(data)) return <Navigate to={`/semana/${dataHoje}`} replace />
 
-  return <Semana inicio={inicioDaSemana(data)} hoje={dataHoje} />
+  const inicio = inicioDaSemana(data)
+  // `key`: outra semana monta tudo de novo, com os grupos recolhidos.
+  return <Semana key={inicio} inicio={inicio} hoje={dataHoje} />
 }
 
 function Semana({ inicio, hoje }: { inicio: string; hoje: string }) {
   const { categorias } = useCategorias()
   const { semana, subtarefasPorTarefa, isCarregando } = useTarefasDaSemana(inicio)
   const isEstaSemana = inicio === inicioDaSemana(hoje)
-  const recolhidos = useSecoesRecolhidas(ESCOPO_CARDS_DA_SEMANA, false)
   const idsDosCards = semana.flatMap((dia) =>
     dia.entradas.flatMap((entrada) => (entrada.tipo === 'grupo' ? [entrada.grupo.card.id] : [])),
   )
+  const recolhidos = useGruposDaVisita(isCarregando ? undefined : idsDosCards)
 
   return (
     <ContextoCategorias.Provider value={categorias}>
-      <ContextoCardsRecolhidos.Provider value={recolhidos}>
+      <ContextoGruposDaVisita.Provider value={recolhidos}>
         {/* A folha da semana: cabeçalho e, abaixo do traço, os 7 dias lado a lado. */}
         <div className="rounded-lg border border-pauta bg-papel px-4 pt-5 pb-6 sm:px-6">
           {/* O traço é do cabeçalho (fora da rolagem das colunas): vai de ponta a ponta. */}
@@ -87,8 +91,8 @@ function Semana({ inicio, hoje }: { inicio: string; hoje: string }) {
             {idsDosCards.length > 0 && (
               <AcoesDasSecoes
                 className="mt-2"
-                isTudoAberto={idsDosCards.every(recolhidos.isAberta)}
-                isTudoRecolhido={!idsDosCards.some(recolhidos.isAberta)}
+                isTudoAberto={idsDosCards.every(recolhidos.isAberto)}
+                isTudoRecolhido={!idsDosCards.some(recolhidos.isAberto)}
                 onExpandirTudo={() => recolhidos.handleExpandirTudo(idsDosCards)}
                 onRecolherTudo={() => recolhidos.handleRecolherTudo(idsDosCards)}
               />
@@ -104,7 +108,7 @@ function Semana({ inicio, hoje }: { inicio: string; hoje: string }) {
             />
           )}
         </div>
-      </ContextoCardsRecolhidos.Provider>
+      </ContextoGruposDaVisita.Provider>
     </ContextoCategorias.Provider>
   )
 }

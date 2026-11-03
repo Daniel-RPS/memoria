@@ -222,7 +222,7 @@ test('cor personalizada pelo misturador e pelo hex: cards no Dia e na Semana e r
   const cardNaSemana = page
     .getByRole('region', { name: 'segunda-feira, 2 de novembro' })
     .getByRole('listitem')
-    .filter({ has: page.getByRole('list', { name: 'Itens de Mercado' }) })
+    .filter({ has: page.getByRole('button', { name: /^(Expandir|Recolher) Mercado$/ }) })
   await expect.poll(() => corDaFaixa(cardNaSemana)).toBe(RGB_AZUL_HEX)
   await capturar(page, '4-semana')
 })

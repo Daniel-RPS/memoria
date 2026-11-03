@@ -1,5 +1,7 @@
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import type { DataLocal, GroupItem, Task } from '@/db/types'
-import { diasEntre, somarDias } from '@/lib/datas'
+import { deDataLocal, diasEntre, somarDias } from '@/lib/datas'
 import { pendentesDo, type GrupoDoDia } from '@/lib/grupos'
 import { diasPendente } from '@/lib/tarefas'
 
@@ -84,6 +86,105 @@ export function montarResumoDoDia(
     doResumo.reduce((soma, { total, feitos }) => soma + total - feitos, 0) +
     soltas.filter(({ tarefa }) => tarefa.status === 'pendente').length
   return { grupos: doResumo, soltas, pendentes }
+}
+
+/** Como está o dia no resumo de Hoje: decide a frase principal. */
+export type SituacaoDoDia = 'vazio' | 'tudo-feito' | 'nada-feito' | 'parcial'
+
+/** Resumo de Hoje só em números (a tela monta o texto com `fraseDoDia` e `textoDaQuantidade`). */
+export interface NumerosDoDia {
+  situacao: SituacaoDoDia
+  pendentes: number
+  feitos: number
+  /** Itens de grupo e tarefas soltas, pendentes + feitos (transferidos e arquivados fora). */
+  total: number
+  /** Grupos no dia (um por série, por mais itens que tenha). */
+  grupos: number
+  itensPendentesDosGrupos: number
+  /** Tarefas soltas no dia, pendentes e concluídas. */
+  soltas: number
+}
+
+/** Atrasadas só em números: só pendentes contam. */
+export interface NumerosDasAtrasadas {
+  itens: number
+  grupos: number
+  soltas: number
+  /** Dia mais antigo com pendente (destino de "Ver atrasadas"); `null` sem atrasadas. */
+  diaMaisAntigo: DataLocal | null
+}
+
+function situacaoDoDia(feitos: number, total: number): SituacaoDoDia {
+  if (total === 0) return 'vazio'
+  if (feitos === total) return 'tudo-feito'
+  if (feitos === 0) return 'nada-feito'
+  return 'parcial'
+}
+
+/** Números do bloco Hoje do Início: situação, progresso e quantos grupos e tarefas soltas. */
+export function resumirDia(resumo: ResumoDoDia): NumerosDoDia {
+  const feitosDosGrupos = resumo.grupos.reduce((soma, { feitos }) => soma + feitos, 0)
+  const totalDosGrupos = resumo.grupos.reduce((soma, { total }) => soma + total, 0)
+  const soltasFeitas = resumo.soltas.filter(({ tarefa }) => tarefa.status === 'concluida').length
+  const feitos = feitosDosGrupos + soltasFeitas
+  const total = totalDosGrupos + resumo.soltas.length
+  return {
+    situacao: situacaoDoDia(feitos, total),
+    pendentes: total - feitos,
+    feitos,
+    total,
+    grupos: new Set(resumo.grupos.map(({ grupo }) => grupo.serie.id)).size,
+    itensPendentesDosGrupos: totalDosGrupos - feitosDosGrupos,
+    soltas: resumo.soltas.length,
+  }
+}
+
+/**
+ * Números do bloco Atrasadas: pendentes, grupos (um por série, mesmo em dias diferentes),
+ * tarefas soltas e o dia mais antigo. O dia é onde o pendente está (card ou tarefa), não a
+ * `dataOriginal`.
+ */
+export function resumirAtrasadas(resumo: ResumoDoDia): NumerosDasAtrasadas {
+  const grupos = resumo.grupos.filter(({ total, feitos }) => total > feitos)
+  const soltas = resumo.soltas.filter(({ tarefa }) => tarefa.status === 'pendente')
+  const dias = [
+    ...grupos.map(({ grupo }) => grupo.card.data),
+    ...soltas.map(({ tarefa }) => tarefa.data),
+  ].sort()
+  return {
+    itens: resumo.pendentes,
+    grupos: new Set(grupos.map(({ grupo }) => grupo.serie.id)).size,
+    soltas: soltas.length,
+    diaMaisAntigo: dias[0] ?? null,
+  }
+}
+
+/** "1 grupo" / "2 grupos": singular e plural pela quantidade. */
+export function textoDaQuantidade(quantidade: number, singular: string, plural: string) {
+  return `${quantidade} ${quantidade === 1 ? singular : plural}`
+}
+
+/** Frase principal do bloco Hoje, pela situação do dia. */
+export function fraseDoDia({ situacao, pendentes, total }: NumerosDoDia) {
+  switch (situacao) {
+    case 'vazio':
+      return 'Nada para hoje.'
+    case 'tudo-feito':
+      return 'Tudo feito por hoje.'
+    case 'nada-feito':
+      return `${textoDaQuantidade(pendentes, 'pendente', 'pendentes')} para hoje.`
+    case 'parcial':
+      return `${pendentes === 1 ? 'Falta' : 'Faltam'} ${pendentes} de ${total}.`
+  }
+}
+
+/** Frase das Atrasadas: "3 itens atrasados, o mais antigo de 28/out" (um item: "de 28/out"). */
+export function fraseDasAtrasadas({ itens, diaMaisAntigo }: NumerosDasAtrasadas) {
+  if (diaMaisAntigo === null) return 'Tudo em dia'
+  const data = format(deDataLocal(diaMaisAntigo), 'dd/MMM', { locale: ptBR })
+  return itens === 1
+    ? `1 item atrasado, de ${data}`
+    : `${itens} itens atrasados, o mais antigo de ${data}`
 }
 
 /** "há 1 dia" / "há 3 dias". */

@@ -18,3 +18,11 @@ export function gravarPreferencia(chave: string, valor: string) {
     // Sem armazenamento: só não lembra.
   }
 }
+
+export function removerPreferencia(chave: string) {
+  try {
+    localStorage.removeItem(chave)
+  } catch {
+    // Sem armazenamento: nada a remover.
+  }
+}

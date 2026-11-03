@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Ajustes do Início: "Em grupo…" põe itens num grupo que já existe (no card do dia ou num card
+ * Ajustes do Início: o seletor de grupo da captura põe itens num grupo que já existe (no card do dia ou num card
  * novo), "+ Adicionar item" no bloco Hoje, Desfazer, e o mapa enxuto com filtro em menu
  * lembrado. Capturas em e2e/capturas/inicio-ajustes-*.png (antes e depois de cada cenário).
  */
@@ -67,24 +67,28 @@ async function lerCards(page: Page) {
   })
 }
 
-/** Em "Em grupo…" a captura é a lista de itens; a última linha é a que está sendo digitada. */
+/** Com um grupo escolhido a captura é a lista de itens; a última linha é a que está sendo digitada. */
 function itemDaCaptura(page: Page) {
   return page.getByRole('textbox', { name: 'Item do grupo', exact: true }).last()
 }
 
-function grupoNoHoje(page: Page, titulo: string) {
-  return page
-    .getByRole('region', { name: 'Hoje', exact: true })
-    .getByRole('listitem', { name: `Grupo ${titulo}` })
+/** Contagem de pendentes no cabeçalho do bloco Hoje (o bloco é só um resumo). */
+function pendentesNoHoje(page: Page, texto: string) {
+  return page.getByRole('region', { name: 'Hoje', exact: true }).getByText(texto, { exact: true })
 }
 
 function aviso(page: Page) {
   return page.getByRole('region', { name: /Notifications/ })
 }
 
-/** Escolhe "Em grupo…" e, na lista que abre, o grupo pela busca. */
+/** Abre o seletor de grupo da captura. */
+function abrirSeletorDeGrupo(page: Page) {
+  return page.getByRole('button', { name: /^Grupo:/ }).click()
+}
+
+/** No seletor de grupo, escolhe o grupo pela busca. */
 async function escolherEmGrupo(page: Page, grupo: string) {
-  await page.getByRole('button', { name: 'Em grupo…' }).click()
+  await abrirSeletorDeGrupo(page)
   await page.getByRole('textbox', { name: 'Buscar grupo' }).fill(grupo.slice(0, 3).toLowerCase())
   await page
     .getByRole('list', { name: 'Grupos' })
@@ -92,51 +96,61 @@ async function escolherEmGrupo(page: Page, grupo: string) {
     .click()
 }
 
+/** "Escolher data" abre o calendário; o atalho Amanhã fica no diálogo. */
+async function escolherAmanha(page: Page) {
+  await page
+    .getByRole('region', { name: 'Captura rápida' })
+    .getByRole('button', { name: 'Escolher data', exact: true })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Escolher o dia' })
+    .getByRole('button', { name: 'Amanhã' })
+    .click()
+}
+
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-02T10:00:00-03:00'))
 })
 
-test('Em grupo… → Casa → Hoje: o item entra no card de hoje, sem segundo card', async ({
-  page,
-}) => {
+test('grupo Casa → Hoje: o item entra no card de hoje, sem segundo card', async ({ page }) => {
   await page.goto('/inicio')
   await semearCasaHoje(page)
-  await expect(grupoNoHoje(page, 'Casa')).toBeVisible()
+  await expect(pendentesNoHoje(page, '1 pendente')).toBeVisible()
   await capturar(page, '1-antes')
 
-  await page.getByRole('button', { name: 'Em grupo…' }).click()
+  await abrirSeletorDeGrupo(page)
   const lista = page.getByRole('list', { name: 'Grupos' })
   await expect(lista.getByRole('button', { name: 'Casa já existe em 02/11' })).toBeVisible()
   await capturar(page, '1-seletor')
   await lista.getByRole('button', { name: /^Casa/ }).click()
   await expect(itemDaCaptura(page)).toBeFocused()
-  await expect(page.getByText('usa a categoria do grupo')).toBeVisible()
+  // A categoria é a do grupo e não troca.
+  await expect(page.getByRole('button', { name: 'Casa', exact: true })).toBeDisabled()
   await itemDaCaptura(page).fill('fazer lasanha')
   await itemDaCaptura(page).press('Control+Enter')
 
   await expect(aviso(page).getByText('1 item adicionado a Casa · 02/11')).toBeVisible()
-  await expect(
-    grupoNoHoje(page, 'Casa').getByRole('checkbox', { name: 'fazer lasanha' }),
-  ).toBeVisible()
+  await expect(pendentesNoHoje(page, '2 pendentes')).toBeVisible()
   expect(await lerCards(page)).toEqual(['2026-11-02: ', '2026-11-02: Varrer, fazer lasanha'])
   await capturar(page, '1-depois')
 
   await aviso(page).getByRole('button', { name: 'Ver no dia' }).click()
   await expect(page).toHaveURL(new RegExp(`/dia/${HOJE}$`))
   await expect(page.getByRole('region', { name: 'Grupo Casa' })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Abrir Casa' }).click()
   await expect(
     page.getByRole('region', { name: 'Grupo Casa' }).getByText('fazer lasanha'),
   ).toBeVisible()
   await capturar(page, '1-no-dia')
 })
 
-test('Em grupo… → Casa → Amanhã, com dois itens: cria o card de amanhã com os itens', async ({
+test('grupo Casa → amanhã, com dois itens: cria o card de amanhã com os itens', async ({
   page,
 }) => {
   await page.goto('/inicio')
   await semearCasaHoje(page)
   await escolherEmGrupo(page, 'Casa')
-  await page.getByRole('button', { name: 'Amanhã' }).click()
+  await escolherAmanha(page)
   await itemDaCaptura(page).fill('fazer lasanha')
   await itemDaCaptura(page).press('Enter')
   await itemDaCaptura(page).fill('comprar queijo')
@@ -154,26 +168,10 @@ test('Em grupo… → Casa → Amanhã, com dois itens: cria o card de amanhã c
   await aviso(page).getByRole('button', { name: 'Ver no dia' }).click()
   await expect(page).toHaveURL(new RegExp(`/dia/${AMANHA}$`))
   const card = page.getByRole('region', { name: 'Grupo Casa' })
+  await card.getByRole('button', { name: 'Abrir Casa' }).click()
   await expect(card.getByText('fazer lasanha')).toBeVisible()
   await expect(card.getByText('comprar queijo')).toBeVisible()
   await capturar(page, '2-no-dia')
-})
-
-test('"+ Adicionar item" no bloco Hoje', async ({ page }) => {
-  await page.goto('/inicio')
-  await semearCasaHoje(page)
-  const grupo = grupoNoHoje(page, 'Casa')
-  await grupo.hover()
-  await capturar(page, '3-antes')
-
-  await grupo.getByRole('button', { name: 'Adicionar item em Casa' }).click()
-  await page.getByRole('textbox', { name: 'Novo item em Casa' }).fill('regar as plantas')
-  await page.getByRole('textbox', { name: 'Novo item em Casa' }).press('Enter')
-
-  await expect(grupo.getByRole('checkbox', { name: 'regar as plantas' })).toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Novo item em Casa' })).toHaveValue('')
-  expect(await lerCards(page)).toEqual(['2026-11-02: ', '2026-11-02: Varrer, regar as plantas'])
-  await capturar(page, '3-depois')
 })
 
 test('Desfazer tira os itens e o card que a captura criou', async ({ page }) => {
@@ -184,15 +182,15 @@ test('Desfazer tira os itens e o card que a captura criou', async ({ page }) => 
   await escolherEmGrupo(page, 'Casa')
   await itemDaCaptura(page).fill('fazer lasanha')
   await itemDaCaptura(page).press('Control+Enter')
-  await expect(grupoNoHoje(page, 'Casa').getByText('fazer lasanha')).toBeVisible()
+  await expect(pendentesNoHoje(page, '2 pendentes')).toBeVisible()
   await capturar(page, '4-antes')
   await aviso(page).getByRole('button', { name: 'Desfazer' }).click()
-  await expect(grupoNoHoje(page, 'Casa').getByText('fazer lasanha')).toHaveCount(0)
+  await expect(pendentesNoHoje(page, '1 pendente')).toBeVisible()
   expect(await lerCards(page)).toEqual(['2026-11-02: ', '2026-11-02: Varrer'])
 
   // Card criado para amanhã: some junto (Ctrl+Z faz o mesmo que o botão).
   await escolherEmGrupo(page, 'Casa')
-  await page.getByRole('button', { name: 'Amanhã' }).click()
+  await escolherAmanha(page)
   await itemDaCaptura(page).fill('fazer lasanha')
   await itemDaCaptura(page).press('Control+Enter')
   await expect(aviso(page).getByText('1 item adicionado a Casa · 03/11')).toBeVisible()

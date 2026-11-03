@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest'
 import type { GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
 import { filtrarSeries, montarGrupos, ordenarParaEscolher } from '@/lib/grupos'
 import { hoje as hojeLocal } from '@/lib/datas'
-import { contarProximosDias, montarResumoDoDia, textoHaDias } from '@/lib/inicio'
+import {
+  contarProximosDias,
+  fraseDasAtrasadas,
+  fraseDoDia,
+  montarResumoDoDia,
+  resumirAtrasadas,
+  resumirDia,
+  textoDaQuantidade,
+  textoHaDias,
+} from '@/lib/inicio'
 
 const HOJE = '2026-11-02'
 
@@ -198,7 +207,7 @@ describe('Próximos 7 dias', () => {
   })
 })
 
-describe('Em grupo…: escolher o grupo', () => {
+describe('seletor de grupo da captura: escolher o grupo', () => {
   function serie(id: string, titulo: string, atualizadoEm: string): GroupSeries {
     return { id, titulo, criadoEm: '', atualizadoEm }
   }
@@ -234,5 +243,128 @@ describe('Em grupo…: escolher o grupo', () => {
     expect(filtrarSeries(lista, 'MERC').map(({ serie }) => serie.id)).toEqual(['mercado'])
     expect(filtrarSeries(lista, 'estúdo').map(({ serie }) => serie.id)).toEqual(['estudo'])
     expect(filtrarSeries(lista, '  ')).toHaveLength(3)
+  })
+})
+
+describe('resumo em números de Hoje e Atrasadas', () => {
+  /** Card da série `titulo` no dia: `pendentes` pendentes, `feitos` concluídos e 1 transferido. */
+  function grupoCom(titulo: string, data: string, pendentes: number, feitos = 0) {
+    const serie: GroupSeries = { id: `s-${titulo}`, titulo, criadoEm: '', atualizadoEm: '' }
+    const cardDoGrupo: GroupCard = { ...card(`c-${titulo}-${data}`, data), seriesId: serie.id }
+    const itens = [
+      ...Array.from({ length: pendentes }, (_, indice) =>
+        item(`${titulo} ${indice + 1}`, cardDoGrupo.id, 'pendente', data),
+      ),
+      ...Array.from({ length: feitos }, (_, indice) =>
+        item(`${titulo} feito ${indice + 1}`, cardDoGrupo.id, 'concluido', data),
+      ),
+      item(`${titulo} levado`, cardDoGrupo.id, 'transferido', data),
+    ]
+    return { card: cardDoGrupo, serie, itens }
+  }
+
+  function dia(tarefas: Task[], grupos: ReturnType<typeof grupoCom>[]) {
+    return resumirDia(montarResumoDoDia(tarefas, grupos, HOJE))
+  }
+
+  it('vazio: "Nada para hoje." e tudo zerado', () => {
+    const numeros = dia([], [])
+    expect(numeros).toEqual({
+      situacao: 'vazio',
+      pendentes: 0,
+      feitos: 0,
+      total: 0,
+      grupos: 0,
+      itensPendentesDosGrupos: 0,
+      soltas: 0,
+    })
+    expect(fraseDoDia(numeros)).toBe('Nada para hoje.')
+  })
+
+  it('nada feito: "2 pendentes para hoje.", grupo conta 1 e transferido fica fora', () => {
+    const numeros = dia([tarefa({ id: 'luz', data: HOJE })], [grupoCom('Casa', HOJE, 1)])
+    expect(numeros).toMatchObject({
+      situacao: 'nada-feito',
+      pendentes: 2,
+      total: 2,
+      grupos: 1,
+      itensPendentesDosGrupos: 1,
+      soltas: 1,
+    })
+    expect(fraseDoDia(numeros)).toBe('2 pendentes para hoje.')
+    expect(fraseDoDia(dia([tarefa({ id: 'luz', data: HOJE })], []))).toBe('1 pendente para hoje.')
+  })
+
+  it('parcial: "Faltam 2 de 5." e "Falta 1 de 2."', () => {
+    const numeros = dia(
+      [tarefa({ id: 'luz', data: HOJE }), tarefa({ id: 'x', data: HOJE, status: 'concluida' })],
+      [grupoCom('Casa', HOJE, 1, 2)],
+    )
+    expect(numeros).toMatchObject({ situacao: 'parcial', pendentes: 2, feitos: 3, total: 5 })
+    expect(fraseDoDia(numeros)).toBe('Faltam 2 de 5.')
+    expect(fraseDoDia(dia([], [grupoCom('Casa', HOJE, 1, 1)]))).toBe('Falta 1 de 2.')
+  })
+
+  it('tudo feito: "Tudo feito por hoje." e grupos e soltas continuam contados', () => {
+    const numeros = dia(
+      [tarefa({ id: 'x', data: HOJE, status: 'concluida' })],
+      [grupoCom('Casa', HOJE, 0, 2)],
+    )
+    expect(numeros).toMatchObject({
+      situacao: 'tudo-feito',
+      grupos: 1,
+      itensPendentesDosGrupos: 0,
+      soltas: 1,
+    })
+    expect(fraseDoDia(numeros)).toBe('Tudo feito por hoje.')
+  })
+
+  it('só grupos ou só soltas: o outro tipo fica em zero; arquivada não conta', () => {
+    expect(dia([], [grupoCom('Casa', HOJE, 2), grupoCom('Site', HOJE, 3)])).toMatchObject({
+      grupos: 2,
+      itensPendentesDosGrupos: 5,
+      soltas: 0,
+    })
+    expect(
+      dia(
+        [tarefa({ id: 'a', data: HOJE }), tarefa({ id: 'b', data: HOJE, status: 'arquivada' })],
+        [],
+      ),
+    ).toMatchObject({ grupos: 0, itensPendentesDosGrupos: 0, soltas: 1 })
+  })
+
+  it('singular e plural', () => {
+    expect(textoDaQuantidade(1, 'grupo', 'grupos')).toBe('1 grupo')
+    expect(textoDaQuantidade(2, 'tarefa solta', 'tarefas soltas')).toBe('2 tarefas soltas')
+    expect(textoDaQuantidade(0, 'item', 'itens')).toBe('0 itens')
+  })
+
+  it('Atrasadas: itens, grupo por série em dias diferentes e o mais antigo', () => {
+    const numeros = resumirAtrasadas(
+      montarResumoDoDia(
+        [
+          tarefa({ id: 'Renovar CNH', data: '2026-10-28' }),
+          tarefa({ id: 'feita', data: '2026-10-27', status: 'concluida' }),
+        ],
+        [grupoCom('Mercado', '2026-10-30', 2), grupoCom('Mercado', '2026-10-31', 1, 1)],
+        HOJE,
+      ),
+    )
+    expect(numeros).toEqual({ itens: 4, grupos: 1, soltas: 1, diaMaisAntigo: '2026-10-28' })
+    expect(fraseDasAtrasadas(numeros)).toBe('4 itens atrasados, o mais antigo de 28/out')
+  })
+
+  it('Atrasadas de um item e sem atrasadas', () => {
+    const umItem = resumirAtrasadas(
+      montarResumoDoDia([tarefa({ id: 'CNH', data: '2026-10-30' })], [], HOJE),
+    )
+    expect(umItem).toMatchObject({ itens: 1, grupos: 0, soltas: 1 })
+    expect(fraseDasAtrasadas(umItem)).toBe('1 item atrasado, de 30/out')
+    expect(resumirAtrasadas(montarResumoDoDia([], [], HOJE))).toEqual({
+      itens: 0,
+      grupos: 0,
+      soltas: 0,
+      diaMaisAntigo: null,
+    })
   })
 })

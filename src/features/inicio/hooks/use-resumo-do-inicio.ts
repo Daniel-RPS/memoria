@@ -7,20 +7,31 @@ import { useGruposDoPeriodo } from '@/hooks/use-grupos-do-periodo'
 import { useTarefasDoPeriodo } from '@/hooks/use-tarefas-do-periodo'
 import { somarDias } from '@/lib/datas'
 import { montarGrupos } from '@/lib/grupos'
-import { contarProximosDias, montarResumoDoDia, type ResumoDoDia } from '@/lib/inicio'
+import {
+  contarProximosDias,
+  resumirAtrasadas,
+  resumirDia,
+  montarResumoDoDia,
+  type ResumoDoDia,
+} from '@/lib/inicio'
 
 const DIAS_A_FRENTE = 7
 
 const RESUMO_VAZIO: ResumoDoDia = { grupos: [], soltas: [], pendentes: 0 }
 
-/** Hoje (cards e tarefas soltas, cada um na ordem do dia), atualizado sozinho. */
+/** Hoje em números (situação, progresso, grupos e tarefas soltas), atualizado sozinho. */
 export function useHojeNoInicio(hoje: DataLocal) {
   const { tarefas } = useTarefasDoPeriodo(hoje, hoje)
   const { grupos } = useGruposDoPeriodo(hoje, hoje)
-  return useMemo(() => montarResumoDoDia(tarefas, grupos, hoje), [tarefas, grupos, hoje])
+  return useMemo(
+    () => resumirDia(montarResumoDoDia(tarefas, grupos, hoje)),
+    [tarefas, grupos, hoje],
+  )
 }
 
-/** Pendentes de dias que já passaram, do dia mais antigo ao mais recente. */
+/**
+ * Pendentes de dias que já passaram: os números e os ids para "Trazer todas para hoje".
+ */
 export function useAtrasadas(hoje: DataLocal) {
   const resultado = useLiveQuery(async () => {
     const [tarefas, grupos] = await Promise.all([
@@ -30,9 +41,22 @@ export function useAtrasadas(hoje: DataLocal) {
     return { tarefas, grupos }
   }, [hoje])
   return useMemo(() => {
-    if (!resultado) return RESUMO_VAZIO
-    const { cards, series, itens } = resultado.grupos
-    return montarResumoDoDia(resultado.tarefas, montarGrupos(cards, series, itens), hoje)
+    const resumo = resultado
+      ? montarResumoDoDia(
+          resultado.tarefas,
+          montarGrupos(resultado.grupos.cards, resultado.grupos.series, resultado.grupos.itens),
+          hoje,
+        )
+      : RESUMO_VAZIO
+    return {
+      numeros: resumirAtrasadas(resumo),
+      idsDasTarefas: resumo.soltas
+        .filter(({ tarefa }) => tarefa.status === 'pendente')
+        .map(({ tarefa }) => tarefa.id),
+      idsDosCards: resumo.grupos
+        .filter(({ total, feitos }) => total > feitos)
+        .map(({ grupo }) => grupo.card.id),
+    }
   }, [resultado, hoje])
 }
 

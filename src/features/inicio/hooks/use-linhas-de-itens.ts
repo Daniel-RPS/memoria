@@ -64,7 +64,7 @@ export function useLinhasDeItens({ itens, onMudarItens, temNome, onCriar }: UseL
     else if (evento.key === 'ArrowDown') focar(indice + 1)
     else if (evento.key === 'Backspace' && isVazio) {
       const edicao = removerItemVazio(itens, indice)
-      // Sem o nome (Em grupo…), apagar a 1ª linha deixa o foco na nova 1ª linha.
+      // Sem o nome (grupo escolhido), apagar a 1ª linha deixa o foco na nova 1ª linha.
       if (edicao.foco < 0 && !temNome) {
         if (edicao.itens === itens) return
         aplicar({ ...edicao, foco: 0 })

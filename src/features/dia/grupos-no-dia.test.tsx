@@ -38,6 +38,25 @@ describe('Grupos na visão do dia', () => {
     window.localStorage.clear()
   })
 
+  it('grupos que já existem abrem recolhidos; o criado na visita, aberto', async () => {
+    const usuario = userEvent.setup()
+    const casa = await criarGrupo({ titulo: 'Casa', data: HOJE })
+    await criarItem(casa.id, 'Varrer')
+    renderizarApp(`/dia/${HOJE}`)
+
+    const abrir = await screen.findByRole('button', { name: 'Abrir Casa' })
+    expect(abrir).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('checkbox', { name: 'Concluir Varrer' })).not.toBeInTheDocument()
+    await usuario.click(abrir)
+    expect(screen.getByRole('checkbox', { name: 'Concluir Varrer' })).toBeVisible()
+
+    await usuario.type(screen.getByRole('textbox', { name: 'Novo grupo' }), 'Mercado{Enter}')
+    expect(await screen.findByRole('button', { name: 'Recolher Mercado' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
   it('cria o grupo ao lado de "Nova tarefa", adiciona itens e mostra o progresso', async () => {
     const usuario = userEvent.setup()
     renderizarApp(`/dia/${HOJE}`)
@@ -69,6 +88,7 @@ describe('Grupos na visão do dia', () => {
     await waitFor(async () => expect(await db.groupCards.count()).toBe(2))
     expect(await screen.findByText('1 item levado para amanhã')).toBeInTheDocument()
     const card = screen.getByRole('region', { name: 'Grupo Casa' })
+    await usuario.click(within(card).getByRole('button', { name: 'Abrir Casa' }))
     const transferido = await within(card).findByRole('link', {
       name: `transferido para ${diaCurto(AMANHA)}`,
     })
@@ -79,7 +99,9 @@ describe('Grupos na visão do dia', () => {
     expect(within(card).getByText('encerrado')).toBeInTheDocument()
 
     await usuario.click(transferido)
-    const cardAmanha = await screen.findByRole('region', { name: 'Grupo Casa' })
+    // Outro dia: o card volta a abrir recolhido.
+    await usuario.click(await screen.findByRole('button', { name: 'Abrir Casa' }))
+    const cardAmanha = screen.getByRole('region', { name: 'Grupo Casa' })
     expect(
       await within(cardAmanha).findByRole('checkbox', { name: 'Concluir Fazer comida' }),
     ).toBeInTheDocument()
@@ -160,6 +182,7 @@ describe('Grupos na visão do dia', () => {
     await usuario.keyboard('{Enter}')
 
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
+    await usuario.click(within(card).getByRole('button', { name: 'Abrir Casa' }))
     await within(card).findByText('Varrer')
     expect(await db.groupItems.get(tarefa.id)).toBeDefined()
     expect(await db.tasks.count()).toBe(0)

@@ -1,18 +1,19 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Layout do Início: só Hoje/Amanhã/Escolher data… na captura, "Próximos 7 dias" na coluna da
+ * Layout do Início: só Hoje/Escolher data na captura, "Próximos 7 dias" na coluna da
  * direita (abaixo de Atrasadas), campo de captura de várias linhas e as colunas alinhadas.
  * Capturas em e2e/capturas/inicio-layout-<largura>-<tema>.png.
  */
 
 const HOJE = '2026-11-02'
-const AMANHA = '2026-11-03'
 
 interface ModuloBanco {
   db: {
     tasks: { toArray: () => Promise<{ id: string; titulo: string; data: string }[]> }
-    notes: { toArray: () => Promise<{ conteudo: string; vinculo?: { tipo: string; id: string } }[]> }
+    notes: {
+      toArray: () => Promise<{ conteudo: string; vinculo?: { tipo: string; id: string } }[]>
+    }
     groupCards: { toArray: () => Promise<{ id: string; data: string }[]> }
     groupItems: { toArray: () => Promise<{ cardId: string; titulo: string; ordem: number }[]> }
     groupSeries: { toArray: () => Promise<{ titulo: string }[]> }
@@ -80,36 +81,45 @@ test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date(`${HOJE}T10:00:00-03:00`))
 })
 
-test('a captura mostra só Hoje, Amanhã e Escolher data…; amanhã e data escolhida criam', async ({
+test('a captura mostra só Hoje e Escolher data; a data escolhida aparece no botão', async ({
   page,
 }) => {
   await page.goto('/inicio')
   const dias = captura(page).getByRole('group', { name: 'Dia' }).getByRole('button')
-  await expect(dias).toHaveText(['Hoje', 'Amanhã', 'Escolher data…'])
-  await expect(captura(page).getByRole('button', { name: 'Hoje' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
+  await expect(dias).toHaveText(['Hoje', 'Escolher data'])
+  const hoje = captura(page).getByRole('button', { name: 'Hoje' })
+  await expect(hoje).toHaveAttribute('aria-pressed', 'true')
+  await expect(captura(page).getByText('Amanhã')).toHaveCount(0)
+  await expect(captura(page).getByText('Em grupo…')).toHaveCount(0)
 
-  await campoDeCaptura(page).fill('Ligar para o banco')
-  await captura(page).getByRole('button', { name: 'Amanhã' }).click()
-  await campoDeCaptura(page).press('Enter')
-  await expect(page.getByText('Tarefa criada para 03/11')).toBeVisible()
-
+  // 05/11: o botão mostra a data, marcado no lugar do Hoje.
   await campoDeCaptura(page).fill('Consulta')
-  await captura(page).getByRole('button', { name: 'Escolher data…' }).click()
+  await captura(page).getByRole('button', { name: 'Escolher data' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /, 5 de novembro/ })
+    .click()
+  const data = dias.nth(1)
+  await expect(data).toHaveText('05/11')
+  await expect(data).toHaveAttribute('aria-pressed', 'true')
+  await expect(hoje).toHaveAttribute('aria-pressed', 'false')
+  await campoDeCaptura(page).press('Enter')
+  await expect(page.getByText('Tarefa criada para 05/11')).toBeVisible()
+
+  // Depois de criar volta ao padrão; escolher e clicar em Hoje também volta.
+  await expect(dias).toHaveText(['Hoje', 'Escolher data'])
+  await captura(page).getByRole('button', { name: 'Escolher data' }).click()
   await page
     .getByRole('dialog')
     .getByRole('button', { name: /10 de novembro/ })
     .click()
-  await campoDeCaptura(page).press('Enter')
-  await expect(page.getByText('Tarefa criada para 10/11')).toBeVisible()
+  await expect(data).toHaveText('10/11')
+  await hoje.click()
+  await expect(dias).toHaveText(['Hoje', 'Escolher data'])
+  await expect(hoje).toHaveAttribute('aria-pressed', 'true')
 
   const { tarefas } = await lerBanco(page)
-  expect(tarefas.map(({ titulo, data }) => `${titulo} ${data}`).sort()).toEqual([
-    `Consulta 2026-11-10`,
-    `Ligar para o banco ${AMANHA}`,
-  ])
+  expect(tarefas.map(({ titulo, data }) => `${titulo} ${data}`)).toEqual([`Consulta 2026-11-05`])
 })
 
 test('"Próximos 7 dias" fica na coluna da direita, abaixo de Atrasadas, e abre o Dia', async ({
@@ -209,7 +219,7 @@ for (const tema of ['claro', 'escuro'] as const) {
       }, tema)
       await page.goto('/inicio')
       await semear(page)
-      await expect(page.getByText('Renovar CNH')).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Ver atrasadas' })).toBeVisible()
       await page.screenshot({
         path: `e2e/capturas/inicio-layout-${process.env.FASE ?? 'depois'}-${largura}-${tema}.png`,
         fullPage: true,

@@ -13,7 +13,9 @@ import { nomeDoLink, type LinkInput } from '@/lib/anexos'
 import {
   DICA_DO_CAMPO,
   dividirTexto,
+  escolherGrupoDaCaptura,
   esquemaCaptura,
+  modoDoCampo,
   primeiraLinha,
   semLinhasVaziasNoTopo,
   trocarPrimeiraLinha,
@@ -36,16 +38,17 @@ interface CapturaRapidaProps {
   hoje: DataLocal
 }
 
-function valoresIniciais(hoje: DataLocal): CapturaInput {
-  return { texto: '', itens: [''], tipo: 'tarefa', data: hoje }
+/** Campo limpo; o grupo escolhido continua (para jogar vários itens seguidos no mesmo grupo). */
+function valoresIniciais(hoje: DataLocal, seriesId?: string): CapturaInput {
+  return { texto: '', itens: [''], tipo: 'tarefa', data: hoje, seriesId }
 }
 
 /**
- * Anotar sem sair do Início: texto, tipo (tarefa, grupo novo com itens ou item num grupo
- * que já existe), categoria, dia e, na tarefa, anexos. Tarefa: Enter cria e Shift+Enter quebra
- * a linha (as linhas de baixo viram a anotação). Grupo: nome em destaque e uma linha por item
- * (`ItensDaCaptura`); "Em grupo…" usa a mesma lista, sem o nome. Um texto apagado por modo
- * (`DICA_DO_CAMPO`). Trocar de modo não perde o texto nem os itens.
+ * Anotar sem sair do Início: texto, tipo (tarefa ou grupo novo com itens), categoria, grupo que
+ * já existe, dia e, na tarefa, anexos. Tarefa: Enter cria e Shift+Enter quebra a linha (as linhas
+ * de baixo viram a anotação). Grupo: nome em destaque e uma linha por item (`ItensDaCaptura`).
+ * Tarefa com um grupo escolhido: a mesma lista, sem o nome, e a categoria é a do grupo. Um texto
+ * apagado por modo (`DICA_DO_CAMPO`). Trocar de modo ou de grupo não perde o texto.
  */
 export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   const idErro = useId()
@@ -53,7 +56,6 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   const { capturar } = useCaptura()
   const [anexos, setAnexos] = useState<AnexoDaCaptura[]>([])
   const [isLinkAberto, setIsLinkAberto] = useState(false)
-  const [isSeletorDeGrupoAberto, setIsSeletorDeGrupoAberto] = useState(false)
   const itensRef = useRef<ItensDaCapturaHandle>(null)
   const {
     register,
@@ -62,6 +64,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     reset,
     setValue,
     setError,
+    clearErrors,
     getValues,
     setFocus,
     formState: { errors, isSubmitting },
@@ -74,34 +77,35 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     name: ['tipo', 'data', 'categoryId', 'subcategoryId', 'seriesId', 'texto', 'itens'],
   })
   const series = useSeriesParaEscolher(data)
-  const erro = errors.texto?.message ?? errors.itens?.message ?? errors.seriesId?.message
+  const modo = modoDoCampo(tipo, seriesId)
+  const grupoEscolhido =
+    modo === 'itens' ? series.find((opcao) => opcao.serie.id === seriesId) : undefined
+  const erro = errors.texto?.message ?? errors.itens?.message
 
-  /** Tarefa: o campo de texto; Grupo: o nome; Em grupo…: o último item. */
+  /** Tarefa: o campo de texto; Grupo: o nome; com grupo escolhido: o último item. */
   function focarCampoPrincipal() {
-    if (getValues('tipo') === 'tarefa') setFocus('texto')
+    if (modoDoCampo(getValues('tipo'), getValues('seriesId')) === 'tarefa') setFocus('texto')
     else itensRef.current?.focar()
   }
 
-  const focarAoChegar = useEffectEvent(() => {
-    if (!isSeletorDeGrupoAberto) focarCampoPrincipal()
-  })
+  const focarAoChegar = useEffectEvent(focarCampoPrincipal)
 
   // Ctrl+K / N de qualquer tela chega aqui com um pedido novo no estado da navegação.
   useEffect(() => {
     if (isPedidoDeFocarCaptura(location.state)) focarAoChegar()
   }, [location.state])
 
-  // Trocou de modo (ou voltou para Tarefa depois de criar): o foco vai para o campo do modo,
-  // menos quando a lista de grupos de "Em grupo…" abriu por cima.
-  useEffect(() => focarAoChegar(), [tipo])
+  // Trocou de modo (tipo ou grupo escolhido): o foco vai para o campo do modo, já montado.
+  useEffect(() => focarAoChegar(), [modo])
 
   async function handleCriar(dados: CapturaInput) {
+    const modoAoCriar = modoDoCampo(dados.tipo, dados.seriesId)
     try {
       const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
-      if (dados.tipo === 'tarefa') {
+      if (modoAoCriar === 'tarefa') {
         const tarefa = dividirTexto(dados.texto)
         await capturar({ tipo: 'tarefa', data: dados.data, ...categoria, ...tarefa, anexos })
-      } else if (dados.tipo === 'grupo') {
+      } else if (modoAoCriar === 'grupo') {
         const titulo = primeiraLinha(dados.texto).trim()
         await capturar({
           tipo: 'grupo',
@@ -124,23 +128,19 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
       }
     } catch (falha) {
       if (falha instanceof ErroDeValidacao) {
-        setError(dados.tipo === 'em-grupo' ? 'itens' : 'texto', { message: falha.message })
+        setError(modoAoCriar === 'itens' ? 'itens' : 'texto', { message: falha.message })
         focarCampoPrincipal()
         return
       }
       throw falha
     }
-    reset(valoresIniciais(hoje))
+    reset(valoresIniciais(hoje, modoAoCriar === 'itens' ? dados.seriesId : undefined))
     setAnexos([])
     focarCampoPrincipal()
   }
 
   function criar() {
-    return handleSubmit(handleCriar, (falhas) => {
-      // Só falta o grupo: abre a lista para escolher.
-      if (falhas.seriesId && !falhas.texto && !falhas.itens) setIsSeletorDeGrupoAberto(true)
-      else focarCampoPrincipal()
-    })()
+    return handleSubmit(handleCriar, () => focarCampoPrincipal())()
   }
 
   /** Enter cria; Shift+Enter quebra a linha (fora durante a composição de acentos). */
@@ -150,10 +150,35 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     void criar()
   }
 
+  /** Escolher ou tirar o grupo: o texto vira itens (e volta), pela regra de `lib/captura`. */
+  function aplicarGrupo(id: string | undefined) {
+    const atual = {
+      texto: getValues('texto'),
+      itens: getValues('itens'),
+      seriesId: getValues('seriesId'),
+    }
+    const novo = escolherGrupoDaCaptura(atual, id)
+    if (novo === atual) return
+    setValue('texto', novo.texto)
+    setValue('itens', novo.itens)
+    setValue('seriesId', novo.seriesId)
+    clearErrors()
+  }
+
+  function handleEscolherGrupo(id: string | undefined) {
+    const isMesmoModo = Boolean(id) === Boolean(getValues('seriesId'))
+    aplicarGrupo(id)
+    // Mudou de modo: o efeito de `modo` foca o campo novo depois de montado.
+    if (isMesmoModo) focarCampoPrincipal()
+  }
+
   function handleEscolherTipo(novo: TipoCaptura) {
-    if (novo === 'grupo') setValue('texto', semLinhasVaziasNoTopo(getValues('texto')))
+    if (novo === 'grupo') {
+      // Grupo novo não usa grupo escolhido: os itens voltam a ser o texto (o nome é a 1ª linha).
+      aplicarGrupo(undefined)
+      setValue('texto', semLinhasVaziasNoTopo(getValues('texto')))
+    }
     setValue('tipo', novo)
-    if (novo === 'em-grupo' && !getValues('seriesId')) setIsSeletorDeGrupoAberto(true)
   }
 
   function handleSalvarLink(link: LinkInput) {
@@ -179,10 +204,10 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
         <div className="flex items-start gap-3">
           <Plus
             aria-hidden
-            className={cn('size-6 shrink-0 text-caneta', tipo === 'tarefa' ? 'mt-1' : 'mt-1.5')}
+            className={cn('size-6 shrink-0 text-caneta', modo === 'tarefa' ? 'mt-1' : 'mt-1.5')}
           />
           <div className="min-h-24 min-w-0 flex-1">
-            {tipo === 'tarefa' ? (
+            {modo === 'tarefa' ? (
               <textarea
                 {...register('texto')}
                 onKeyDown={handleKeyDown}
@@ -200,7 +225,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
               <ItensDaCaptura
                 ref={itensRef}
                 nome={
-                  tipo === 'grupo'
+                  modo === 'grupo'
                     ? {
                         valor: primeiraLinha(texto),
                         onMudar: (nome) =>
@@ -211,7 +236,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
                       }
                     : undefined
                 }
-                dica={DICA_DO_CAMPO[tipo]}
+                dica={DICA_DO_CAMPO[modo]}
                 itens={itens}
                 onMudarItens={(novos) =>
                   setValue('itens', novos, { shouldValidate: Boolean(errors.itens) })
@@ -231,11 +256,8 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
             {erro}
           </p>
         )}
-        {!erro && tipo === 'em-grupo' && (
-          <p className="mt-1 ml-9 text-xs text-grafite">O item usa a categoria do grupo.</p>
-        )}
 
-        {tipo === 'tarefa' && (
+        {modo === 'tarefa' && (
           <AnexosEscolhidos
             anexos={anexos}
             onRemover={(indice) =>
@@ -246,28 +268,29 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
 
         <div className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-2 border-t border-dashed border-pauta pt-4">
           <EscolhaDoTipo tipo={tipo} onEscolher={handleEscolherTipo} />
-          {tipo === 'em-grupo' ? (
+          <CampoCategoria
+            tipo="grupo"
+            atual={
+              grupoEscolhido
+                ? {
+                    categoryId: grupoEscolhido.serie.categoryId,
+                    subcategoryId: grupoEscolhido.serie.subcategoryId,
+                  }
+                : { categoryId, subcategoryId }
+            }
+            onEscolher={(categoria) => {
+              setValue('categoryId', categoria.categoryId)
+              setValue('subcategoryId', categoria.subcategoryId)
+            }}
+            motivoDesabilitado={modo === 'itens' ? 'Usa a categoria do grupo' : undefined}
+            className="w-auto max-w-40 gap-2"
+          />
+          {tipo === 'tarefa' && (
             <SeletorDeGrupo
               series={series}
               seriesId={seriesId}
               data={data}
-              isAberto={isSeletorDeGrupoAberto}
-              onMudarAberto={setIsSeletorDeGrupoAberto}
-              onEscolher={(id) => {
-                setValue('seriesId', id, { shouldValidate: Boolean(errors.seriesId) })
-                itensRef.current?.focar()
-              }}
-              isInvalido={Boolean(errors.seriesId)}
-            />
-          ) : (
-            <CampoCategoria
-              tipo="grupo"
-              atual={{ categoryId, subcategoryId }}
-              onEscolher={(categoria) => {
-                setValue('categoryId', categoria.categoryId)
-                setValue('subcategoryId', categoria.subcategoryId)
-              }}
-              className="w-auto max-w-40 gap-2"
+              onEscolher={handleEscolherGrupo}
             />
           )}
           <EscolhaDoDia
@@ -276,7 +299,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
             onEscolher={(novaData) => setValue('data', novaData)}
           />
           <div className="ml-auto flex items-center gap-1">
-            {tipo === 'tarefa' && (
+            {modo === 'tarefa' && (
               <BotaoAnexar
                 onAdicionar={(novos) => setAnexos((atuais) => [...atuais, ...novos])}
                 onPedirLink={() => setIsLinkAberto(true)}

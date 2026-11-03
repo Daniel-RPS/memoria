@@ -1,6 +1,7 @@
 import { CheckSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
+import { ContextoGruposDaVisita, useGruposDaVisita } from '@/hooks/use-grupos-da-visita'
 import { pendentesDo, podeCopiarGrupo } from '@/lib/grupos'
 import { ContextoExtras } from '@/features/dia/hooks/contexto-extras'
 import { ContextoSelecao, useSelecao } from '@/features/dia/hooks/use-selecao'
@@ -35,6 +36,12 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
         : [],
   )
   const selecao = useSelecao()
+  // A folha é montada de novo a cada dia (`key` na DiaPage): os grupos abrem recolhidos.
+  const grupos = useGruposDaVisita(
+    isCarregando
+      ? undefined
+      : entradas.flatMap((entrada) => (entrada.tipo === 'grupo' ? [entrada.grupo.card.id] : [])),
+  )
 
   function mensagemVazia() {
     if (concluidas.length > 0) return 'Tudo feito neste dia.'
@@ -44,51 +51,58 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
   return (
     <ContextoSelecao.Provider value={selecao}>
       <ContextoExtras.Provider value={extras}>
-        <section aria-label="Tarefas do dia">
-          {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
-          {entradas.length > 0 && !selecao.isSelecionando && (
-            <div className="mt-2 -mb-1 flex justify-end">
-              <Button variant="ghost" size="sm" className="text-grafite" onClick={selecao.iniciar}>
-                <CheckSquare /> Selecionar
-              </Button>
-            </div>
-          )}
-          <div className="mt-2">
-            {isVazio && (
-              <p className="border-b border-pauta px-4 py-3 text-grafite">{mensagemVazia()}</p>
+        <ContextoGruposDaVisita.Provider value={grupos}>
+          <section aria-label="Tarefas do dia">
+            {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
+            {entradas.length > 0 && !selecao.isSelecionando && (
+              <div className="mt-2 -mb-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-grafite"
+                  onClick={selecao.iniciar}
+                >
+                  <CheckSquare /> Selecionar
+                </Button>
+              </div>
             )}
-            <ListaDoDia
-              data={data}
-              entradas={entradas}
+            <div className="mt-2">
+              {isVazio && (
+                <p className="border-b border-pauta px-4 py-3 text-grafite">{mensagemVazia()}</p>
+              )}
+              <ListaDoDia
+                data={data}
+                entradas={entradas}
+                subtarefasPorTarefa={subtarefasPorTarefa}
+                hoje={hoje}
+              />
+              {!selecao.isSelecionando && (
+                <div className="flex flex-wrap">
+                  <div className="min-w-0 flex-[2_1_18rem]">
+                    <NovaTarefa data={data} />
+                  </div>
+                  <div className="min-w-0 flex-[1_1_12rem] border-t border-pauta sm:border-t-0 sm:border-l">
+                    <NovoGrupo data={data} />
+                  </div>
+                </div>
+              )}
+            </div>
+            {selecao.isSelecionando && (
+              <BarraSelecao
+                data={data}
+                hoje={hoje}
+                idsPendentes={idsSelecionaveis}
+                idsGrupos={idsGrupos}
+                idsItens={idsItens}
+              />
+            )}
+            <GrupoConcluidas
+              concluidas={concluidas}
               subtarefasPorTarefa={subtarefasPorTarefa}
               hoje={hoje}
             />
-            {!selecao.isSelecionando && (
-              <div className="flex flex-wrap">
-                <div className="min-w-0 flex-[2_1_18rem]">
-                  <NovaTarefa data={data} />
-                </div>
-                <div className="min-w-0 flex-[1_1_12rem] border-t border-pauta sm:border-t-0 sm:border-l">
-                  <NovoGrupo data={data} />
-                </div>
-              </div>
-            )}
-          </div>
-          {selecao.isSelecionando && (
-            <BarraSelecao
-              data={data}
-              hoje={hoje}
-              idsPendentes={idsSelecionaveis}
-              idsGrupos={idsGrupos}
-              idsItens={idsItens}
-            />
-          )}
-          <GrupoConcluidas
-            concluidas={concluidas}
-            subtarefasPorTarefa={subtarefasPorTarefa}
-            hoje={hoje}
-          />
-        </section>
+          </section>
+        </ContextoGruposDaVisita.Provider>
       </ContextoExtras.Provider>
     </ContextoSelecao.Provider>
   )

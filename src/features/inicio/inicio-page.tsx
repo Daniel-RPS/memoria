@@ -51,8 +51,12 @@ export function InicioPage() {
           aria-label="Hoje, atrasadas e próximos dias"
           className="flex flex-col gap-10 lg:pt-1"
         >
-          <BlocoHoje resumo={resumoDeHoje} />
-          <BlocoAtrasadas resumo={atrasadas} />
+          <BlocoHoje numeros={resumoDeHoje} hoje={hoje} />
+          <BlocoAtrasadas
+            numeros={atrasadas.numeros}
+            idsDasTarefas={atrasadas.idsDasTarefas}
+            idsDosCards={atrasadas.idsDosCards}
+          />
           <ProximosDias dias={proximos} />
         </aside>
       </div>

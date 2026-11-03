@@ -75,6 +75,22 @@ function blocoHoje(page: Page) {
   return page.getByRole('region', { name: 'Hoje', exact: true })
 }
 
+/** Conclui a tarefa de título `titulo` direto no banco (o bloco Hoje é só um resumo). */
+async function concluirTarefa(page: Page, titulo: string) {
+  await page.evaluate(async (procurado) => {
+    const caminhoBanco = '/src/db/database.ts'
+    const caminhoTarefas = '/src/db/repositories/task-repository.ts'
+    const { db } = (await import(/* @vite-ignore */ caminhoBanco)) as ModuloBanco
+    const repositorio = (await import(/* @vite-ignore */ caminhoTarefas)) as {
+      definirConclusao: (id: string, concluida: boolean) => Promise<unknown>
+    }
+    const tarefas = (await db.tasks.toArray()) as unknown as { id: string; titulo: string }[]
+    const tarefa = tarefas.find((atual) => atual.titulo === procurado)
+    if (!tarefa) throw new Error(`Sem a tarefa ${procurado}`)
+    await repositorio.definirConclusao(tarefa.id, true)
+  }, titulo)
+}
+
 function quadradoDeHoje(page: Page) {
   return page
     .getByRole('group', { name: 'Conclusões por dia no último ano' })
@@ -85,6 +101,18 @@ test.beforeEach(async ({ page }) => {
   // Segunda, 2/11/2026, 10h em São Paulo.
   await page.clock.setFixedTime(new Date('2026-11-02T10:00:00-03:00'))
 })
+
+/** "Escolher data" abre o calendário; o atalho Amanhã fica no diálogo. */
+async function escolherAmanha(page: Page) {
+  await page
+    .getByRole('region', { name: 'Captura rápida' })
+    .getByRole('button', { name: 'Escolher data', exact: true })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Escolher o dia' })
+    .getByRole('button', { name: 'Amanhã' })
+    .click()
+}
 
 test('abre no Início com o campo de captura focado', async ({ page }) => {
   await page.goto('/')
@@ -103,7 +131,7 @@ test('cria tarefa para amanhã com categoria nova e ela aparece no Dia sem recar
   await capturar(page, '2-antes')
 
   await campoDeCaptura(page).fill('Comprar presente da Ana')
-  await page.getByRole('button', { name: 'Amanhã' }).click()
+  await escolherAmanha(page)
   await page.getByRole('button', { name: 'Sem categoria' }).click()
   await page.getByRole('menuitem', { name: 'Nova categoria' }).click()
   await page.getByRole('textbox', { name: 'Nova categoria' }).fill('Família')
@@ -136,7 +164,9 @@ test('cria tarefa para amanhã com categoria nova e ela aparece no Dia sem recar
   await capturar(page, '2-no-dia')
 })
 
-test('cria grupo com 3 itens para hoje e marca pelo bloco Hoje', async ({ page }) => {
+test('cria grupo com 3 itens para hoje, marca no Dia e o Hoje do Início acompanha', async ({
+  page,
+}) => {
   await page.goto('/inicio')
   await page.getByRole('button', { name: 'Grupo', exact: true }).click()
   // Nome do grupo e, abaixo, uma linha por item (Enter abre a próxima).
@@ -149,14 +179,17 @@ test('cria grupo com 3 itens para hoje e marca pelo bloco Hoje', async ({ page }
   await capturar(page, '3-antes')
   await page.getByRole('button', { name: 'Criar' }).click()
 
-  const grupo = blocoHoje(page).getByRole('listitem', { name: 'Grupo Mercado' })
-  await expect(grupo.getByRole('checkbox')).toHaveCount(3)
-  await expect(grupo.getByText('0/3')).toBeVisible()
+  await expect(blocoHoje(page).getByText('3 pendentes', { exact: true })).toBeVisible()
+  // Marca no Dia (o bloco Hoje é só um resumo) e volta ao Início sem recarregar.
+  await blocoHoje(page).getByRole('link', { name: 'Ver o dia' }).click()
+  await page.getByRole('button', { name: 'Abrir Mercado' }).click()
   for (const item of ['Café', 'Pão', 'Leite']) {
-    await grupo.getByRole('checkbox', { name: item }).click()
+    await page.getByRole('checkbox', { name: `Concluir ${item}` }).click()
   }
-  await expect(grupo.getByText('3/3')).toBeVisible()
-  await expect(blocoHoje(page).getByText('nada pendente')).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: /^Concluir / })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Início' }).first().click()
+  await expect(blocoHoje(page).getByRole('link', { name: 'Ver o dia' })).toBeVisible()
+  await expect(blocoHoje(page).getByText(/pendente/)).toHaveCount(0)
   const banco = await lerBanco(page)
   expect(banco.cards).toEqual([expect.objectContaining({ data: HOJE })])
   expect(banco.itens.map((item) => `${item.titulo}:${item.status}`).sort()).toEqual([
@@ -167,16 +200,19 @@ test('cria grupo com 3 itens para hoje e marca pelo bloco Hoje', async ({ page }
   await capturar(page, '3-depois')
 })
 
-test('"Trazer para hoje" numa atrasada', async ({ page }) => {
+test('"Trazer todas para hoje" nas atrasadas', async ({ page }) => {
   await page.goto('/inicio')
   await semearTarefas(page, [{ titulo: 'Renovar CNH', data: '2026-10-28', status: 'pendente' }])
   const atrasadas = page.getByRole('region', { name: 'Atrasadas' })
-  await expect(atrasadas.getByText('há 5 dias')).toBeVisible()
+  await expect(atrasadas.getByRole('link', { name: 'Ver atrasadas' })).toHaveAttribute(
+    'href',
+    '/dia/2026-10-28',
+  )
   await capturar(page, '4-antes')
 
-  await atrasadas.getByRole('button', { name: 'Trazer Renovar CNH para hoje' }).click()
+  await atrasadas.getByRole('button', { name: 'Trazer todas para hoje' }).click()
   await expect(atrasadas.getByText('Tudo em dia')).toBeVisible()
-  await expect(blocoHoje(page).getByRole('checkbox', { name: 'Renovar CNH' })).toBeVisible()
+  await expect(blocoHoje(page).getByText('1 pendente', { exact: true })).toBeVisible()
   const banco = await lerBanco(page)
   expect(banco.tarefas[0]).toMatchObject({ data: HOJE, status: 'pendente' })
   await capturar(page, '4-depois')
@@ -211,10 +247,10 @@ test('concluir muda a intensidade do quadrado de hoje; clicar nele abre o Dia', 
   await expect(quadradoDeHoje(page)).toHaveAttribute('data-nivel', '0')
   await capturar(page, '5-antes')
 
-  await blocoHoje(page).getByRole('checkbox', { name: 'Pagar luz' }).click()
+  await concluirTarefa(page, 'Pagar luz')
   await expect(quadradoDeHoje(page)).not.toHaveAttribute('data-nivel', '0')
   const nivelComUm = Number(await quadradoDeHoje(page).getAttribute('data-nivel'))
-  await blocoHoje(page).getByRole('checkbox', { name: 'Ligar para a mãe' }).click()
+  await concluirTarefa(page, 'Ligar para a mãe')
   await expect
     .poll(async () => Number(await quadradoDeHoje(page).getAttribute('data-nivel')))
     .toBeGreaterThanOrEqual(nivelComUm)
@@ -225,7 +261,7 @@ test('concluir muda a intensidade do quadrado de hoje; clicar nele abre o Dia', 
 
   await quadradoDeHoje(page).click()
   await expect(page).toHaveURL(new RegExp(`/dia/${HOJE}$`))
-  await expect(page.getByText('Pagar luz')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Tarefas do dia' })).toBeVisible()
   await capturar(page, '5-no-dia')
 })
 

@@ -13,6 +13,7 @@ import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, GroupItem } from '@/db/types'
+import { useGrupoDaVisita } from '@/hooks/use-grupos-da-visita'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { vinculoDoItem } from '@/lib/notas'
 import { classificarTarefa } from '@/lib/categorias'
@@ -30,7 +31,6 @@ import { MenuGrupo } from '@/features/dia/components/menu-grupo'
 import { MenuItemGrupo } from '@/features/dia/components/menu-item-grupo'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
-import { useCardRecolhido } from '@/features/semana/hooks/use-cards-recolhidos'
 
 interface CartaoGrupoProps {
   grupo: GrupoDoDia
@@ -78,7 +78,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
   const textoProgresso = grupo.itens.length > 0 ? textoProgressoGrupo(progresso) : ''
   const pendentes = grupo.itens.filter((item) => item.status === 'pendente')
   const isItensOrdenaveis = !isSobreposto && arrasto !== undefined
-  const { isAberto, handleAlternar, isRecolhivel } = useCardRecolhido(card.id)
+  const { isAberto, handleAlternar, isRecolhivel } = useGrupoDaVisita(card.id)
   const idConteudo = useId()
 
   async function handleSalvarTitulo(titulo: string) {
@@ -190,7 +190,8 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
             </span>
           )}
         </div>
-        {!isSobreposto && isAberto && (
+        {/* Recolhido também: o card abre fechado e as ações não podem sumir. */}
+        {!isSobreposto && (
           <div data-sem-arrasto="" className="cursor-auto pt-0.5">
             <MenuGrupo grupo={grupo} hoje={hoje} onRenomear={() => setIsEditando(true)} />
           </div>

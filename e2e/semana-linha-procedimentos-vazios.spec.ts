@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { expandirGrupos } from './expandir-grupos.ts'
 import { fixarTema } from './semear-ajustes.ts'
 
 /**
@@ -64,6 +65,7 @@ for (const tema of ['claro', 'escuro'] as const) {
       const card = await grupos.criarGrupo({ titulo: 'Casa', data: '2026-11-06' })
       await grupos.criarItem(card.id, 'Lavar roupa')
     })
+    await expandirGrupos(page)
     await expect(page.getByText('Lavar roupa')).toBeVisible()
 
     for (const [nome, largura] of [
@@ -72,6 +74,7 @@ for (const tema of ['claro', 'escuro'] as const) {
     ] as const) {
       await page.setViewportSize({ width: largura, height: 800 })
       await page.reload()
+      await expandirGrupos(page)
       await expect(page.getByText('Lavar roupa')).toBeVisible()
       const medidas = await larguras(page)
       expect(medidas?.borda).toBe('2px')

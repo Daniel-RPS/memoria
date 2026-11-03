@@ -9,10 +9,9 @@ interface EscolhaDoTipoProps {
 const OPCOES = [
   { tipo: 'tarefa', rotulo: 'Tarefa' },
   { tipo: 'grupo', rotulo: 'Grupo' },
-  { tipo: 'em-grupo', rotulo: 'Em grupo…' },
 ] as const
 
-/** Tarefa solta, grupo novo (card com itens) ou item num grupo que já existe. */
+/** Tarefa solta (ou item, com um grupo escolhido no seletor de grupo) ou grupo novo com itens. */
 export function EscolhaDoTipo({ tipo, onEscolher }: EscolhaDoTipoProps) {
   return (
     <div role="group" aria-label="Tipo" className="flex rounded-md bg-nevoa p-0.5">

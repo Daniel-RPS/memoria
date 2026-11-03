@@ -6,7 +6,7 @@ import { ordenarParaEscolher, type SerieParaEscolher } from '@/lib/grupos'
 
 const NENHUMA: SerieParaEscolher[] = []
 
-/** Grupos (séries) para "Em grupo…", usados recentemente primeiro, com o card no `data`. */
+/** Grupos (séries) do seletor de grupo da captura, usados recentemente primeiro, com o card no `data`. */
 export function useSeriesParaEscolher(data: DataLocal) {
   const carregado = useLiveQuery(carregarSeriesParaEscolher, [])
   return useMemo(

@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   SeletorCategoria,
   type CategoriaEscolhida,
@@ -26,6 +27,8 @@ interface CampoCategoriaProps {
   /** Nome acessível do botão compacto. */
   rotulo?: string
   className?: string
+  /** Mostra `atual` sem deixar trocar; o texto é a dica do porquê (ex.: "usa a categoria do grupo"). */
+  motivoDesabilitado?: string
 }
 
 /** Campo de formulário (com cara de select) que abre o seletor de categoria. */
@@ -37,6 +40,7 @@ export function CampoCategoria({
   isCompacto,
   rotulo = 'Categoria',
   className,
+  motivoDesabilitado,
 }: CampoCategoriaProps) {
   const { categorias } = useCategorias()
   const [isAberto, setIsAberto] = useState(false)
@@ -44,14 +48,15 @@ export function CampoCategoria({
   const texto = classificacao?.rotulo ?? 'Sem categoria'
   const icone = categorias.find((categoria) => categoria.id === atual.categoryId)?.icone
 
-  return (
+  const menu = (
     <DropdownMenu open={isAberto} onOpenChange={setIsAberto} modal={false}>
       <DropdownMenuTrigger
         id={id}
+        disabled={Boolean(motivoDesabilitado)}
         aria-label={isCompacto ? `${rotulo}: ${texto}` : undefined}
         title={isCompacto ? `${rotulo}: ${texto}` : undefined}
         className={cn(
-          'flex items-center gap-1.5 rounded-lg text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
+          'flex items-center gap-1.5 rounded-lg text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60',
           isCompacto
             ? 'size-8 shrink-0 justify-center hover:bg-accent'
             : 'h-8 w-full justify-between border border-input bg-papel py-2 pr-2 pl-2.5',
@@ -85,5 +90,16 @@ export function CampoCategoria({
         />
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+  if (!motivoDesabilitado) return menu
+
+  // Botão desabilitado não recebe o ponteiro: a dica fica no invólucro.
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex">{menu}</span>
+      </TooltipTrigger>
+      <TooltipContent>{motivoDesabilitado}</TooltipContent>
+    </Tooltip>
   )
 }

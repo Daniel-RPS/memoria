@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expandirGrupos } from './expandir-grupos.ts'
 import { fixarTema } from './semear-ajustes.ts'
 
 /**
@@ -167,21 +168,19 @@ test('Ícones no tema escuro: MemorIA usa o recorte do tema', async ({ page }) =
   await capturar(page, 'seletor-marcas-escuro')
 })
 
-test('Semana: recolher um card é lembrado; recolhido ele arrasta e recebe item', async ({
-  page,
-}) => {
+test('Semana: cards abrem recolhidos; recolhido ele arrasta e recebe item', async ({ page }) => {
   await page.goto(`/semana/${SEGUNDA}`)
   await semearCasa(page, [
     { data: SEGUNDA, itens: [TEXTO_LONGO, 'Lavar roupa'] },
     { data: TERCA, itens: ['Varrer'] },
   ])
+  // Ao abrir a Semana, todos recolhidos; abre só o de segunda.
+  await page.reload()
   const casaSegunda = coluna(page, COLUNA_SEGUNDA)
+  await casaSegunda.getByRole('button', { name: 'Expandir Casa' }).click()
   await expect(casaSegunda.getByRole('list', { name: 'Itens de Casa' })).toBeVisible()
   await capturar(page, 'semana-aberta')
 
-  // Recolhe o card de terça e recarrega: continua recolhido.
-  await coluna(page, COLUNA_TERCA).getByRole('button', { name: 'Recolher Casa' }).click()
-  await page.reload()
   const expandirTerca = coluna(page, COLUNA_TERCA).getByRole('button', { name: 'Expandir Casa' })
   await expect(expandirTerca).toHaveAttribute('aria-expanded', 'false')
   await expect(coluna(page, COLUNA_TERCA).getByText('Varrer')).toBeHidden()
@@ -223,6 +222,7 @@ test('Semana: texto longo não quebra palavra por palavra; tela estreita rola e 
   await page.clock.setFixedTime(new Date('2026-11-06T10:00:00-03:00'))
   await page.goto(`/semana/${SEGUNDA}`)
   await semearCasa(page, [{ data: SEGUNDA, itens: [TEXTO_LONGO] }])
+  await expandirGrupos(page)
   const texto = coluna(page, COLUNA_SEGUNDA).getByText(TEXTO_LONGO)
   await expect(texto).toBeVisible()
   // ~260 px por coluna: várias palavras por linha (antes, 8 linhas de uma ou duas palavras).
@@ -248,6 +248,7 @@ test('Semana no tema escuro, aberta e recolhida', async ({ page }) => {
     { data: SEGUNDA, itens: [TEXTO_LONGO, 'Lavar roupa'] },
     { data: TERCA, itens: ['Varrer'] },
   ])
+  await expandirGrupos(page)
   await expect(coluna(page, COLUNA_SEGUNDA).getByText(TEXTO_LONGO)).toBeVisible()
   await capturar(page, 'semana-aberta-escuro')
   await page.getByRole('button', { name: 'Recolher tudo' }).click()
@@ -276,7 +277,11 @@ test('Importar: .md com tarefas para amanhã, um procedimento e uma nota; desfaz
     ),
   })
   await expect(dialogo.getByRole('region', { name: 'Tarefas' })).toBeVisible()
-  await dialogo.getByRole('button', { name: 'Amanhã' }).click()
+  await dialogo.getByRole('button', { name: 'Escolher data', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Escolher o dia' })
+    .getByRole('button', { name: 'Amanhã' })
+    .click()
   await expect(dialogo.getByText('1 aviso')).toBeVisible()
   await capturar(page, 'dialogo-3-previa')
   await dialogo.getByRole('button', { name: 'Importar 3 itens' }).click()

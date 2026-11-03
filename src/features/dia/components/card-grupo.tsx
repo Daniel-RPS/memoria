@@ -8,6 +8,7 @@ import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal } from '@/db/types'
+import { useGrupoDaVisita } from '@/hooks/use-grupos-da-visita'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -41,7 +42,8 @@ interface CardGrupoProps {
 export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   const { card, serie } = grupo
   const isEncerrado = isGrupoEncerrado(grupo)
-  const [isRecolhido, setIsRecolhido] = useState(false)
+  const { isAberto, handleAlternar } = useGrupoDaVisita(card.id)
+  const isRecolhido = !isAberto
   const [isEditando, setIsEditando] = useState(false)
   const { renomearGrupo, criarItem } = useAcoesGrupo()
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
@@ -105,7 +107,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
         ) : (
           <button
             type="button"
-            onClick={() => setIsRecolhido((atual) => !atual)}
+            onClick={handleAlternar}
             aria-expanded={!isRecolhido}
             aria-controls={idItens}
             aria-label={isRecolhido ? `Abrir ${serie.titulo}` : `Recolher ${serie.titulo}`}

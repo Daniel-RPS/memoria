@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { expandirGrupos } from './expandir-grupos.ts'
 
 /**
  * Notas ligadas a tarefa solta, grupo e item, no navegador de verdade: "Adicionar nota" pelo
@@ -171,9 +172,10 @@ test('Dia: nota no item "Fazer Deploy" aparece no item e na aba Notas sem recarr
   await expect(cartao).toContainText('Categoria HostingerGrupo HostingerItem Fazer Deploy')
 })
 
-test('Semana e Início: nota no card "Casa" e na tarefa "Ligar para Fulano"', async ({ page }) => {
+test('Semana e Dia: nota no card "Casa" e na tarefa "Ligar para Fulano"', async ({ page }) => {
   await page.goto(`/semana/${HOJE}`)
   await semear(page)
+  await expandirGrupos(page)
 
   await adicionarNotaPeloMenu(page, 'Mais ações para o grupo Casa', 'Comprar saco do aspirador')
   await capturar(page, '4-semana-gaveta')
@@ -181,26 +183,16 @@ test('Semana e Início: nota no card "Casa" e na tarefa "Ligar para Fulano"', as
   await expect(page.getByRole('button', { name: 'Notas de Casa: 1 nota' }).first()).toBeVisible()
   await capturar(page, '5-semana-icone')
 
-  await irPara(page, 'Início')
-  const soltas = page.getByRole('region', { name: 'Hoje', exact: true }).getByRole('group', {
-    name: 'Tarefas soltas',
-  })
-  await soltas.getByRole('listitem').first().hover()
-  await soltas.getByRole('button', { name: 'Adicionar nota em Ligar para Fulano' }).click()
-  const gaveta = page.getByRole('dialog', { name: 'Notas' })
-  await gaveta.getByLabel('Texto da nota').fill('Ligar depois das 14h')
-  await expect(gaveta.getByText('Salvo')).toBeVisible()
-  await capturar(page, '6-inicio-gaveta')
+  // O Início só resume o dia: a nota da tarefa solta é posta no Dia.
+  await page.goto(`/dia/${HOJE}`)
+  await adicionarNotaPeloMenu(page, 'Mais ações para Ligar para Fulano', 'Ligar depois das 14h')
+  await capturar(page, '6-dia-gaveta')
   await page.keyboard.press('Escape')
   await expect(
-    soltas.getByRole('button', { name: 'Notas de Ligar para Fulano: 1 nota' }),
+    page.getByRole('button', { name: 'Notas de Ligar para Fulano: 1 nota' }),
   ).toBeVisible()
-  await expect(
-    page
-      .getByRole('region', { name: 'Hoje', exact: true })
-      .getByRole('button', { name: 'Notas de Casa: 1 nota' }),
-  ).toBeVisible()
-  await capturar(page, '7-inicio-icones')
+  await expect(page.getByRole('button', { name: 'Notas de Casa: 1 nota' })).toBeVisible()
+  await capturar(page, '7-dia-icones')
 
   await irPara(page, 'Notas')
   await expect(blocoDaLista(page, 'Casa').getByRole('article')).toHaveCount(2)
@@ -214,6 +206,7 @@ test('levar o item com nota para amanhã: a nota continua no dia seguinte', asyn
   await page.getByRole('button', { name: 'Mais ações para Fazer Deploy' }).click()
   await page.getByRole('menuitem', { name: 'Adiar para amanhã' }).click()
   await page.goto(`/dia/${AMANHA}`)
+  await expandirGrupos(page)
   const icone = page.getByRole('button', { name: 'Notas de Fazer Deploy: 1 nota' })
   await expect(icone).toBeVisible()
   await icone.click()
@@ -362,6 +355,7 @@ test('capturas: aba Notas e gaveta, larguras normal e estreita, temas claro e es
       await page.getByRole('radio', { name: 'Por categoria' }).click()
 
       await page.goto(`/dia/${HOJE}`)
+      await expandirGrupos(page)
       await expect(
         page.getByRole('button', { name: 'Notas de Fazer Deploy: 1 nota' }),
       ).toBeVisible()
