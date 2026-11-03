@@ -18,15 +18,16 @@ describe('Visão do dia', () => {
     window.localStorage.clear()
   })
 
-  it('cria tarefa pela linha "Nova tarefa" e mantém o campo pronto para a próxima', async () => {
+  it('cria tarefa pelo "+ Nova tarefa" e mantém o campo pronto para a próxima', async () => {
     const usuario = userEvent.setup()
     renderizarDia(hoje())
 
+    await usuario.click(await screen.findByRole('button', { name: 'Nova tarefa' }))
     const campo = screen.getByRole('textbox', { name: 'Nova tarefa' })
     await usuario.type(campo, 'Comprar café{Enter}')
 
     const pendentes = await screen.findByRole('list', { name: 'Pendentes' })
-    expect(within(pendentes).getByText('Comprar café')).toBeInTheDocument()
+    expect(await within(pendentes).findByText('Comprar café')).toBeInTheDocument()
     await waitFor(() => expect(campo).toHaveValue(''))
   })
 
@@ -34,6 +35,7 @@ describe('Visão do dia', () => {
     const usuario = userEvent.setup()
     renderizarDia(hoje())
 
+    await usuario.click(await screen.findByRole('button', { name: 'Nova tarefa' }))
     const campo = screen.getByRole('textbox', { name: 'Nova tarefa' })
     await usuario.type(campo, 'Primeira{Enter}Segunda{Enter}Terceira{Enter}')
 
@@ -56,7 +58,9 @@ describe('Visão do dia', () => {
 
     const grupo = await screen.findByRole('button', { name: 'Concluídas (1)' })
     expect(grupo).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('list', { name: 'Pendentes' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('list', { name: 'Pendentes' })).queryAllByRole('listitem'),
+    ).toHaveLength(0)
 
     await usuario.click(grupo)
     const concluidas = screen.getByRole('list', { name: 'Concluídas' })
@@ -161,7 +165,7 @@ describe('Visão do dia', () => {
     const campo = await screen.findByRole('textbox', { name: 'Nova subtarefa' })
     await waitFor(() => expect(campo).toHaveFocus())
 
-    await usuario.click(screen.getByRole('textbox', { name: 'Nova tarefa' }))
+    await usuario.click(screen.getByRole('button', { name: 'Nova tarefa' }))
     await waitFor(() =>
       expect(screen.queryByRole('textbox', { name: 'Nova subtarefa' })).not.toBeInTheDocument(),
     )

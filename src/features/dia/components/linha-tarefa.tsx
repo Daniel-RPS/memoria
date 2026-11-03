@@ -115,7 +115,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
             <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />
           )}
           {dias !== null && !isEditando && (
-            <span className="rounded-[3px] bg-marca-texto px-1.5 text-sm font-medium whitespace-nowrap text-violeta-profundo">
+            <span className="text-xs font-medium whitespace-nowrap text-alerta">
               {textoDiasPendente(dias)}
             </span>
           )}

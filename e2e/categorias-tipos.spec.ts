@@ -71,10 +71,11 @@ async function arrastar(page: Page, alca: Locator, alvo: Locator) {
   await page.mouse.up()
 }
 
-/** Cor da faixa do card (o primeiro `span` decorativo). */
+/** Cor do card: a bolinha da categoria no Dia (`data-cor`) ou a faixa (1º `span` decorativo) na Semana. */
 function corDaFaixa(card: Locator) {
   return card.evaluate((elemento) => {
-    const faixa = elemento.querySelector('span[aria-hidden]')
+    const faixa =
+      elemento.querySelector('[data-cor]') ?? elemento.querySelector('span[aria-hidden]')
     return faixa ? getComputedStyle(faixa).backgroundColor : ''
   })
 }

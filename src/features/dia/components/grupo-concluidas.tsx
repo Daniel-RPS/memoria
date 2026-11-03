@@ -12,7 +12,7 @@ interface GrupoConcluidasProps {
 
 const SEM_SUBTAREFAS: Subtask[] = []
 
-/** Tarefas soltas concluídas do dia, riscadas, num grupo recolhível abaixo da folha. */
+/** Tarefas soltas concluídas do dia, riscadas, num grupo recolhível no fim da seção. */
 export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: GrupoConcluidasProps) {
   const { isRecolhido, alternar } = useConcluidasRecolhidas()
   const quantidade = concluidas.length
@@ -20,13 +20,13 @@ export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: Grupo
   if (quantidade === 0) return null
 
   return (
-    <div className="mt-6">
+    <div className="mt-1">
       <button
         type="button"
         onClick={alternar}
         aria-expanded={!isRecolhido}
         aria-controls="lista-concluidas"
-        className="flex items-center gap-1.5 rounded-sm py-1 pr-2 font-semibold text-grafite hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta"
+        className="flex min-h-10 items-center gap-1.5 rounded-sm pr-2 pl-1 text-sm font-medium text-grafite hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta"
       >
         <ChevronRight
           aria-hidden
@@ -38,7 +38,7 @@ export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: Grupo
         Concluídas ({quantidade})
       </button>
       {!isRecolhido && (
-        <ul id="lista-concluidas" aria-label="Concluídas" className="mt-2 border-t border-pauta">
+        <ul id="lista-concluidas" aria-label="Concluídas" className="border-t border-pauta">
           {concluidas.map((tarefa) => (
             <li key={tarefa.id}>
               <LinhaTarefa

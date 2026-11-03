@@ -50,6 +50,7 @@ describe('Grupos na visão do dia', () => {
     await usuario.click(abrir)
     expect(screen.getByRole('checkbox', { name: 'Concluir Varrer' })).toBeVisible()
 
+    await usuario.click(screen.getByRole('button', { name: 'Novo grupo' }))
     await usuario.type(screen.getByRole('textbox', { name: 'Novo grupo' }), 'Mercado{Enter}')
     expect(await screen.findByRole('button', { name: 'Recolher Mercado' })).toHaveAttribute(
       'aria-expanded',
@@ -57,11 +58,12 @@ describe('Grupos na visão do dia', () => {
     )
   })
 
-  it('cria o grupo ao lado de "Nova tarefa", adiciona itens e mostra o progresso', async () => {
+  it('cria o grupo pelo "+ Novo grupo", adiciona itens e mostra o progresso', async () => {
     const usuario = userEvent.setup()
     renderizarApp(`/dia/${HOJE}`)
 
-    await usuario.type(await screen.findByRole('textbox', { name: 'Novo grupo' }), 'Casa{Enter}')
+    await usuario.click(await screen.findByRole('button', { name: 'Novo grupo' }))
+    await usuario.type(screen.getByRole('textbox', { name: 'Novo grupo' }), 'Casa{Enter}')
     const card = await screen.findByRole('region', { name: 'Grupo Casa' })
     const campo = within(card).getByRole('textbox', { name: 'Adicionar item em Casa' })
     await usuario.type(campo, 'Arrumar o quarto{Enter}')

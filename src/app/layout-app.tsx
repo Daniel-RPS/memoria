@@ -1,4 +1,5 @@
 import { Outlet, useMatch } from 'react-router'
+import { usePreferenciasDoDia } from '@/hooks/use-preferencias-do-dia'
 import { cn } from 'cn'
 import { BarraLateral } from '@/app/barra-lateral'
 import { FundoDoApp } from '@/app/fundo-do-app'
@@ -27,11 +28,14 @@ export function LayoutApp() {
   const isNoInicio = useMatch('/inicio') !== null
   const isNasCategorias = useMatch('/categorias') !== null
   const isNaListaDeNotas = useMatch('/notas') !== null
+  // No modo Colunas o Dia precisa de espaço para as duas seções lado a lado.
+  const { modo: modoDoDia } = usePreferenciasDoDia()
+  const isDiaEmColunas = isNoDia && modoDoDia === 'colunas'
   const largura = isNaSemana
     ? 'max-w-[96rem]'
     : isNoMesOuAno || isNoInicio
       ? 'max-w-6xl'
-      : isNasCategorias || isNaListaDeNotas
+      : isNasCategorias || isNaListaDeNotas || isDiaEmColunas
         ? 'max-w-5xl'
         : isNosProcedimentos || isNoDia
           ? 'max-w-3xl'

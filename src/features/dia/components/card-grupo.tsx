@@ -35,9 +35,9 @@ interface CardGrupoProps {
 }
 
 /**
- * Card de um grupo no dia, como uma ficha presa na folha: borda de cima na cor da categoria,
- * título, progresso, recolher e itens. A barra sob o cabeçalho enche conforme os itens saem
- * do dia (feitos ou transferidos). Encerrado fica discreto: é o registro do que aconteceu.
+ * Grupo no dia como uma linha simples: chevron, nome, progresso "0/2" e a bolinha com o nome da
+ * categoria (a cor do grupo aparece só nela). Aberto, os itens ficam recuados sob o nome.
+ * Encerrado fica discreto: é o registro do que aconteceu.
  */
 export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   const { card, serie } = grupo
@@ -51,7 +51,6 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   const corNaTela = useCorNaTela()
   const progresso = progressoDoGrupo(grupo)
   const total = progresso.pendentes + progresso.feitos + progresso.transferidos
-  const fracao = total === 0 ? 0 : (progresso.feitos + progresso.transferidos) / total
   const idItens = `itens-${card.id}`
   const isSelecionavel = isSelecionando && podeCopiarGrupo(grupo)
   const isSelecionado = isSelecionavel && selecionados.has(card.id)
@@ -71,28 +70,15 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   return (
     <section
       aria-label={`Grupo ${serie.titulo}`}
-      className={cn(
-        'relative my-3 rounded-md border border-pauta bg-papel',
-        isEncerrado ? 'shadow-none' : 'shadow-[3px_3px_0_var(--marca-texto)]',
-        isSelecionado && 'bg-accent',
-      )}
+      className={cn('relative bg-papel', isSelecionado && 'bg-accent')}
     >
-      {/* Borda de cima da ficha, na cor da categoria. */}
-      <span
-        aria-hidden
-        className={cn(
-          'absolute -inset-x-px -top-px h-[3px] rounded-t-md',
-          isEncerrado && 'opacity-40',
-        )}
-        style={{ backgroundColor: cor }}
-      />
       {/* Selecionando, o título e o fundo do cabeçalho marcam o card (todos os pendentes). */}
       <div
         onClick={(evento) => {
           if (isSelecionavel && evento.target === evento.currentTarget) alternar(card.id)
         }}
         className={cn(
-          'group/cabecalho relative flex min-h-12 items-center gap-1 pt-1 pr-2 pb-1.5 pl-1',
+          'group/cabecalho relative flex min-h-11 items-center gap-1 border-b border-pauta pr-2 pl-1',
           isSelecionavel && 'cursor-pointer',
         )}
       >
@@ -122,7 +108,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
             />
           </button>
         )}
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 py-2 pl-1">
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 py-1.5 pl-1">
           {classificacao?.icone && (
             <IconeDaEntidade icone={classificacao.icone} className="-mr-1.5 self-center" />
           )}
@@ -133,7 +119,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
             onSalvar={(titulo) => void handleSalvarTitulo(titulo)}
             onCancelar={() => setIsEditando(false)}
             className={cn(
-              'text-lg leading-tight font-extrabold tracking-[-0.01em] [font-stretch:85%]',
+              'font-semibold',
               isEncerrado && 'text-grafite',
               isSelecionavel && 'cursor-pointer',
             )}
@@ -157,7 +143,8 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
             <span className="flex items-center gap-1.5 self-center text-sm whitespace-nowrap text-grafite">
               <span
                 aria-hidden
-                className="size-2 shrink-0 rounded-full"
+                data-cor
+                className={cn('size-2 shrink-0 rounded-full', isEncerrado && 'opacity-40')}
                 style={{ backgroundColor: cor }}
               />
               {classificacao.rotulo}
@@ -167,18 +154,6 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
         {!isSelecionavel && (
           <MenuGrupo grupo={grupo} hoje={hoje} onRenomear={() => setIsEditando(true)} />
         )}
-        <span
-          aria-hidden
-          className="absolute right-3 bottom-0 left-3 h-[3px] overflow-hidden rounded-full bg-pauta"
-        >
-          <span
-            className={cn(
-              'block h-full rounded-full bg-caneta transition-[width] duration-300 motion-reduce:transition-none',
-              isEncerrado && 'opacity-40',
-            )}
-            style={{ width: `${fracao * 100}%` }}
-          />
-        </span>
       </div>
 
       <div id={idItens} hidden={isRecolhido} className="pl-6">

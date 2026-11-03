@@ -5,9 +5,9 @@ import type { Page } from '@playwright/test'
  * abrem com os grupos recolhidos. Chame depois que os cards aparecerem.
  */
 export async function expandirGrupos(page: Page) {
-  // Espera algum card aparecer (aberto ou recolhido).
+  // Espera algum card aparecer (aberto ou recolhido); "Recolher menu" é a barra lateral.
   await page
-    .getByRole('button', { name: /^(Abrir|Expandir|Recolher) (?!tudo$)/ })
+    .getByRole('button', { name: /^(Abrir|Expandir|Recolher) (?!tudo$|menu$)/ })
     .first()
     .waitFor()
   const recolhidos = page

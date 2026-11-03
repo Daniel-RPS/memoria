@@ -7,6 +7,7 @@ interface CampoNovoGrupoProps {
   /** Nome acessível do campo, ex.: "Novo grupo em sex, 31". */
   nomeAcessivel?: string
   tamanho?: 'normal' | 'compacto'
+  autoFocus?: boolean
   onCriar: (dados: { titulo: string } & CategoriaEscolhida) => Promise<unknown>
 }
 
@@ -17,6 +18,7 @@ interface CampoNovoGrupoProps {
 export function CampoNovoGrupo({
   nomeAcessivel,
   tamanho = 'normal',
+  autoFocus,
   onCriar,
 }: CampoNovoGrupoProps) {
   const [categoria, setCategoria] = useState<CategoriaEscolhida>({})
@@ -28,6 +30,7 @@ export function CampoNovoGrupo({
           rotulo="Novo grupo"
           nomeAcessivel={nomeAcessivel}
           tamanho={tamanho}
+          autoFocus={autoFocus}
           onCriar={(titulo) => onCriar({ titulo, ...categoria })}
         />
       </div>

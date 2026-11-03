@@ -235,6 +235,8 @@ test('Dia e Semana abrem com todos os grupos recolhidos, inclusive ao voltar', a
   await page.getByRole('button', { name: 'Abrir MemorIA' }).click()
   await expect(page.getByRole('checkbox', { name: 'Concluir Resumo do Início' })).toBeVisible()
   await page.getByRole('link', { name: 'Próximo dia' }).click()
+  // Espera o dia seguinte desenhar: clicar antes usa o link do dia que ainda está na tela.
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('amanhã')
   await page.getByRole('link', { name: 'Dia anterior' }).click()
   await expect(page.getByRole('button', { name: 'Abrir MemorIA' })).toHaveAttribute(
     'aria-expanded',

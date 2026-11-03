@@ -22,7 +22,8 @@ interface LinhaItemProps {
   alca?: ReactNode
 }
 
-const MARCA_TEXTO = 'rounded-[3px] bg-marca-texto font-medium text-violeta-profundo'
+/** Selo de atraso discreto: texto pequeno no tom de alerta, sem fundo. */
+const SELO_DE_ATRASO = 'text-xs font-medium whitespace-nowrap text-alerta'
 
 /**
  * Item de um card. Pendente: caixa e "pendente desde". Feito: riscado. Transferido: seta no
@@ -85,9 +86,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
         )}
         {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
         {isAtrasado && !isEditando && (
-          <span className={cn(MARCA_TEXTO, 'px-1.5 text-sm whitespace-nowrap')}>
-            pendente desde {diaCurto(item.dataOriginal)}
-          </span>
+          <span className={SELO_DE_ATRASO}>pendente desde {diaCurto(item.dataOriginal)}</span>
         )}
         {isTransferido &&
           (dataDestino ? (

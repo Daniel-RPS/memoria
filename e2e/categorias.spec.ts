@@ -108,7 +108,8 @@ function cardNaSemana(page: Page, titulo: string) {
 /** Cor da faixa à esquerda do card (o primeiro `span` decorativo). */
 function corDaFaixa(card: Locator) {
   return card.evaluate((elemento) => {
-    const faixa = elemento.querySelector('span[aria-hidden]')
+    const faixa =
+      elemento.querySelector('[data-cor]') ?? elemento.querySelector('span[aria-hidden]')
     return faixa ? getComputedStyle(faixa).backgroundColor : ''
   })
 }

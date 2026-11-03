@@ -215,6 +215,7 @@ test('levar o item com nota para amanhã: a nota continua no dia seguinte', asyn
   // O registro "transferido" de hoje mostra a mesma nota.
   await page.keyboard.press('Escape')
   await page.goto(`/dia/${HOJE}`)
+  await expandirGrupos(page)
   await expect(page.getByRole('button', { name: 'Notas de Fazer Deploy: 1 nota' })).toBeVisible()
 })
 
@@ -366,6 +367,7 @@ test('capturas: aba Notas e gaveta, larguras normal e estreita, temas claro e es
       await page.keyboard.press('Escape')
 
       await page.goto(`/semana/${HOJE}`)
+      await expandirGrupos(page)
       await expect(
         page.getByRole('button', { name: 'Notas de Fazer Deploy: 1 nota' }).first(),
       ).toBeVisible()

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -38,12 +38,18 @@ interface ListaDoDiaProps {
   entradas: EntradaDoDia[]
   subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
+  /** Monta as seções com as duas listas (cards e tarefas soltas), dentro do mesmo arrastar. */
+  children: (listas: { grupos: ReactNode; soltas: ReactNode }) => ReactNode
 }
 
-/** Coluna das tarefas soltas e cards; as outras colunas são os itens pendentes de cada card. */
-const RAIZ = 'raiz'
+/** Coluna dos cards de grupo do dia. */
+const GRUPOS = 'grupos'
+/** Coluna das tarefas soltas; as outras colunas são os itens pendentes de cada card. */
+const SOLTAS = 'soltas'
 /** Prefixo da área de soltar dos itens de um card (o resto é o id do card). */
 const PREFIXO_ITENS = 'itens:'
+/** Área de soltar da lista de tarefas soltas (recebe item tirado do card mesmo com ela vazia). */
+const AREA_SOLTAS = 'area:soltas'
 const DISTANCIA_PARA_ARRASTAR = 4
 const SEM_SUBTAREFAS: Subtask[] = []
 
@@ -53,7 +59,10 @@ const instrucoesLeitorDeTela = {
 }
 
 function colunasDe(entradas: EntradaDoDia[]): Colunas {
-  const colunas: Colunas = { [RAIZ]: entradas.map(idDaEntrada) }
+  const colunas: Colunas = {
+    [GRUPOS]: entradas.filter((entrada) => entrada.tipo === 'grupo').map(idDaEntrada),
+    [SOLTAS]: entradas.filter((entrada) => entrada.tipo === 'tarefa').map(idDaEntrada),
+  }
   for (const entrada of entradas) {
     if (entrada.tipo === 'grupo') {
       colunas[entrada.grupo.card.id] = pendentesDo(entrada.grupo).map((item) => item.id)
@@ -63,11 +72,18 @@ function colunasDe(entradas: EntradaDoDia[]): Colunas {
 }
 
 /**
- * Pendentes do dia: tarefas soltas e cards, reordenáveis entre si; itens pendentes
- * reordenáveis dentro do card. Arrastar uma tarefa para dentro de um card a torna item;
- * arrastar um item para fora o torna tarefa solta.
+ * Pendentes do dia em duas listas: cards (reordenáveis entre si) e tarefas soltas (idem);
+ * itens pendentes reordenáveis dentro do card. Arrastar uma tarefa para dentro de um card a
+ * torna item; arrastar um item para fora o torna tarefa solta. Quem chama decide onde cada
+ * lista aparece (`children`), e as duas ficam no mesmo arrastar.
  */
-export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaDoDiaProps) {
+export function ListaDoDia({
+  data,
+  entradas,
+  subtarefasPorTarefa,
+  hoje,
+  children,
+}: ListaDoDiaProps) {
   const { reordenarTarefa, colocarNoGrupo } = useAcoesTarefa()
   const { reordenarItem, tirarDoGrupo, passarItemParaCard } = useAcoesGrupo()
   const [colunas, setColunas] = useState(() => colunasDe(entradas))
@@ -101,8 +117,9 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
     grupoPorId.get(String(id))?.serie.titulo ??
     'item'
 
-  /** Coluna para onde vai quem está sobre `id` (um item, uma entrada ou a área de um card). */
+  /** Coluna para onde vai quem está sobre `id` (um item, uma entrada ou uma área de soltar). */
   function colunaDoAlvo(id: string) {
+    if (id === AREA_SOLTAS) return SOLTAS
     return id.startsWith(PREFIXO_ITENS) ? id.slice(PREFIXO_ITENS.length) : colunaDe(colunas, id)
   }
 
@@ -114,25 +131,26 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
         (alvo) => String(alvo.id) !== ativo && filtro(String(alvo.id)),
       ),
     })
-    const naRaiz = (id: string) => colunas[RAIZ].includes(id)
-    // Card só se reordena entre as entradas do dia (não entra em outro card).
-    if (grupoPorId.has(ativo)) return closestCenter(so(naRaiz))
+    // Card só se reordena entre os cards do dia (não entra em outro card).
+    if (grupoPorId.has(ativo)) return closestCenter(so((id) => colunas[GRUPOS].includes(id)))
 
     // Pelo teclado, só reordena na lista em que está.
     if (!argumentos.pointerCoordinates) {
-      const coluna = colunaDe(colunas, ativo) ?? RAIZ
+      const coluna = colunaDe(colunas, ativo) ?? SOLTAS
       return closestCenter(so((id) => colunas[coluna].includes(id)))
     }
     const dentroDeCard = (id: string) => {
       const coluna = colunaDoAlvo(id)
-      return coluna !== undefined && coluna !== RAIZ
+      return coluna !== undefined && coluna !== SOLTAS && coluna !== GRUPOS
     }
     const sobCard = pointerWithin(so(dentroDeCard))
     if (sobCard.length > 0) {
       const card = colunaDoAlvo(String(sobCard[0].id))
       return closestCenter(so((id) => dentroDeCard(id) && colunaDoAlvo(id) === card))
     }
-    return closestCenter(so(naRaiz))
+    // Fora dos cards, a tarefa (ou o item saindo do card) fica entre as tarefas soltas.
+    const nasSoltas = closestCenter(so((id) => colunas[SOLTAS].includes(id)))
+    return nasSoltas.length > 0 ? nasSoltas : closestCenter(so((id) => id === AREA_SOLTAS))
   }
 
   const anuncios: Announcements = {
@@ -140,7 +158,7 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
     onDragOver: ({ active, over }) => {
       if (!over) return ''
       const coluna = colunaDoAlvo(String(over.id))
-      if (coluna && coluna !== RAIZ && grupoPorId.has(coluna)) {
+      if (coluna && grupoPorId.has(coluna)) {
         return `${tituloDe(active.id)} no grupo ${tituloDe(coluna)}.`
       }
       return `${tituloDe(active.id)} sobre ${tituloDe(over.id)}.`
@@ -150,7 +168,9 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
   }
 
   function indiceNoDestino(destino: string, idAlvo: string) {
-    return idAlvo.startsWith(PREFIXO_ITENS) ? undefined : colunas[destino].indexOf(idAlvo)
+    return idAlvo.startsWith(PREFIXO_ITENS) || idAlvo === AREA_SOLTAS
+      ? undefined
+      : colunas[destino].indexOf(idAlvo)
   }
 
   function handleDragStart({ active }: DragStartEvent) {
@@ -187,11 +207,12 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
     if (destino === colunaDeOrigem) {
       const isMudou = proximas[destino].join() !== colunasDe(entradas)[destino]?.join()
       if (!isMudou) return
-      if (destino === RAIZ) void reordenarTarefa(proximas[destino], id)
+      // Cards e soltas dividem a mesma escala de `ordem`: basta a posição entre os vizinhos.
+      if (destino === GRUPOS || destino === SOLTAS) void reordenarTarefa(proximas[destino], id)
       else void reordenarItem(proximas[destino], id)
-    } else if (destino === RAIZ) {
-      void tirarDoGrupo(id, proximas[RAIZ])
-    } else if (colunaDeOrigem === RAIZ) {
+    } else if (destino === SOLTAS) {
+      void tirarDoGrupo(id, proximas[SOLTAS])
+    } else if (colunaDeOrigem === SOLTAS) {
       void colocarNoGrupo(id, destino, proximas[destino])
     } else {
       void passarItemParaCard(id, destino, proximas[destino])
@@ -204,7 +225,43 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
     setColunas(colunasDe(entradas))
   }
 
-  if (entradas.length === 0) return null
+  const grupos = (
+    <SortableContext id={GRUPOS} items={colunas[GRUPOS]} strategy={verticalListSortingStrategy}>
+      <ul aria-label="Grupos do dia">
+        {colunas[GRUPOS].map((id) => {
+          const grupo = grupoPorId.get(id)
+          return grupo ? (
+            <CardOrdenavel
+              key={id}
+              grupo={grupo}
+              idsPendentes={colunas[id] ?? []}
+              tarefaPorId={tarefaPorId}
+              itemPorId={itemPorId}
+              subtarefasPorTarefa={subtarefasPorTarefa}
+              hoje={hoje}
+            />
+          ) : null
+        })}
+      </ul>
+    </SortableContext>
+  )
+  const soltas = (
+    <SortableContext id={SOLTAS} items={colunas[SOLTAS]} strategy={verticalListSortingStrategy}>
+      <AreaDasSoltas>
+        {colunas[SOLTAS].map((id) => (
+          <EntradaSolta
+            key={id}
+            id={id}
+            tarefaPorId={tarefaPorId}
+            itemPorId={itemPorId}
+            subtarefasPorTarefa={subtarefasPorTarefa}
+            hoje={hoje}
+            data={data}
+          />
+        ))}
+      </AreaDasSoltas>
+    </SortableContext>
+  )
 
   return (
     <DndContext
@@ -216,37 +273,7 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
       onDragCancel={handleDragCancel}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
-      <SortableContext id={RAIZ} items={colunas[RAIZ]} strategy={verticalListSortingStrategy}>
-        <ul aria-label="Pendentes">
-          {colunas[RAIZ].map((id) => {
-            const grupo = grupoPorId.get(id)
-            if (grupo) {
-              return (
-                <CardOrdenavel
-                  key={id}
-                  grupo={grupo}
-                  idsPendentes={colunas[id] ?? []}
-                  tarefaPorId={tarefaPorId}
-                  itemPorId={itemPorId}
-                  subtarefasPorTarefa={subtarefasPorTarefa}
-                  hoje={hoje}
-                />
-              )
-            }
-            return (
-              <EntradaSolta
-                key={id}
-                id={id}
-                tarefaPorId={tarefaPorId}
-                itemPorId={itemPorId}
-                subtarefasPorTarefa={subtarefasPorTarefa}
-                hoje={hoje}
-                data={data}
-              />
-            )
-          })}
-        </ul>
-      </SortableContext>
+      {children({ grupos, soltas })}
       <DragOverlay dropAnimation={null}>
         {idAtivo && (
           <div className="rotate-1 rounded-sm border border-pauta bg-papel px-4 py-2.5 font-semibold shadow-lg ring-2 ring-caneta/40">
@@ -255,6 +282,20 @@ export function ListaDoDia({ data, entradas, subtarefasPorTarefa, hoje }: ListaD
         )}
       </DragOverlay>
     </DndContext>
+  )
+}
+
+/** Lista das tarefas soltas, também alvo de soltar (item tirado do card cai aqui). */
+function AreaDasSoltas({ children }: { children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: AREA_SOLTAS })
+  return (
+    <ul
+      ref={setNodeRef}
+      aria-label="Pendentes"
+      className={cn('min-h-2 transition-colors', isOver && 'bg-accent')}
+    >
+      {children}
+    </ul>
   )
 }
 
