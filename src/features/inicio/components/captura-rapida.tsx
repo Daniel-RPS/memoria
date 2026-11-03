@@ -22,7 +22,7 @@ import {
 } from '@/lib/captura'
 import { ErroDeValidacao } from '@/lib/erros'
 import { AnexosEscolhidos, BotaoAnexar } from '@/features/inicio/components/anexos-da-captura'
-import { EscolhaDoDia } from '@/features/inicio/components/escolha-do-dia'
+import { EscolhaDoDia } from '@/components/escolha-do-dia'
 import { EscolhaDoTipo } from '@/features/inicio/components/escolha-do-tipo'
 import {
   ItensDaCaptura,

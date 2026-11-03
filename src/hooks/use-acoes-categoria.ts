@@ -2,6 +2,7 @@ import {
   atualizarCategoria,
   atualizarSubcategoria,
   criarCategoria,
+  criarDeCategoriaDeProcedimento,
   criarSubcategoria,
   definirIconeDaCategoria,
   excluirCategoria,
@@ -15,6 +16,7 @@ import {
 export function useAcoesCategoria() {
   return {
     criarCategoria,
+    criarDeCategoriaDeProcedimento,
     atualizarCategoria,
     definirIconeDaCategoria,
     reordenarCategoria,

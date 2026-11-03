@@ -9,11 +9,13 @@ export interface EntidadeBase {
 }
 
 /**
- * Ícone escolhido no seletor, mostrado antes do título/nome: um emoji Unicode ou o slug de uma
- * marca do Simple Icons (ex.: `github`). Emojis digitados no meio do texto ficam no texto.
+ * Ícone escolhido no seletor, mostrado antes do título/nome: um emoji Unicode, o slug de uma
+ * marca do Simple Icons (ex.: `github`; `memoria` = o símbolo do próprio app) ou um ícone
+ * genérico do lucide (`pacote`, `nuvem`, `servidor`), oferecido no lugar de marca proibida.
+ * Emojis digitados no meio do texto ficam no texto.
  */
 export interface Icone {
-  tipo: 'emoji' | 'marca'
+  tipo: 'emoji' | 'marca' | 'generico'
   valor: string
 }
 

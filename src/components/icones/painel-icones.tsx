@@ -6,7 +6,14 @@ import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { useIndiceDeMarcas } from '@/components/icones/indice-de-marcas'
 import { useIconesRecentes } from '@/components/icones/use-icones-recentes'
 import type { Icone } from '@/db/types'
-import { buscarMarcas, MARCAS_SUGERIDAS, type MarcaDoIndice } from '@/lib/icones'
+import {
+  buscarMarcas,
+  DICA_DO_GENERICO,
+  GENERICOS,
+  MARCA_DO_APP,
+  MARCAS_SUGERIDAS,
+  sugerirGenericos,
+} from '@/lib/icones'
 
 type Aba = 'emoji' | 'marca'
 
@@ -23,9 +30,12 @@ interface PainelIconesProps {
 
 /** Conteúdo do seletor de ícones: abas Emoji e Marcas, recentes e "Sem ícone". */
 export function PainelIcones({ atual, onEscolher }: PainelIconesProps) {
-  const [aba, setAba] = useState<Aba>(atual?.tipo ?? 'emoji')
+  const [aba, setAba] = useState<Aba>(atual?.tipo === 'emoji' || !atual ? 'emoji' : 'marca')
   const { recentes, handleUsado } = useIconesRecentes()
-  const recentesDaAba = recentes.filter((icone) => icone.tipo === aba)
+  // Genéricos aparecem nos recentes da aba Marcas (é onde são oferecidos).
+  const recentesDaAba = recentes.filter((icone) =>
+    aba === 'emoji' ? icone.tipo === 'emoji' : icone.tipo !== 'emoji',
+  )
 
   function handleEscolher(icone: Icone) {
     handleUsado(icone)
@@ -68,7 +78,7 @@ export function PainelIcones({ atual, onEscolher }: PainelIconesProps) {
         {aba === 'emoji' ? (
           <AbaEmoji onEscolher={(emoji) => handleEscolher({ tipo: 'emoji', valor: emoji })} />
         ) : (
-          <AbaMarcas onEscolher={(slug) => handleEscolher({ tipo: 'marca', valor: slug })} />
+          <AbaMarcas onEscolher={handleEscolher} />
         )}
       </div>
 
@@ -177,14 +187,23 @@ function AbaEmoji({ onEscolher }: { onEscolher: (emoji: string) => void }) {
   )
 }
 
-/** Marcas do Simple Icons: sugeridas antes de digitar; com busca, qualquer uma da biblioteca. */
-function AbaMarcas({ onEscolher }: { onEscolher: (slug: string) => void }) {
+/**
+ * Marcas do Simple Icons: sugeridas antes de digitar (o MemorIA primeiro); com busca, qualquer
+ * uma da biblioteca. Marca proibida (Amazon, AWS) só sugere um ícone genérico.
+ */
+function AbaMarcas({ onEscolher }: { onEscolher: (icone: Icone) => void }) {
   const indice = useIndiceDeMarcas()
   const [termo, setTermo] = useState('')
-  const [emFoco, setEmFoco] = useState<MarcaDoIndice | null>(null)
+  const [dica, setDica] = useState<string | null>(null)
 
-  const sugeridas = MARCAS_SUGERIDAS.flatMap((slug) => indice?.porSlug.get(slug) ?? [])
-  const marcas = termo.trim() ? buscarMarcas(indice?.lista ?? [], termo) : sugeridas
+  const sugeridas = [
+    MARCA_DO_APP,
+    ...MARCAS_SUGERIDAS.flatMap((slug) => indice?.porSlug.get(slug) ?? []),
+  ]
+  const marcas = termo.trim()
+    ? buscarMarcas([MARCA_DO_APP, ...(indice?.lista ?? [])], termo)
+    : sugeridas
+  const genericos = sugerirGenericos(termo)
 
   return (
     <div className="flex h-80 flex-col gap-1">
@@ -206,7 +225,28 @@ function AbaMarcas({ onEscolher }: { onEscolher: (slug: string) => void }) {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!indice && <p className="py-8 text-center text-sm text-grafite">Carregando marcas…</p>}
         {indice && !termo.trim() && <h3 className={TITULO_DE_SECAO}>Sugestões</h3>}
-        {indice && marcas.length === 0 && (
+        {genericos.length > 0 && (
+          <>
+            <h3 className={TITULO_DE_SECAO}>A marca não está disponível</h3>
+            <div className="grid grid-cols-8">
+              {genericos.map((valor) => (
+                <button
+                  key={valor}
+                  type="button"
+                  aria-label={`${GENERICOS[valor]} (ícone genérico)`}
+                  title={DICA_DO_GENERICO}
+                  className={CELULA}
+                  onClick={() => onEscolher({ tipo: 'generico', valor })}
+                  onMouseEnter={() => setDica(DICA_DO_GENERICO)}
+                  onFocus={() => setDica(DICA_DO_GENERICO)}
+                >
+                  <IconeDaEntidade icone={{ tipo: 'generico', valor }} tamanho="lg" />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {indice && marcas.length === 0 && genericos.length === 0 && (
           <p className="py-8 text-center text-sm text-grafite">Nenhuma marca com “{termo}”.</p>
         )}
         <div className="grid grid-cols-8">
@@ -217,9 +257,9 @@ function AbaMarcas({ onEscolher }: { onEscolher: (slug: string) => void }) {
               aria-label={marca.t}
               title={marca.t}
               className={CELULA}
-              onClick={() => onEscolher(marca.s)}
-              onMouseEnter={() => setEmFoco(marca)}
-              onFocus={() => setEmFoco(marca)}
+              onClick={() => onEscolher({ tipo: 'marca', valor: marca.s })}
+              onMouseEnter={() => setDica(marca.t)}
+              onFocus={() => setDica(marca.t)}
             >
               <IconeDaEntidade icone={{ tipo: 'marca', valor: marca.s }} tamanho="lg" />
             </button>
@@ -227,7 +267,7 @@ function AbaMarcas({ onEscolher }: { onEscolher: (slug: string) => void }) {
         </div>
       </div>
       <p aria-hidden className="h-5 truncate px-1 text-xs text-grafite">
-        {emFoco?.t ?? 'Simple Icons (CC0). Marcas são de seus donos.'}
+        {dica ?? 'Simple Icons (CC0). Marcas são de seus donos.'}
       </p>
     </div>
   )

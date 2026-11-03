@@ -2,12 +2,13 @@ import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/
 import { useDndContext } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { CornerDownRight, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { CampoNovoItem } from '@/components/campo-novo-item'
+import { ChevronRecolher, ConteudoRecolhivel } from '@/components/secao-recolhivel'
 import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -29,6 +30,7 @@ import { MenuGrupo } from '@/features/dia/components/menu-grupo'
 import { MenuItemGrupo } from '@/features/dia/components/menu-item-grupo'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
+import { useCardRecolhido } from '@/features/semana/hooks/use-cards-recolhidos'
 
 interface CartaoGrupoProps {
   grupo: GrupoDoDia
@@ -61,6 +63,8 @@ function isForaDoArrasto(alvo: EventTarget) {
  * Card compacto da semana, com as mesmas ações do card do dia (menu ⋯, renomear, itens).
  * Arrastar o card (cabeçalho ou qualquer área fora dos itens) leva TODOS os pendentes para
  * outro dia; a alça ⋮⋮ de um item reordena no card ou leva só aquele item a outro dia.
+ * A seta do cabeçalho recolhe o card (fica só alça, nome, contagem e faixa); recolhido, ele
+ * continua arrastável e alvo de soltar.
  */
 export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoProps) {
   const { serie, card } = grupo
@@ -74,6 +78,8 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
   const textoProgresso = grupo.itens.length > 0 ? textoProgressoGrupo(progresso) : ''
   const pendentes = grupo.itens.filter((item) => item.status === 'pendente')
   const isItensOrdenaveis = !isSobreposto && arrasto !== undefined
+  const { isAberto, handleAlternar, isRecolhivel } = useCardRecolhido(card.id)
+  const idConteudo = useId()
 
   async function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -112,7 +118,12 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
           backgroundColor: classificacao ? corNaTela(classificacao.cor) : 'var(--grafite)',
         }}
       />
-      <div className="group/cabecalho flex items-start gap-1 border-b border-dashed border-pauta pt-0.5 pr-1 pl-1.5">
+      <div
+        className={cn(
+          'group/cabecalho flex items-start gap-0.5 pt-0.5 pr-1 pl-1',
+          isAberto && 'border-b border-dashed border-pauta',
+        )}
+      >
         {/* A alça é o ativador do teclado (foco e espaço); o ponteiro arrasta de qualquer lugar. */}
         {isArrastavel ? (
           <span
@@ -129,7 +140,20 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
             <GripVertical aria-hidden className="mt-2 size-4 shrink-0 text-grafite/70" />
           )
         )}
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 py-1.5 pl-1">
+        {isRecolhivel && !isSobreposto && (
+          <button
+            type="button"
+            data-sem-arrasto=""
+            aria-expanded={isAberto}
+            aria-controls={idConteudo}
+            aria-label={isAberto ? `Recolher ${serie.titulo}` : `Expandir ${serie.titulo}`}
+            onClick={handleAlternar}
+            className="group/seta mt-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-caneta"
+          >
+            <ChevronRecolher isAberta={isAberto} className="size-3.5 group-hover/seta:text-tinta" />
+          </button>
+        )}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 py-1.5 pl-0.5">
           <div
             data-sem-arrasto={isEditando ? '' : undefined}
             className="flex min-w-0 flex-1 basis-16 items-center gap-1"
@@ -153,7 +177,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
               />
             )}
           </div>
-          {!isEditando && !isSobreposto && (
+          {!isEditando && !isSobreposto && isAberto && (
             <IndicadorNotas
               vinculo={{ tipo: 'grupo', id: serie.id }}
               titulo={serie.titulo}
@@ -166,55 +190,57 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
             </span>
           )}
         </div>
-        {!isSobreposto && (
+        {!isSobreposto && isAberto && (
           <div data-sem-arrasto="" className="cursor-auto pt-0.5">
             <MenuGrupo grupo={grupo} hoje={hoje} onRenomear={() => setIsEditando(true)} />
           </div>
         )}
       </div>
       {(grupo.itens.length > 0 || !isSobreposto) && (
-        <div data-sem-arrasto="" className="cursor-auto py-0.5">
-          {grupo.itens.length > 0 && (
-            <SortableContext
-              id={`${PREFIXO_ITENS}${card.id}`}
-              items={isItensOrdenaveis ? pendentes.map((item) => item.id) : []}
-              strategy={verticalListSortingStrategy}
-            >
-              <ul aria-label={`Itens de ${serie.titulo}`}>
-                {grupo.itens.map((item) =>
-                  item.status === 'pendente' && isItensOrdenaveis ? (
-                    <ItemArrastavel
-                      key={item.id}
-                      item={item}
-                      data={card.data}
-                      cardId={card.id}
-                      hoje={hoje}
-                    />
-                  ) : (
-                    <li key={item.id} className="group/linha">
-                      <LinhaItem
+        <ConteudoRecolhivel id={idConteudo} isAberta={isAberto}>
+          <div data-sem-arrasto="" className="cursor-auto py-0.5">
+            {grupo.itens.length > 0 && (
+              <SortableContext
+                id={`${PREFIXO_ITENS}${card.id}`}
+                items={isItensOrdenaveis ? pendentes.map((item) => item.id) : []}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul aria-label={`Itens de ${serie.titulo}`}>
+                  {grupo.itens.map((item) =>
+                    item.status === 'pendente' && isItensOrdenaveis ? (
+                      <ItemArrastavel
+                        key={item.id}
                         item={item}
                         data={card.data}
+                        cardId={card.id}
                         hoje={hoje}
-                        isSobreposto={isSobreposto}
                       />
-                    </li>
-                  ),
-                )}
-              </ul>
-            </SortableContext>
-          )}
-          {!isSobreposto && (
-            <div className="pl-1">
-              <CampoNovoItem
-                rotulo="Adicionar item"
-                nomeAcessivel={`Adicionar item em ${serie.titulo}`}
-                tamanho="compacto"
-                onCriar={(titulo) => criarItem(card.id, titulo)}
-              />
-            </div>
-          )}
-        </div>
+                    ) : (
+                      <li key={item.id} className="group/linha">
+                        <LinhaItem
+                          item={item}
+                          data={card.data}
+                          hoje={hoje}
+                          isSobreposto={isSobreposto}
+                        />
+                      </li>
+                    ),
+                  )}
+                </ul>
+              </SortableContext>
+            )}
+            {!isSobreposto && (
+              <div className="pl-1">
+                <CampoNovoItem
+                  rotulo="Adicionar item"
+                  nomeAcessivel={`Adicionar item em ${serie.titulo}`}
+                  tamanho="compacto"
+                  onCriar={(titulo) => criarItem(card.id, titulo)}
+                />
+              </div>
+            )}
+          </div>
+        </ConteudoRecolhivel>
       )}
     </div>
   )
@@ -310,7 +336,7 @@ function LinhaItem({
       )}
       <span
         className={cn(
-          'min-w-0 flex-1 py-0.5 pl-1 break-words',
+          'min-w-0 flex-1 py-0.5 pl-1 wrap-break-word',
           isConcluido && 'text-grafite',
           isTransferido && 'text-grafite',
         )}

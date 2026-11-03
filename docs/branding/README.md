@@ -39,7 +39,7 @@ Mais a barra lateral (`--barra` `#FBFAFD` / `#121017`), os apelidos do shadcn (`
 
 **Categorias:** as 12 cores que o usuário escolhe para categorias (Tomate, Laranja, Mostarda… Grafite) **não são cores da marca**. No tema escuro elas aparecem clareadas 28%.
 
-**Ícones:** a interface usa os ícones de traço do [lucide](https://lucide.dev) (ISC). Procedimentos e categorias podem ter um ícone escolhido pelo usuário: emoji (seletor frimousse com dados do Emojibase em português, MIT) ou logotipo de serviço do [Simple Icons](https://simpleicons.org) (CC0). Os logotipos **não são da marca MemorIA**: aparecem monocromáticos na cor oficial de cada marca, ajustada pela mesma regra das faixas de categoria (`corDeTraco`: no mínimo 3:1 sobre o papel em cada tema), sem mudar o desenho.
+**Ícones:** a interface usa os ícones de traço do [lucide](https://lucide.dev) (ISC). Procedimentos e categorias podem ter um ícone escolhido pelo usuário: emoji (seletor frimousse com dados do Emojibase em português, MIT) ou logotipo de serviço do [Simple Icons](https://simpleicons.org) (CC0). Os logotipos **não são da marca MemorIA**: aparecem monocromáticos na cor oficial de cada marca, ajustada pela mesma regra das faixas de categoria (`corDeTraco`: no mínimo 3:1 sobre o papel em cada tema), sem mudar o desenho. Exceções: o **símbolo do MemorIA** também aparece no seletor (aba Marcas, 1º item) usando os mesmos recortes PNG da barra, um por tema (não é recolorido); e **Amazon/AWS**, que o Simple Icons proíbe, viram um ícone genérico do lucide (pacote; nuvem ou servidor) em `grafite`, com a dica "Ícone genérico (a marca não está disponível)". Nunca desenhar nem imitar o logotipo delas.
 
 ## As 3 cores mais usadas
 
@@ -94,8 +94,8 @@ Detalhes em [`tipografia.md`](tipografia.md).
 | --------------------- | ----------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------- |
 | Completa, tema claro  | [`logo/logo-memoria-clara.png`](logo/logo-memoria-clara.png)                                    | 864×218               | Barra lateral no claro ("Memor" em `#1A1625`)               |
 | Completa, tema escuro | [`logo/logo-memoria.png`](logo/logo-memoria.png)                                                | 864×218               | Barra lateral no escuro ("Memor" branco)                    |
-| Símbolo, tema claro   | [`logo/simbolo-memoria-claro.png`](logo/simbolo-memoria-claro.png)                              | 218×218               | Barra recolhida no claro                                    |
-| Símbolo, tema escuro  | [`logo/simbolo-memoria.png`](logo/simbolo-memoria.png)                                          | 218×218               | Barra recolhida no escuro                                   |
+| Símbolo, tema claro   | [`logo/simbolo-memoria-claro.png`](logo/simbolo-memoria-claro.png)                              | 218×218               | Barra recolhida no claro; ícone "MemorIA" no seletor        |
+| Símbolo, tema escuro  | [`logo/simbolo-memoria.png`](logo/simbolo-memoria.png)                                          | 218×218               | Barra recolhida no escuro; ícone "MemorIA" no seletor       |
 | Favicon               | [`logo/favicon.ico`](logo/favicon.ico) (16/32/48), [`logo/favicon-32.png`](logo/favicon-32.png) | 32×32                 | Aba do navegador (símbolo sobre ficha `#111019`)            |
 | Ícone de atalho       | [`logo/apple-touch-icon.png`](logo/apple-touch-icon.png)                                        | 180×180               | Atalho na tela inicial                                      |
 | Original              | [`logo/logo-original.png`](logo/logo-original.png)                                              | 1190×885, fundo opaco | Arte de origem (`img/logo.png`), de onde saíram os recortes |

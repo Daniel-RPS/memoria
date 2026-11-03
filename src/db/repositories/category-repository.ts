@@ -183,6 +183,47 @@ export async function excluirCategoria(id: string) {
   )
 }
 
+/**
+ * Cria uma categoria de Grupo a partir de uma de Procedimentos ("Usar de Procedimentos"):
+ * mesmo nome, cor, ícone e subcategorias (nome, cor e ordem), mas independente da original.
+ * Nome já usado em Grupos lança `ErroDeValidacao`, como em `criarCategoria`.
+ */
+export async function criarDeCategoriaDeProcedimento(idOrigem: string): Promise<Category> {
+  return db.transaction('rw', db.categories, db.subcategories, async () => {
+    const origem = await db.categories.get(idOrigem)
+    if (!origem || origem.tipo !== 'procedimento') {
+      throw new ErroDeValidacao('Essa categoria de Procedimentos não existe mais.')
+    }
+    const doTipo = await categoriasDoTipoNoBanco('grupo')
+    exigirNomeLivre(origem.nome, doTipo)
+    const momento = agora()
+    const categoria: Category = {
+      id: crypto.randomUUID(),
+      nome: origem.nome,
+      cor: origem.cor,
+      tipo: 'grupo',
+      ordem: maiorOrdem(doTipo) + 1,
+      ...(origem.icone ? { icone: origem.icone } : {}),
+      criadoEm: momento,
+      atualizadoEm: momento,
+    }
+    await db.categories.add(categoria)
+    const subcategorias = await db.subcategories.where('categoryId').equals(idOrigem).toArray()
+    await db.subcategories.bulkAdd(
+      subcategorias.map(({ nome, cor, ordem }): Subcategory => ({
+        id: crypto.randomUUID(),
+        categoryId: categoria.id,
+        nome,
+        ...(cor ? { cor } : {}),
+        ordem,
+        criadoEm: momento,
+        atualizadoEm: momento,
+      })),
+    )
+    return categoria
+  })
+}
+
 /** Cria a subcategoria no fim da categoria. Sem `cor`, usa o tom automático da categoria. */
 export async function criarSubcategoria(dados: {
   categoryId: string

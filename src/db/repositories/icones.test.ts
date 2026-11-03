@@ -80,6 +80,16 @@ describe('ícone de procedimento e categoria', () => {
       icone: { tipo: 'marca', valor: 'github' },
       ...semEtapas,
     })
+    await criarProcedimento({
+      titulo: 'Loja',
+      icone: { tipo: 'generico', valor: 'pacote' },
+      ...semEtapas,
+    })
+    await criarProcedimento({
+      titulo: 'App',
+      icone: { tipo: 'marca', valor: 'memoria' },
+      ...semEtapas,
+    })
 
     const exportado = await exportarDados()
     expect(exportado.formato).toBe(FORMATO_ATUAL)
@@ -88,7 +98,10 @@ describe('ícone de procedimento e categoria', () => {
     await importarDados(lido.backup)
 
     expect((await listarCategorias())[0].icone).toEqual({ tipo: 'emoji', valor: '🏠' })
-    expect((await db.procedures.toArray())[0].icone).toEqual({ tipo: 'marca', valor: 'github' })
+    const icones = new Map((await db.procedures.toArray()).map((item) => [item.titulo, item.icone]))
+    expect(icones.get('Github')).toEqual({ tipo: 'marca', valor: 'github' })
+    expect(icones.get('Loja')).toEqual({ tipo: 'generico', valor: 'pacote' })
+    expect(icones.get('App')).toEqual({ tipo: 'marca', valor: 'memoria' })
   })
 
   it('backup antigo (sem ícone) importa sem ícone; ícone quebrado é ignorado', async () => {

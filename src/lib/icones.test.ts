@@ -5,7 +5,10 @@ import {
   iconeValido,
   indexarMarcas,
   lerRecentes,
+  MARCA_DO_APP,
+  MARCAS_SUGERIDAS,
   RECENTES_NO_MAXIMO,
+  sugerirGenericos,
   resolverIcone,
   type MarcaDoIndice,
 } from '@/lib/icones'
@@ -112,5 +115,39 @@ describe('recentes', () => {
     ).toEqual([{ tipo: 'emoji', valor: '🏠' }])
     expect(lerRecentes('{quebrado')).toEqual([])
     expect(lerRecentes(null)).toEqual([])
+  })
+})
+
+describe('ícones novos: Cloudflare, MemorIA e genéricos', () => {
+  it('Cloudflare está nas sugeridas e o MemorIA resolve sem o índice', () => {
+    expect(MARCAS_SUGERIDAS).toContain('cloudflare')
+    expect(resolverIcone({ tipo: 'marca', valor: 'memoria' }, undefined)).toEqual({
+      tipo: 'app',
+      slug: 'memoria',
+      nome: 'MemorIA',
+    })
+    expect(buscarMarcas([MARCA_DO_APP, ...MARCAS], 'memo')[0]).toBe(MARCA_DO_APP)
+  })
+
+  it('amazon e aws não acham logotipo, só sugerem genéricos', () => {
+    expect(buscarMarcas(MARCAS, 'amazon')).toEqual([])
+    expect(sugerirGenericos('amazon')).toEqual(['pacote'])
+    expect(sugerirGenericos('Amaz')).toContain('pacote')
+    expect(sugerirGenericos('AWS')).toEqual(['nuvem', 'servidor'])
+    expect(sugerirGenericos('git')).toEqual([])
+  })
+
+  it('genérico é válido, resolve com nome e valor desconhecido é recusado', () => {
+    expect(iconeValido({ tipo: 'generico', valor: 'nuvem' })).toEqual({
+      tipo: 'generico',
+      valor: 'nuvem',
+    })
+    expect(iconeValido({ tipo: 'generico', valor: 'amazon' })).toBeUndefined()
+    expect(iconeValido({ tipo: 'generico', valor: 'toString' })).toBeUndefined()
+    expect(resolverIcone({ tipo: 'generico', valor: 'pacote' }, INDICE)).toEqual({
+      tipo: 'generico',
+      valor: 'pacote',
+      nome: 'Pacote',
+    })
   })
 })

@@ -27,7 +27,7 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
   return (
     <div
       className={cn(
-        'group/linha relative flex items-start gap-2 border-b border-pauta py-2 pr-1 pl-1 text-[0.9375rem] hover:bg-accent/60',
+        'group/linha relative flex items-start gap-1.5 border-b border-pauta py-2 pr-1 pl-1 text-[0.9375rem] hover:bg-accent/60',
         isSobreposto && 'rotate-1 rounded-sm border bg-papel shadow-lg ring-2 ring-caneta/40',
       )}
     >

@@ -1,5 +1,6 @@
 import { Plus, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
+import { BotaoImportar } from '@/components/importar/botao-importar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
@@ -43,11 +44,14 @@ export function ProcedimentosPage() {
       <CabecalhoPagina
         titulo="Procedimentos"
         acao={
-          <Button asChild>
-            <Link to="/procedimentos/novo">
-              <Plus /> Novo procedimento
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <BotaoImportar conteudoInicial="procedimento" />
+            <Button asChild>
+              <Link to="/procedimentos/novo">
+                <Plus /> Novo procedimento
+              </Link>
+            </Button>
+          </div>
         }
       />
 

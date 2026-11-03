@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import {
   closestCorners,
   DndContext,
@@ -35,6 +35,8 @@ interface QuadroSemanaProps {
 
 /** Distância mínima do ponteiro antes de arrastar, para o clique no título continuar funcionando. */
 const DISTANCIA_PARA_ARRASTAR = 4
+/** Quanto do dia anterior ao de hoje fica à vista ao abrir com rolagem. */
+const RESPIRO_ANTES_DE_HOJE = 48
 
 const instrucoesLeitorDeTela = {
   draggable:
@@ -74,6 +76,17 @@ function colunasDe(semana: DiaDaSemana[]): Colunas {
  */
 export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemanaProps) {
   const { mover } = useMoverTarefas()
+  // Com rolagem lateral, abre mostrando o dia de hoje (um pouco do anterior à esquerda).
+  const rolagem = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const caixa = rolagem.current
+    const colunaDeHoje = caixa?.querySelector<HTMLElement>('[data-hoje]')
+    if (!caixa || !colunaDeHoje || caixa.scrollWidth <= caixa.clientWidth) return
+    caixa.scrollLeft = Math.max(
+      0,
+      colunaDeHoje.offsetLeft - caixa.offsetLeft - RESPIRO_ANTES_DE_HOJE,
+    )
+  }, [])
   const [colunas, setColunas] = useState(() => colunasDe(semana))
   const [semanaAnterior, setSemanaAnterior] = useState(semana)
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
@@ -242,19 +255,22 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       onDragCancel={handleDragCancel}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
-      <div className="mt-5 grid grid-cols-1 border-t-2 border-tinta xl:grid-cols-7">
-        {semana.map((dia) => (
-          <ColunaDia
-            key={dia.data}
-            data={dia.data}
-            hoje={hoje}
-            ids={colunas[dia.data]}
-            tarefaPorId={tarefaPorId}
-            grupoPorId={grupoPorId}
-            quantidadeConcluidas={dia.quantidadeConcluidas}
-            subtarefasPorTarefa={subtarefasPorTarefa}
-          />
-        ))}
+      <div ref={rolagem} className="mt-5 md:overflow-x-auto">
+        {/* Cada dia tem ao menos ~260px: sem espaço, a semana rola para o lado. */}
+        <div className="grid grid-cols-1 border-t-2 border-tinta md:grid-cols-[repeat(7,minmax(16.25rem,1fr))]">
+          {semana.map((dia) => (
+            <ColunaDia
+              key={dia.data}
+              data={dia.data}
+              hoje={hoje}
+              ids={colunas[dia.data]}
+              tarefaPorId={tarefaPorId}
+              grupoPorId={grupoPorId}
+              quantidadeConcluidas={dia.quantidadeConcluidas}
+              subtarefasPorTarefa={subtarefasPorTarefa}
+            />
+          ))}
+        </div>
       </div>
       <DragOverlay dropAnimation={null}>
         {tarefaAtiva && (

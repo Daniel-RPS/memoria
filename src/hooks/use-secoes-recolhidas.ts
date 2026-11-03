@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { gravarPreferencia, lerPreferencia } from '@/app/preferencia-local'
 
 const PREFIXO = 'memoria:recolhidos:'
+/**
+ * Quantos ids recolhidos guarda por escopo (os mais recentes). Na Semana cada card de cada dia
+ * tem o seu: sem limite, a lista cresceria para sempre com cards antigos.
+ */
+export const RECOLHIDOS_NO_MAXIMO = 300
 
 function lerRecolhidas(escopo: string) {
   try {
@@ -42,7 +47,7 @@ export function useSecoesRecolhidas(escopo: string, isFiltrando: boolean) {
       return
     }
     setSalvas({ escopo, ids: novas })
-    gravarPreferencia(PREFIXO + escopo, JSON.stringify([...novas]))
+    gravarPreferencia(PREFIXO + escopo, JSON.stringify([...novas].slice(-RECOLHIDOS_NO_MAXIMO)))
   }
 
   function handleAlternar(id: string) {

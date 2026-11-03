@@ -33,7 +33,7 @@ interface SecaoCategoriasProps {
 export function SecaoCategorias({ tipo, usoDe }: SecaoCategoriasProps) {
   // Lista memorizada por tipo: um array novo a cada render desfaria a ordem otimista do arrasto.
   const { categorias, isCarregando } = useCategorias(tipo)
-  const { criarCategoria, reordenarCategoria } = useAcoesCategoria()
+  const { criarCategoria, criarDeCategoriaDeProcedimento, reordenarCategoria } = useAcoesCategoria()
   const [isCriando, setIsCriando] = useState(false)
   const idTitulo = useId()
   const { plural } = NOMES_DO_TIPO[tipo]
@@ -72,6 +72,7 @@ export function SecaoCategorias({ tipo, usoDe }: SecaoCategoriasProps) {
             rotuloBotao="Criar categoria"
             corInicial={proximaCor(categorias)}
             onCriar={({ nome, cor }) => criarCategoria({ nome, cor, tipo })}
+            onUsarDeProcedimentos={tipo === 'grupo' ? criarDeCategoriaDeProcedimento : undefined}
             onCancelar={() => setIsCriando(false)}
           />
         </div>

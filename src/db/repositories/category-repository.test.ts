@@ -5,7 +5,9 @@ import {
   atualizarSubcategoria,
   contarUsoDasCategorias,
   criarCategoria,
+  criarDeCategoriaDeProcedimento,
   criarSubcategoria,
+  definirIconeDaCategoria,
   excluirCategoria,
   excluirSubcategoria,
   listarCategorias,
@@ -18,6 +20,7 @@ import { criarProcedimento } from '@/db/repositories/procedure-repository'
 import { criarTarefa, definirCategoria } from '@/db/repositories/task-repository'
 import { PALETA_CATEGORIAS, proximaCor } from '@/lib/cores'
 import { ErroDeValidacao } from '@/lib/erros'
+import { sugestoesDeProcedimentos } from '@/lib/categorias'
 
 const DIA = '2026-10-30'
 
@@ -310,6 +313,49 @@ describe('category-repository', () => {
       const outra = await criarCategoria({ nome: 'github', tipo: 'procedimento' })
       await expect(moverCategoriaDeTipo(outra.id)).rejects.toBeInstanceOf(ErroDeValidacao)
       expect((await db.categories.get(outra.id))?.tipo).toBe('procedimento')
+    })
+  })
+
+  describe('criarDeCategoriaDeProcedimento', () => {
+    it('copia nome, cor, ícone e subcategorias, independente da original', async () => {
+      const origem = await criarCategoria({
+        nome: 'Cloudflare',
+        cor: '#F38020',
+        tipo: 'procedimento',
+      })
+      await definirIconeDaCategoria(origem.id, { tipo: 'marca', valor: 'cloudflare' })
+      await criarSubcategoria({ categoryId: origem.id, nome: 'DNS', cor: '#123456' })
+      await criarSubcategoria({ categoryId: origem.id, nome: 'Workers' })
+
+      const copia = await criarDeCategoriaDeProcedimento(origem.id)
+      expect(copia).toMatchObject({
+        nome: 'Cloudflare',
+        cor: '#F38020',
+        tipo: 'grupo',
+        icone: { tipo: 'marca', valor: 'cloudflare' },
+      })
+      expect(copia.id).not.toBe(origem.id)
+      const subs = await db.subcategories.where('categoryId').equals(copia.id).sortBy('ordem')
+      expect(subs.map((sub) => [sub.nome, sub.cor])).toEqual([
+        ['DNS', '#123456'],
+        ['Workers', undefined],
+      ])
+      // A original continua em Procedimentos, com as próprias subcategorias.
+      expect((await db.categories.get(origem.id))?.tipo).toBe('procedimento')
+      expect(await db.subcategories.where('categoryId').equals(origem.id).count()).toBe(2)
+    })
+
+    it('nome já usado em Grupos é recusado; o chip aparece como "já existe"', async () => {
+      const origem = await criarCategoria({ nome: 'Automação', tipo: 'procedimento' })
+      await criarCategoria({ nome: 'automacao', tipo: 'grupo' })
+      await expect(criarDeCategoriaDeProcedimento(origem.id)).rejects.toThrow(ErroDeValidacao)
+
+      const todas = await listarCategorias()
+      expect(sugestoesDeProcedimentos(todas, '')).toEqual([
+        expect.objectContaining({ isExistente: true }),
+      ])
+      expect(sugestoesDeProcedimentos(todas, 'auto')).toHaveLength(1)
+      expect(sugestoesDeProcedimentos(todas, 'deploy')).toEqual([])
     })
   })
 })

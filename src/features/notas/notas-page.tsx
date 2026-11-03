@@ -1,5 +1,6 @@
 import { Plus, Search } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router'
+import { BotaoImportar } from '@/components/importar/botao-importar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
@@ -73,9 +74,12 @@ export function NotasPage() {
         titulo="Notas"
         descricao="Texto livre com fotos, desenhos, áudios e links, solto ou ligado a uma tarefa, grupo ou item. Salva sozinha enquanto você escreve."
         acao={
-          <Button onClick={() => void handleNova()}>
-            <Plus /> Nova nota
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <BotaoImportar conteudoInicial="nota" />
+            <Button onClick={() => void handleNova()}>
+              <Plus /> Nova nota
+            </Button>
+          </div>
         }
       />
 

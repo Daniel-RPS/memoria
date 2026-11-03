@@ -11,13 +11,13 @@ import { converterNotaAntiga } from '@/lib/notas'
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 8
+export const FORMATO_ATUAL = 9
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
 const id = z.string().min(1)
 const base = { id, criadoEm: texto, atualizadoEm: texto }
-// Formato 8. Ícone quebrado (ou de uma versão futura) é ignorado: o registro entra sem ícone.
+// Formato 8 (emoji/marca); 9 aceita também `generico`. Ícone quebrado (ou de uma versão futura) é ignorado: o registro entra sem ícone.
 const icone = esquemaIcone.optional().catch(undefined)
 
 // `ordem` desde o formato 5 e `tipo` desde o 6; antes, preenchidos ao ler (`preencherOrdem`,

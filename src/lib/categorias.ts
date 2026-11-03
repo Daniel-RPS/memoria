@@ -252,3 +252,32 @@ export function classificarTarefa(
     icone: categoria.icone,
   }
 }
+
+/** Uma categoria de Procedimentos oferecida ao criar categoria de Grupo ("Usar de Procedimentos"). */
+export interface SugestaoDeProcedimento {
+  categoria: Category
+  /** Já há categoria de Grupo com o mesmo nome: o chip fica desabilitado ("já existe"). */
+  isExistente: boolean
+}
+
+/**
+ * Categorias de Procedimentos para reaproveitar num Grupo, na ordem do usuário, filtradas pelo
+ * nome digitado (sem acento nem maiúscula). Sem categoria de Procedimento, lista vazia.
+ */
+export function sugestoesDeProcedimentos(
+  categorias: Category[],
+  termo: string,
+): SugestaoDeProcedimento[] {
+  const deGrupo = categoriasDoTipo(categorias, 'grupo')
+  const busca = semAcento(termo.trim())
+  return categoriasDoTipo(categorias, 'procedimento')
+    .filter((categoria) => semAcento(categoria.nome).includes(busca))
+    .map((categoria) => ({
+      categoria,
+      isExistente: deGrupo.some((grupo) => isMesmoNome(grupo.nome, categoria.nome)),
+    }))
+}
+
+function semAcento(texto: string) {
+  return texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+}

@@ -50,12 +50,13 @@ export function ColunaDia({
   return (
     <section
       aria-label={nomeCompleto}
+      data-hoje={isHoje ? '' : undefined}
       className={cn(
-        'flex min-w-0 flex-col border-b border-pauta xl:border-b-0 xl:border-l xl:first:border-l-0',
+        'flex min-w-0 flex-col border-b border-pauta md:border-b-0 md:border-l md:first:border-l-0',
         isHoje && 'bg-marca-texto/40',
       )}
     >
-      <h2 className="px-3 pt-3 pb-2">
+      <h2 className="px-2.5 pt-3 pb-2">
         <Link
           to={`/dia/${data}`}
           className="group flex items-end justify-between gap-2 rounded-sm focus-visible:outline-2 focus-visible:outline-caneta"
@@ -85,7 +86,7 @@ export function ColunaDia({
           ref={setNodeRef}
           aria-label={`Pendentes de ${nomeCompleto}`}
           className={cn(
-            'flex min-h-16 flex-1 flex-col px-2 pb-2 transition-colors',
+            'flex min-h-16 flex-1 flex-col px-1.5 pb-2 transition-colors',
             isOver && 'bg-accent',
           )}
         >
@@ -105,7 +106,7 @@ export function ColunaDia({
         </ul>
       </SortableContext>
 
-      <div className="px-2">
+      <div className="px-1.5">
         <CampoNovoItem
           rotulo="Nova tarefa"
           nomeAcessivel={`Nova tarefa em ${nomeCurto}`}
@@ -121,7 +122,7 @@ export function ColunaDia({
       {quantidadeConcluidas > 0 && (
         <Link
           to={`/dia/${data}`}
-          className="px-3 pb-3 text-sm text-grafite hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta"
+          className="px-2.5 pb-3 text-sm text-grafite hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta"
         >
           {quantidadeConcluidas === 1 ? '1 concluída' : `${quantidadeConcluidas} concluídas`}
         </Link>

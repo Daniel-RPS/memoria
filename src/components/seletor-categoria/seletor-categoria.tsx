@@ -72,7 +72,7 @@ export function SeletorCategoria({
   modo = 'escolha',
 }: SeletorCategoriaProps) {
   const { categorias } = useCategorias(tipo)
-  const { criarCategoria, criarSubcategoria } = useAcoesCategoria()
+  const { criarCategoria, criarDeCategoriaDeProcedimento, criarSubcategoria } = useAcoesCategoria()
   const [criando, setCriando] = useState<Criando | null>(null)
 
   function handleEscolher(valor: string) {
@@ -108,6 +108,15 @@ export function SeletorCategoria({
           corInicial={isSubcategoria ? '' : proximaCor(categorias)}
           isCorOpcional={isSubcategoria}
           onCancelar={() => setCriando(null)}
+          onUsarDeProcedimentos={
+            !isSubcategoria && tipo === 'grupo'
+              ? async (idOrigem) => {
+                  const categoria = await criarDeCategoriaDeProcedimento(idOrigem)
+                  onEscolher({ categoryId: categoria.id })
+                  onFechar()
+                }
+              : undefined
+          }
           onCriar={async ({ nome, cor }) => {
             if (isSubcategoria) {
               const categoryId = criando.categoria.id

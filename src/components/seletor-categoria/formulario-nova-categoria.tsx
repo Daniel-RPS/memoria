@@ -1,9 +1,10 @@
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { cn } from 'cn'
 import { PaletaCores } from '@/components/paleta-cores'
+import { ChipsDeProcedimentos } from '@/components/seletor-categoria/chips-de-procedimentos'
 import { Button } from '@/components/ui/button'
 import { ErroDeValidacao } from '@/lib/erros'
 import { esquemaNomeCategoria, TAMANHO_MAXIMO_NOME_CATEGORIA } from '@/lib/esquemas'
@@ -30,6 +31,11 @@ interface FormularioNovaCategoriaProps {
   isCorOpcional?: boolean
   rotuloBotao: string
   onCriar: (dados: DadosNovaCategoria) => Promise<unknown>
+  /**
+   * Categoria de Grupo: mostra "Usar de Procedimentos" (chips) e cria a partir do escolhido.
+   * Sem ele (Procedimentos, subcategoria), a seção não aparece.
+   */
+  onUsarDeProcedimentos?: (idCategoria: string) => Promise<unknown>
   /** Esc com o campo aberto; sem ele, Esc só limpa. */
   onCancelar?: () => void
   autoFocus?: boolean
@@ -46,6 +52,7 @@ export function FormularioNovaCategoria({
   isCorOpcional,
   rotuloBotao,
   onCriar,
+  onUsarDeProcedimentos,
   onCancelar,
   autoFocus,
   className,
@@ -73,17 +80,36 @@ export function FormularioNovaCategoria({
     if (!getFieldState('cor').isDirty) setValue('cor', corInicial)
   }, [corInicial, getFieldState, setValue])
 
+  const [isUsando, setIsUsando] = useState(false)
+
+  function mostrarErro(erroAoCriar: unknown) {
+    setError('nome', {
+      message:
+        erroAoCriar instanceof ErroDeValidacao
+          ? erroAoCriar.message
+          : 'Não foi possível salvar. Tente de novo.',
+    })
+  }
+
   async function handleCriar({ nome, cor }: NovaCategoriaInput) {
     try {
       await onCriar({ nome, cor: cor || undefined })
       reset()
     } catch (erroAoCriar) {
-      setError('nome', {
-        message:
-          erroAoCriar instanceof ErroDeValidacao
-            ? erroAoCriar.message
-            : 'Não foi possível salvar. Tente de novo.',
-      })
+      mostrarErro(erroAoCriar)
+    }
+  }
+
+  async function handleUsar(idCategoria: string) {
+    if (!onUsarDeProcedimentos) return
+    setIsUsando(true)
+    try {
+      await onUsarDeProcedimentos(idCategoria)
+      reset()
+    } catch (erroAoCriar) {
+      mostrarErro(erroAoCriar)
+    } finally {
+      setIsUsando(false)
     }
   }
 
@@ -123,6 +149,13 @@ export function FormularioNovaCategoria({
           </p>
         )}
       </div>
+      {onUsarDeProcedimentos && (
+        <ChipsDeProcedimentos
+          termo={nomeDigitado}
+          isDesabilitado={isUsando || isSubmitting}
+          onUsar={(idCategoria) => void handleUsar(idCategoria)}
+        />
+      )}
       <Controller
         control={control}
         name="cor"

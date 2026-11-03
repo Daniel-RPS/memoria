@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
 import {
@@ -34,6 +34,33 @@ describe('Grupos nas visões de semana, mês e ano', () => {
     const itens = screen.getByRole('list', { name: 'Itens de Casa' })
     expect(within(itens).getByText('Fazer comida')).toBeInTheDocument()
     expect(screen.getAllByRole('textbox', { name: /^Novo grupo em / })).toHaveLength(7)
+  })
+
+  it('semana: recolher um card é lembrado por grupo e dia (sobrevive a recarregar)', async () => {
+    localStorage.clear()
+    const usuario = userEvent.setup()
+    const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
+    await criarItem(card.id, 'Fazer comida')
+    const outroDia = await criarGrupo({ titulo: 'Casa', data: somarDias(HOJE, 1) })
+    await criarItem(outroDia.id, 'Lavar roupa')
+    renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
+
+    const [recolherHoje] = await screen.findAllByRole('button', { name: 'Recolher Casa' })
+    await usuario.click(recolherHoje)
+    expect(JSON.parse(localStorage.getItem('memoria:recolhidos:semana:cards') ?? '[]')).toEqual([
+      card.id,
+    ])
+    cleanup()
+
+    renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
+    expect(await screen.findByRole('button', { name: 'Expandir Casa' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    // O mesmo grupo em outro dia continua aberto.
+    expect(screen.getByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Expandir tudo' }))
+    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
   })
 
   it('mês: itens pendentes e feitos contam; transferidos não', async () => {
