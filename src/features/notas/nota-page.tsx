@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { EditorNota } from '@/components/notas/editor-nota'
 import { descartarSeVazia } from '@/db/repositories/note-repository'
@@ -22,11 +22,15 @@ export function NotaPage() {
 
   // "Nova nota" fechada sem nada escrito não fica para trás (como "Adicionar nota" na gaveta).
   // Só a recém-criada: notas antigas em branco não são apagadas ao abrir e sair.
+  // No StrictMode o efeito monta, desmonta e monta de novo: o cancelamento no início
+  // do efeito impede que o descarte agendado no 1º cleanup apague a nota ainda em uso.
+  const descarteAgendado = useRef<number | undefined>(undefined)
   useEffect(() => {
+    window.clearTimeout(descarteAgendado.current)
     if (!isNova) return
     return () => {
       // Depois do editor gravar o texto pendente (ele grava ao desmontar).
-      window.setTimeout(() => void descartarSeVazia(id), 0)
+      descarteAgendado.current = window.setTimeout(() => void descartarSeVazia(id), 0)
     }
   }, [id, isNova])
 
