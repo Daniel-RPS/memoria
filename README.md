@@ -93,6 +93,7 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Notas ligadas a uma tarefa, a um grupo (valem em todos os dias dele) ou a um item (acompanham o item levado a outro dia), abertas numa gaveta lateral sem sair da tela
 - ✅ Aba Notas em cartões, por categoria, por grupo ou recentes, com filtros e busca também pelos nomes da tarefa, do grupo e da categoria
 - ✅ Blocos recolhíveis (lembrados entre sessões, com "Expandir tudo" e "Recolher tudo"), filtro pelo dia da última edição e Recentes separadas por dia ("Hoje", "Ontem", "sexta, 30/10") (02/11/2026)
+- ✅ **Arquivados** (03/11/2026): nova aba na barra lateral (entre Categorias e Backup, com o total ao lado) que reúne o que foi arquivado: tarefas soltas, grupos de tarefas, notas e procedimentos. Cada um tem **Arquivar** no menu ⋯ (nos cartões de Notas e Procedimentos e nos editores também). A tela tem filtro por tipo com contagem (lembrado), busca no título, no texto e na categoria, um bloco recolhível por tipo e separadores por período (Esta semana · Este mês · Mais antigos). Cada linha oferece **Desarquivar**, **Abrir** (só leitura) e **Excluir permanentemente…** (com confirmação); dá para marcar várias linhas. Tarefa e grupo desarquivam para o dia que tinham, para hoje ou para outro dia (o padrão é hoje quando o dia já passou; `dataOriginal` nunca muda). Arquivar e desarquivar mostram aviso com "Desfazer" (também Ctrl+Z). Arquivar um grupo passa a levar o card inteiro, com feitos e pendentes. Arquivado some do Dia, Semana, Mês, Ano, Início, mapa de conclusões, Notas e Procedimentos. Banco v11 e backup formato 10 (guardam `arquivadoEm`)
 - ✅ Anexos em tarefas e notas: fotos, desenhos à mão livre, gravações de áudio e links
 - ✅ Backup: exportar e importar todos os dados, incluindo anexos
 - ✅ Importar conteúdo de fora em partes, sem apagar nada: texto ou Markdown, CSV, Google Keep e partes de um backup, com prévia, duplicados e "Desfazer" (02/11/2026, veja [Importar](#importar))
@@ -203,7 +204,7 @@ Outros comandos:
 
 Os dados ficam no IndexedDB do navegador. Por isso, **limpar os dados do site ou trocar de navegador apaga tudo**. O app pede ao navegador armazenamento persistente, mas o navegador nem sempre concede; a página **Backup** mostra a situação e permite pedir de novo.
 
-- **Fazer backup:** em **Backup → Baixar backup**, o app baixa `memoria-backup-AAAA-MM-DD.json` com tudo: tarefas, subtarefas, grupos, categorias, procedimentos, notas e anexos (fotos, desenhos e áudios vão dentro do arquivo). A página lembra quando foi o último backup neste navegador.
+- **Fazer backup:** em **Backup → Baixar backup**, o app baixa `memoria-backup-AAAA-MM-DD.json` com tudo: tarefas, subtarefas, grupos, categorias, procedimentos, notas e anexos (fotos, desenhos e áudios vão dentro do arquivo), incluindo o que está arquivado e quando foi arquivado. A página lembra quando foi o último backup neste navegador.
 - **Restaurar:** em **Backup → Escolher arquivo de backup**, o app confere o arquivo e mostra o que tem nele ao lado do que você tem agora. Ao confirmar **Substituir meus dados**, todos os dados deste navegador são trocados pelos do arquivo.
 - Arquivo que não é backup do MemorIA, que foi alterado ou que veio de uma versão mais nova do app é recusado, com a explicação, e nada muda.
 - A troca é feita de uma vez: se algo falhar no meio, os dados atuais ficam como estavam.

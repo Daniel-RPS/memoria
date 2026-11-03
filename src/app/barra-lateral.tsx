@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  Archive,
   Calendar,
   CalendarDays,
   CalendarRange,
@@ -21,6 +22,7 @@ import {
   type VisaoDoCalendario,
 } from '@/app/grupo-calendario'
 import { useGrupoCalendarioAberto } from '@/app/use-grupo-calendario-aberto'
+import { useTotalArquivados } from '@/hooks/use-arquivados'
 import { useLembreteDeBackup } from '@/hooks/use-lembrete-de-backup'
 import { SeletorAparencia } from '@/app/seletor-aparencia'
 import logoMemoriaClara from '@/assets/logo-memoria-clara.png'
@@ -36,13 +38,23 @@ interface LinkTelaProps {
   isRecolhida: boolean
   /** Lembrete discreto: ponto no ícone, com o texto na dica e na descrição do link. */
   aviso?: string
+  /** Total à direita, discreto; some quando é 0 (e com a barra recolhida). */
+  contador?: number
   children: string
 }
 
 // Recolher/expandir: a largura corre com a mesma mola do grupo Calendário.
 const TRANSICAO_DA_BARRA = 'duration-400 ease-mola-suave motion-reduce:transition-none'
 
-function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, aviso, children }: LinkTelaProps) {
+function LinkTela({
+  para,
+  icone: Icone,
+  isAtiva,
+  isRecolhida,
+  aviso,
+  contador,
+  children,
+}: LinkTelaProps) {
   return (
     <DicaDaBarra
       texto={aviso ? `${children}: ${aviso}` : children}
@@ -51,7 +63,9 @@ function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, aviso, children }:
       <Link
         to={para}
         aria-current={isAtiva ? 'page' : undefined}
-        aria-description={aviso}
+        aria-description={
+          aviso ?? (contador ? `${contador} ${contador === 1 ? 'item' : 'itens'}` : undefined)
+        }
         className={cn(
           // O ícone fica no lugar enquanto a barra estreita: muda só o recuo, e o nome some
           // por opacidade (continua sendo o nome acessível do link).
@@ -81,6 +95,19 @@ function LinkTela({ para, icone: Icone, isAtiva, isRecolhida, aviso, children }:
         >
           {children}
         </span>
+        {contador !== undefined && contador > 0 && (
+          <span
+            aria-hidden
+            data-contador
+            className={cn(
+              'ml-auto text-xs tabular-nums transition-opacity duration-200 motion-reduce:transition-none',
+              isAtiva ? 'text-primary-foreground/80' : 'text-barra-suave',
+              isRecolhida && 'opacity-0',
+            )}
+          >
+            {contador}
+          </span>
+        )}
       </Link>
     </DicaDaBarra>
   )
@@ -172,6 +199,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const isNoInicio = useMatch('/inicio') !== null
   const isNasCategorias = useMatch('/categorias') !== null
   const isNoBackup = useMatch('/backup') !== null
+  const isNosArquivados = useMatch('/arquivados') !== null
   const isNasNotas = useMatch({ path: '/notas', end: false }) !== null
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
   // "Semana", "Mês" e "Ano" abrem o período da data que está aberta; "Dia" abre hoje.
@@ -191,12 +219,14 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
     { para: `/ano/${anoAberto}`, icone: CalendarRange, isAtiva: rotaAno !== null, nome: 'Ano' },
   ]
   const lembreteDeBackup = useLembreteDeBackup()
+  const totalArquivados = useTotalArquivados()
   const telas: {
     para: string
     icone: LucideIcon
     isAtiva: boolean
     nome: string
     aviso?: string
+    contador?: number
   }[] = [
     {
       para: '/procedimentos',
@@ -206,6 +236,13 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
     },
     { para: '/notas', icone: StickyNote, isAtiva: isNasNotas, nome: 'Notas' },
     { para: '/categorias', icone: Tags, isAtiva: isNasCategorias, nome: 'Categorias' },
+    {
+      para: '/arquivados',
+      icone: Archive,
+      isAtiva: isNosArquivados,
+      nome: 'Arquivados',
+      contador: totalArquivados,
+    },
     {
       para: '/backup',
       icone: HardDriveDownload,
@@ -269,6 +306,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
               isAtiva={tela.isAtiva}
               isRecolhida={isRecolhida}
               aviso={tela.aviso}
+              contador={tela.contador}
             >
               {tela.nome}
             </LinkTela>

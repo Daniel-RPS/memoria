@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 import { LayoutApp } from '@/app/layout-app'
 import { AnoPage } from '@/features/ano/ano-page'
+import { ArquivadosPage } from '@/features/arquivados/arquivados-page'
 import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
 import { DiaPage } from '@/features/dia/dia-page'
@@ -30,6 +31,7 @@ export const rotas: RouteObject[] = [
       { path: '/notas', element: <NotasPage /> },
       { path: '/notas/:id', element: <NotaPage /> },
       { path: '/categorias', element: <CategoriasPage /> },
+      { path: '/arquivados', element: <ArquivadosPage /> },
       { path: '/backup', element: <BackupPage /> },
       { path: '*', element: <Navigate to="/inicio" replace /> },
     ],

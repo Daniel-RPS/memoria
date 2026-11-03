@@ -242,4 +242,60 @@ describe('MemoriaDatabase', () => {
     ).toBe(1)
     expect(await banco.groupItems.where('cadeiaId').equals('a').primaryKeys()).toEqual(['a', 'b'])
   })
+
+  it('v11: quem já estava arquivado ganha arquivadoEm; o resto fica como estava', async () => {
+    // Banco como estava na v10 (sem `arquivadoEm`).
+    const antigo = new Dexie('memoria-teste')
+    antigo.version(10).stores({
+      categories: 'id, nome',
+      subcategories: 'id, categoryId',
+      tasks: 'id, data, [data+ordem], status, categoryId, dataOriginal',
+      subtasks: 'id, taskId, [taskId+ordem]',
+      procedures: 'id, titulo, categoryId',
+      notes: 'id, [vinculo.tipo+vinculo.id]',
+      attachments: 'id, [dono.tipo+dono.id]',
+      groupSeries: 'id, titulo, categoryId',
+      groupCards: 'id, seriesId, data, [seriesId+data]',
+      groupItems: 'id, cardId, status, origemItemId, cadeiaId',
+    })
+    const base = { criadoEm: '1', atualizadoEm: '2' }
+    const tarefa = {
+      ...base,
+      titulo: 'T',
+      data: '2026-10-28',
+      dataOriginal: '2026-10-28',
+      ordem: 1,
+    }
+    await antigo.table('tasks').bulkAdd([
+      { ...tarefa, id: 'arquivada', status: 'arquivada' },
+      { ...tarefa, id: 'pendente', status: 'pendente' },
+    ])
+    const card = { ...base, seriesId: 's', data: '2026-10-28', ordem: 1 }
+    await antigo.table('groupCards').bulkAdd([
+      { ...card, id: 'c1', arquivado: true },
+      { ...card, id: 'c2', data: '2026-10-29', arquivado: false },
+    ])
+    const item = { ...base, titulo: 'i', ordem: 1, dataOriginal: '2026-10-28', cardId: 'c2' }
+    await antigo.table('groupItems').bulkAdd([
+      { ...item, id: 'i1', cadeiaId: 'i1', status: 'arquivado' },
+      { ...item, id: 'i2', cadeiaId: 'i2', status: 'pendente' },
+    ])
+    await antigo.table('notes').add({ ...base, id: 'n', titulo: 'N', conteudo: 'x' })
+    antigo.close()
+
+    const antes = Date.now()
+    await banco.open()
+    for (const registro of [
+      await banco.tasks.get('arquivada'),
+      await banco.groupCards.get('c1'),
+      await banco.groupItems.get('i1'),
+    ]) {
+      expect(Date.parse(registro?.arquivadoEm ?? '')).toBeGreaterThanOrEqual(antes - 1000)
+    }
+    expect((await banco.tasks.get('pendente'))?.arquivadoEm).toBeUndefined()
+    expect((await banco.groupCards.get('c2'))?.arquivadoEm).toBeUndefined()
+    expect((await banco.groupItems.get('i2'))?.arquivadoEm).toBeUndefined()
+    expect(await banco.notes.get('n')).toEqual({ ...base, id: 'n', titulo: 'N', conteudo: 'x' })
+    expect(banco.verno).toBe(11)
+  })
 })

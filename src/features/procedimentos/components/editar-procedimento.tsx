@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Archive, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import {
   AlertDialog,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { excluirProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
+import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useSalvarComAtraso } from '@/hooks/use-salvar-com-atraso'
 import type { DadosProcedimento, ValoresProcedimento } from '@/lib/esquema-procedimento'
 import { FormularioProcedimento } from '@/features/procedimentos/components/formulario-procedimento'
@@ -27,6 +28,7 @@ interface EditarProcedimentoProps {
 /** Formulário que grava sozinho cada mudança válida, e a exclusão com confirmação. */
 export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProcedimentoProps) {
   const navigate = useNavigate()
+  const { arquivarComAviso } = useAcoesDeArquivo()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const { mudar, isPendente, salvarAgora } = useSalvarComAtraso<DadosProcedimento | null>(
     null,
@@ -42,6 +44,12 @@ export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProced
     navigate('/procedimentos', { replace: true })
   }
 
+  async function handleArquivar() {
+    await salvarAgora()
+    await arquivarComAviso({ procedimentos: [id] }, ['procedimento'])
+    navigate('/procedimentos', { replace: true })
+  }
+
   return (
     <>
       <FormularioProcedimento
@@ -53,7 +61,15 @@ export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProced
           </p>
         }
         rodape={
-          <div className="-mt-2 border-t border-pauta pt-2">
+          <div className="-mt-2 flex flex-wrap gap-2 border-t border-pauta pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-grafite"
+              onClick={() => void handleArquivar()}
+            >
+              <Archive /> Arquivar procedimento
+            </Button>
             <Button
               type="button"
               variant="ghost"

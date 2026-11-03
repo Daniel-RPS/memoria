@@ -4,8 +4,9 @@ import { agora } from '@/db/repositories/ordenacao'
 import type { DadosProcedimento } from '@/lib/esquema-procedimento'
 import { numerarEtapas } from '@/lib/procedimentos'
 
+/** Procedimentos não arquivados. */
 export function listarProcedimentos() {
-  return db.procedures.toArray()
+  return db.procedures.filter((procedimento) => !procedimento.arquivado).toArray()
 }
 
 export function obterProcedimento(id: string) {

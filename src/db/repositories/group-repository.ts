@@ -143,6 +143,7 @@ export async function criarGrupo(dados: NovoGrupo): Promise<GroupCard> {
       const reaberto = {
         ...existente,
         arquivado: false,
+        arquivadoEm: undefined,
         criadoPorTransferencia: false,
         ordem,
         atualizadoEm: momento,
@@ -218,6 +219,7 @@ export async function adicionarItensNaSerie(
         card = {
           ...existente,
           arquivado: false,
+          arquivadoEm: undefined,
           criadoPorTransferencia: false,
           ordem: (await maiorOrdemDoDia(data)) + 1,
           atualizadoEm: momento,
@@ -306,7 +308,12 @@ export async function reordenarItem(idsEmOrdem: string[], idMovido: string) {
 }
 
 export async function arquivarItem(id: string) {
-  await db.groupItems.update(id, { status: 'arquivado', atualizadoEm: agora() })
+  const momento = agora()
+  await db.groupItems.update(id, {
+    status: 'arquivado',
+    arquivadoEm: momento,
+    atualizadoEm: momento,
+  })
 }
 
 /** Exclui o item. As notas da cadeia só viram avulsas se não sobrar nenhum item dela. */
@@ -320,25 +327,15 @@ export async function excluirItem(id: string) {
 }
 
 /**
- * Arquiva o card: os itens pendentes saem do calendário. Com feitos ou transferidos, o card
- * fica (encerrado, como registro); sem eles, sai do calendário também.
+ * Arquiva o card inteiro, com tudo o que há dentro: ele sai do calendário e aparece em
+ * Arquivados. Os itens ficam como estão (desarquivar devolve o card igual).
  */
 export async function arquivarGrupo(cardId: string) {
-  await db.transaction('rw', db.groupCards, db.groupItems, async () => {
-    const momento = agora()
-    await db.groupItems
-      .where('cardId')
-      .equals(cardId)
-      .filter((item) => item.status === 'pendente')
-      .modify({ status: 'arquivado', atualizadoEm: momento })
-    const restantes = await db.groupItems
-      .where('cardId')
-      .equals(cardId)
-      .filter((item) => item.status !== 'arquivado')
-      .count()
-    if (restantes === 0) {
-      await db.groupCards.update(cardId, { arquivado: true, atualizadoEm: momento })
-    }
+  const momento = agora()
+  await db.groupCards.update(cardId, {
+    arquivado: true,
+    arquivadoEm: momento,
+    atualizadoEm: momento,
   })
 }
 

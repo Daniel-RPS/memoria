@@ -3,8 +3,10 @@ import { formatDistanceToNow, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Camera, Link2, Mic, PenLine, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router'
+import { MenuDoCartao } from '@/components/menu-do-cartao'
 import { CaminhoDoVinculo } from '@/components/notas/caminho-do-vinculo'
 import type { TipoAnexo } from '@/db/types'
+import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { previaDaNota, tituloDaNota, type NotaComDono } from '@/lib/notas'
 
 const ANEXOS: { tipo: TipoAnexo; Icone: LucideIcon; nome: string }[] = [
@@ -30,17 +32,22 @@ export function CartaoNota({ item, cor, tiposDeAnexo }: CartaoNotaProps) {
   const { nota, dono } = item
   const previa = previaDaNota(nota)
   const anexos = ANEXOS.filter(({ tipo }) => tiposDeAnexo?.has(tipo))
+  const { arquivarComAviso } = useAcoesDeArquivo()
 
   return (
     <article
       aria-label={tituloDaNota(nota)}
-      className="relative flex h-full flex-col overflow-hidden rounded-md border border-pauta bg-card px-4 pt-3.5 pb-3 transition-colors focus-within:border-caneta/45 hover:border-caneta/45 hover:bg-accent/40 motion-reduce:transition-none"
+      className="group/cartao-menu relative flex h-full flex-col overflow-hidden rounded-md border border-pauta bg-card px-4 pt-3.5 pb-3 transition-colors focus-within:border-caneta/45 hover:border-caneta/45 hover:bg-accent/40 motion-reduce:transition-none"
       style={{ '--cor-do-cartao': cor } as CSSProperties}
     >
       <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-(--cor-do-cartao)" />
+      <MenuDoCartao
+        nome={tituloDaNota(nota)}
+        onArquivar={() => void arquivarComAviso({ notas: [nota.id] }, ['nota'])}
+      />
       <Link
         to={`/notas/${nota.id}`}
-        className="line-clamp-2 font-semibold leading-snug break-words outline-none after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-caneta"
+        className="line-clamp-2 pr-6 font-semibold leading-snug break-words outline-none after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-caneta"
       >
         {tituloDaNota(nota)}
       </Link>

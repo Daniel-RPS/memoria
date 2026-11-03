@@ -35,6 +35,7 @@ import {
 import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
 import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal, Task } from '@/db/types'
+import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
@@ -59,7 +60,8 @@ export function MenuTarefa({
   onAdicionarSubtarefa,
   onAbrirAnexos,
 }: MenuTarefaProps) {
-  const { arquivarTarefa, excluirTarefa, definirCategoria, colocarNoGrupo } = useAcoesTarefa()
+  const { excluirTarefa, definirCategoria, colocarNoGrupo } = useAcoesTarefa()
+  const { arquivarComAviso } = useAcoesDeArquivo()
   const gruposDoDia = useGruposDoDia()
   const { mover, adiar } = useMoverTarefas()
   const [isMenuAberto, setIsMenuAberto] = useState(false)
@@ -143,7 +145,9 @@ export function MenuTarefa({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuItem onSelect={() => void arquivarTarefa(tarefa.id)}>
+          <DropdownMenuItem
+            onSelect={() => void arquivarComAviso({ tarefas: [tarefa.id] }, ['tarefa'])}
+          >
             <Archive /> Arquivar
           </DropdownMenuItem>
           <DropdownMenuSeparator />

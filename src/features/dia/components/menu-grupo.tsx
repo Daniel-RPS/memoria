@@ -29,6 +29,7 @@ import {
 import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
 import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal } from '@/db/types'
+import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { pendentesDo, rotuloLevarAdiante, type GrupoDoDia } from '@/lib/grupos'
@@ -46,7 +47,8 @@ interface MenuGrupoProps {
  */
 export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
   const { card, serie } = grupo
-  const { arquivarGrupo, excluirGrupo, definirCategoriaDoGrupo } = useAcoesGrupo()
+  const { excluirGrupo, definirCategoriaDoGrupo } = useAcoesGrupo()
+  const { arquivarComAviso } = useAcoesDeArquivo()
   const { adiar } = useMoverTarefas()
   const [isMenuAberto, setIsMenuAberto] = useState(false)
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
@@ -109,7 +111,7 @@ export function MenuGrupo({ grupo, hoje, onRenomear }: MenuGrupoProps) {
             onEscolher={(categoria) => void definirCategoriaDoGrupo(serie.id, categoria)}
             onFechar={() => setIsMenuAberto(false)}
           />
-          <DropdownMenuItem onSelect={() => void arquivarGrupo(card.id)}>
+          <DropdownMenuItem onSelect={() => void arquivarComAviso({ cards: [card.id] }, ['grupo'])}>
             <Archive /> Arquivar
           </DropdownMenuItem>
           <DropdownMenuSeparator />

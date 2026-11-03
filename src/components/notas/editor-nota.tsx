@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Archive, Trash2 } from 'lucide-react'
 import { cn } from 'cn'
 import { PainelAnexos } from '@/components/anexos/painel-anexos'
 import { CaminhoDoVinculo } from '@/components/notas/caminho-do-vinculo'
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { atualizarNota, excluirNota, vincularNota } from '@/db/repositories/note-repository'
 import type { Note, Vinculo } from '@/db/types'
+import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useDonoDoVinculo } from '@/hooks/use-notas-vinculadas'
 import { useSalvarComAtraso } from '@/hooks/use-salvar-com-atraso'
 import { TAMANHO_MAXIMO_TITULO } from '@/lib/esquemas'
@@ -29,7 +30,7 @@ interface EditorNotaProps {
   variante: 'pagina' | 'painel'
   /** À esquerda do "Salvo" (ex.: voltar para a lista). */
   inicio?: ReactNode
-  /** Depois de excluir (a nota já não existe). */
+  /** Depois de excluir ou arquivar (a nota sai da tela). */
   onExcluida: () => void
   /** Depois de trocar ou tirar o vínculo. */
   onVinculoTrocado?: (vinculo: Vinculo | undefined) => void
@@ -47,6 +48,7 @@ export function EditorNota({
   onVinculoTrocado,
 }: EditorNotaProps) {
   const [isConfirmando, setIsConfirmando] = useState(false)
+  const { arquivarComAviso } = useAcoesDeArquivo()
   const dono = useDonoDoVinculo(nota.vinculo)
   const titulo = useSalvarComAtraso(nota.titulo, (valor) =>
     atualizarNota(nota.id, { titulo: valor }),
@@ -60,6 +62,13 @@ export function EditorNota({
 
   async function handleExcluir() {
     await excluirNota(nota.id)
+    onExcluida()
+  }
+
+  async function handleArquivar() {
+    // Grava antes o texto pendente; depois sai da nota, que deixa de aparecer nas abas.
+    await Promise.all([titulo.salvarAgora(), conteudo.salvarAgora()])
+    await arquivarComAviso({ notas: [nota.id] }, ['nota'])
     onExcluida()
   }
 
@@ -125,13 +134,14 @@ export function EditorNota({
         <PainelAnexos dono={{ tipo: 'note', id: nota.id }} descricaoDono="da nota" />
       </section>
 
-      <Button
-        variant="ghost"
-        className={cn('text-grafite', isPainel ? 'mt-6' : 'mt-10')}
-        onClick={() => setIsConfirmando(true)}
-      >
-        <Trash2 /> Excluir nota…
-      </Button>
+      <div className={cn('flex flex-wrap gap-2', isPainel ? 'mt-6' : 'mt-10')}>
+        <Button variant="ghost" className="text-grafite" onClick={() => void handleArquivar()}>
+          <Archive /> Arquivar nota
+        </Button>
+        <Button variant="ghost" className="text-grafite" onClick={() => setIsConfirmando(true)}>
+          <Trash2 /> Excluir nota…
+        </Button>
+      </div>
 
       <AlertDialog open={isConfirmando} onOpenChange={setIsConfirmando}>
         <AlertDialogContent>

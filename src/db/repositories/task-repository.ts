@@ -80,7 +80,8 @@ export async function definirCategoria(
 
 /** Tira do calendário sem concluir. */
 export async function arquivarTarefa(id: string) {
-  await db.tasks.update(id, { status: 'arquivada', atualizadoEm: agora() })
+  const momento = agora()
+  await db.tasks.update(id, { status: 'arquivada', arquivadoEm: momento, atualizadoEm: momento })
 }
 
 /**

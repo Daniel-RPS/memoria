@@ -1,5 +1,5 @@
 import { db } from '@/db/database'
-import type { DataLocal } from '@/db/types'
+import type { DataLocal, GroupCard } from '@/db/types'
 import { listarConclusoes } from '@/lib/estatisticas'
 
 /**
@@ -12,7 +12,10 @@ export async function carregarConclusoes(inicio: DataLocal) {
     db.groupItems.where('status').equals('concluido').toArray(),
   ])
   const idsCards = [...new Set(itens.map((item) => item.cardId))]
-  const cards = (await db.groupCards.bulkGet(idsCards)).filter((card) => card !== undefined)
+  // Card arquivado (com o que há dentro) fica fora do mapa.
+  const cards = (await db.groupCards.bulkGet(idsCards)).filter(
+    (card): card is GroupCard => card !== undefined && !card.arquivado,
+  )
   const idsSeries = [...new Set(cards.map((card) => card.seriesId))]
   const series = (await db.groupSeries.bulkGet(idsSeries)).filter((serie) => serie !== undefined)
   return listarConclusoes(tarefas, itens, cards, series).filter(

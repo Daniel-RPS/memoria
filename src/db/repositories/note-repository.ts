@@ -7,9 +7,11 @@ import { chaveDoVinculo, type DadosDosVinculos } from '@/lib/notas'
 
 const porRecencia = (a: Note, b: Note) => b.atualizadoEm.localeCompare(a.atualizadoEm)
 
-/** Todas as notas (ligadas e avulsas), da mais recente para a mais antiga. */
+const isVisivel = (nota: Note) => !nota.arquivado
+
+/** Todas as notas não arquivadas (ligadas e avulsas), da mais recente para a mais antiga. */
 export async function listarNotas() {
-  return (await db.notes.toArray()).sort(porRecencia)
+  return (await db.notes.filter(isVisivel).toArray()).sort(porRecencia)
 }
 
 export function obterNota(id: string) {
@@ -21,13 +23,18 @@ export async function listarNotasDe(vinculo: Vinculo) {
   const notas = await db.notes
     .where('[vinculo.tipo+vinculo.id]')
     .equals([vinculo.tipo, vinculo.id])
+    .filter(isVisivel)
     .toArray()
   return notas.sort(porRecencia)
 }
 
-/** Quantas notas o alvo tem (para o indicador, sem carregar o texto). */
+/** Quantas notas (não arquivadas) o alvo tem, para o indicador, sem carregar o texto. */
 export function contarNotasDe(vinculo: Vinculo) {
-  return db.notes.where('[vinculo.tipo+vinculo.id]').equals([vinculo.tipo, vinculo.id]).count()
+  return db.notes
+    .where('[vinculo.tipo+vinculo.id]')
+    .equals([vinculo.tipo, vinculo.id])
+    .filter(isVisivel)
+    .count()
 }
 
 export async function criarNota(
@@ -224,7 +231,7 @@ export async function descartarSeVazia(id: string) {
 export async function contarNotasPorVinculo() {
   const contagem = new Map<string, number>()
   await db.notes.each((nota) => {
-    if (!nota.vinculo) return
+    if (!nota.vinculo || nota.arquivado) return
     const chave = chaveDoVinculo(nota.vinculo)
     contagem.set(chave, (contagem.get(chave) ?? 0) + 1)
   })

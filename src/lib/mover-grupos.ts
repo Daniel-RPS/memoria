@@ -130,7 +130,11 @@ export function planejarLevarItens(
     )
     if (existente) {
       if (existente.arquivado) {
-        Object.assign(existente, { arquivado: false, atualizadoEm: momento })
+        Object.assign(existente, {
+          arquivado: false,
+          arquivadoEm: undefined,
+          atualizadoEm: momento,
+        })
         cardsMudados.add(existente.id)
       }
       return existente
@@ -173,7 +177,11 @@ export function planejarLevarItens(
       mudarItem(ancestral, { status: 'pendente', transferidoParaCardId: undefined })
       const cardDoAncestral = cardDe(ancestral)!
       if (cardDoAncestral.arquivado) {
-        Object.assign(cardDoAncestral, { arquivado: false, atualizadoEm: momento })
+        Object.assign(cardDoAncestral, {
+          arquivado: false,
+          arquivadoEm: undefined,
+          atualizadoEm: momento,
+        })
         cardsMudados.add(cardDoAncestral.id)
       }
       // A cópia e as paradas entre ela e o ancestral somem juntas: a cadeia toda era só ida.

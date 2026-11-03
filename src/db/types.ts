@@ -53,6 +53,8 @@ export interface Task extends EntidadeBase {
   /** Definida só na criação; base da contagem de dias pendentes. */
   dataOriginal: DataLocal
   concluidaEm?: string
+  /** Momento em que foi arquivada (`status` `arquivada`); some ao desarquivar. */
+  arquivadoEm?: string
 }
 
 /**
@@ -74,6 +76,8 @@ export interface GroupCard extends EntidadeBase {
   ordem: number
   /** Fora do calendário. */
   arquivado: boolean
+  /** Momento em que o card foi arquivado (com todos os itens dentro). */
+  arquivadoEm?: string
   /**
    * Nasceu para receber itens levados de outro dia. Se perder esses itens (a transferência
    * foi desfeita) e ficar sem pendente nem feito, é apagado sozinho. Card criado à mão, não.
@@ -104,6 +108,8 @@ export interface GroupItem extends EntidadeBase {
   cadeiaId: string
   /** Preservada nas cópias; base do "pendente desde". */
   dataOriginal: DataLocal
+  /** Momento em que o item foi arquivado sozinho (`status` `arquivado`). */
+  arquivadoEm?: string
 }
 
 export interface Subtask extends EntidadeBase {
@@ -126,6 +132,9 @@ export interface Procedure extends EntidadeBase {
   categoryId?: string
   subcategoryId?: string
   etapas: Etapa[]
+  /** Arquivado: fora da aba Procedimentos e dos seletores, sem apagar. */
+  arquivado?: boolean
+  arquivadoEm?: string
 }
 
 /** Dono de anexo: tarefa solta ou nota. */
@@ -153,6 +162,9 @@ export interface Note extends EntidadeBase {
   conteudo: string
   /** Sem vínculo = nota avulsa. A categoria vem do que ela está ligada; não é guardada. */
   vinculo?: Vinculo
+  /** Arquivada: fora da aba Notas e dos indicadores, sem apagar. */
+  arquivado?: boolean
+  arquivadoEm?: string
 }
 
 export type TipoAnexo = 'foto' | 'desenho' | 'audio' | 'link'

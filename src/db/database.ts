@@ -187,6 +187,26 @@ export class MemoriaDatabase extends Dexie {
           .table('notes')
           .bulkPut(notas.map((nota) => converterNotaAntiga(nota, idsTarefas)))
       })
+    // v11: `arquivadoEm` (data da migração) em tarefas, cards e itens que já estavam arquivados.
+    // Nota e procedimento ganham `arquivado` só ao arquivar (ausente = não arquivado).
+    // Nenhum índice novo.
+    this.version(11)
+      .stores({})
+      .upgrade(async (transacao) => {
+        const momento = new Date().toISOString()
+        await transacao
+          .table('tasks')
+          .filter((tarefa: Task) => tarefa.status === 'arquivada' && !tarefa.arquivadoEm)
+          .modify({ arquivadoEm: momento })
+        await transacao
+          .table('groupCards')
+          .filter((card: GroupCard) => card.arquivado && !card.arquivadoEm)
+          .modify({ arquivadoEm: momento })
+        await transacao
+          .table('groupItems')
+          .filter((item: GroupItem) => item.status === 'arquivado' && !item.arquivadoEm)
+          .modify({ arquivadoEm: momento })
+      })
   }
 }
 

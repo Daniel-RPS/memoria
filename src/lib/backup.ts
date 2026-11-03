@@ -11,7 +11,7 @@ import { converterNotaAntiga } from '@/lib/notas'
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 9
+export const FORMATO_ATUAL = 10
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -48,6 +48,8 @@ const tarefa = z.object({
   status: z.enum(['pendente', 'concluida', 'arquivada']),
   dataOriginal: dataLocal,
   concluidaEm: texto.optional(),
+  // Formato 10; antes, quem estava arquivado ganha a data da última alteração ao ler.
+  arquivadoEm: texto.optional(),
   // Formato 2: item de grupo era tarefa com card.
   groupInstanceId: texto.optional(),
 })
@@ -67,6 +69,7 @@ const cardDeGrupo = z.object({
   arquivado: z.boolean(),
   // Banco v6; backups anteriores não têm.
   criadoPorTransferencia: z.boolean().optional(),
+  arquivadoEm: texto.optional(),
 })
 
 const itemDeGrupo = z.object({
@@ -81,6 +84,7 @@ const itemDeGrupo = z.object({
   // Formato 7; antes, calculada ao ler (`preencherCadeias`, a mesma regra da migração v10).
   cadeiaId: texto.optional(),
   dataOriginal: dataLocal,
+  arquivadoEm: texto.optional(),
 })
 
 const subtarefa = z.object({
@@ -99,6 +103,9 @@ const procedimento = z.object({
   subcategoryId: texto.optional(),
   etapas: z.array(z.object({ id, texto, ordem: z.number() })),
   icone,
+  // Formato 10; backups antigos entram como não arquivados.
+  arquivado: z.boolean().optional(),
+  arquivadoEm: texto.optional(),
 })
 
 // Formatos 1 a 3: seções com passos e subpassos. Viram etapas como na migração do banco (v7).
@@ -130,6 +137,8 @@ const nota = z.object({
   conteudo: texto,
   vinculo: z.object({ tipo: z.enum(['tarefa', 'grupo', 'item']), id }).optional(),
   dono: dono.optional(),
+  arquivado: z.boolean().optional(),
+  arquivadoEm: texto.optional(),
 })
 
 /** No arquivo, o conteúdo binário do anexo (foto, desenho, áudio) vai em base64. */
@@ -142,6 +151,16 @@ const anexoNoArquivo = z.object({
   url: texto.optional(),
   conteudo: z.object({ tipo: texto, base64: z.string() }).optional(),
 })
+
+/** Backup anterior ao formato 10 não guardava quando arquivou: vale a última alteração. */
+function comArquivadoEm<T extends { atualizadoEm: string; arquivadoEm?: string | undefined }>(
+  registro: T,
+  isArquivado: boolean,
+): T {
+  return isArquivado && !registro.arquivadoEm
+    ? { ...registro, arquivadoEm: registro.atualizadoEm }
+    : registro
+}
 
 export const esquemaBackup = z.object({
   app: z.literal(MARCA_DO_APP, { error: 'Este arquivo não é um backup do MemorIA.' }),
@@ -185,9 +204,13 @@ export const esquemaBackup = z.object({
         attachments: attachments.flatMap((anexo) =>
           isDonoAtual(anexo.dono) ? [{ ...anexo, dono: anexo.dono }] : [],
         ),
-        tasks: soltas,
-        groupCards: [...tabelas.groupCards, ...cards],
-        groupItems: preencherCadeias([...tabelas.groupItems, ...itens]),
+        tasks: soltas.map((tarefa) => comArquivadoEm(tarefa, tarefa.status === 'arquivada')),
+        groupCards: [...tabelas.groupCards, ...cards].map((card) =>
+          comArquivadoEm(card, card.arquivado),
+        ),
+        groupItems: preencherCadeias([...tabelas.groupItems, ...itens]).map((item) =>
+          comArquivadoEm(item, item.status === 'arquivado'),
+        ),
       }
     }),
 })
