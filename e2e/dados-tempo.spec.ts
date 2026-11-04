@@ -281,10 +281,10 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await expect(page.locator('[data-resumo-media]')).toHaveText('1h 11 min') // (357 min + 30s) / 5 tarefas = 71 min = 1h 11 min
     await expect(page.locator('[data-resumo-realizadas]')).toHaveText('5')
     await expect(page.locator('[data-resumo-maior]')).toContainText('Fazer curso')
-    await expect(page.locator('[data-resumo-maior]')).toContainText('(2h 10 min)')
+    await expect(page.locator('[data-resumo-maior]')).toContainText('2h 10 min')
     // Menos tempo ignora a tarefa de 30s (<1 min) e escolhe "Fazer o resumo do livro abc (17 min)"
     await expect(page.locator('[data-resumo-menor]')).toContainText('Fazer o resumo do livro abc')
-    await expect(page.locator('[data-resumo-menor]')).toContainText('(17 min)')
+    await expect(page.locator('[data-resumo-menor]')).toContainText('17 min')
 
     // 2. Gráfico por tarefa: título "Por tarefa", sem pizza
     await expect(page.locator('[data-grafico-por-tarefa]')).toBeVisible()
@@ -576,5 +576,190 @@ test.describe('Dados › Tempo nas tarefas', () => {
       document.body.style.zoom = '1.5'
     })
     await capturar(page, 'barras-zoom-150')
+  })
+
+  test('resumo em 4 blocos alinhados: tarefa de 60+ chars truncada no Menos tempo com tooltip, janela de 600px vira 2x2, período vazio mostra "—"', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date(`${HOJE}T18:00:00-03:00`) })
+    await page.goto(`/dia/${HOJE}`)
+
+    const TAREFA_LONGA =
+      'Fazer a revisão detalhada do capítulo 4 de arquitetura de software moderno' // 74 caracteres
+
+    // Semeia tarefas: curso (2h 10 min), relatório (1h 45 min), tarefa longa (17 min) e extra curta (30s)
+    await page.evaluate(
+      async ({ hoje, tituloLongo }) => {
+        const database = (await import(/* @vite-ignore */ '/src/db/database.ts')) as {
+          db: import('dexie').Dexie
+        }
+        const db = database.db
+        const categorias = (await import(
+          /* @vite-ignore */ '/src/db/repositories/category-repository.ts'
+        )) as ModuloCategorias
+        const tarefas = (await import(
+          /* @vite-ignore */ '/src/db/repositories/task-repository.ts'
+        )) as ModuloTarefas
+
+        const catCursos = await categorias.criarCategoria({ nome: 'Cursos', cor: '#8B3DFF' })
+        const catTrabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#3B82F6' })
+        const catLeitura = await categorias.criarCategoria({ nome: 'Leitura', cor: '#10B981' })
+
+        const t1 = await tarefas.criarTarefa({
+          titulo: 'Fazer curso completo',
+          data: hoje,
+          categoryId: catCursos.id,
+        })
+        const t2 = await tarefas.criarTarefa({
+          titulo: 'Revisar relatórios',
+          data: hoje,
+          categoryId: catTrabalho.id,
+        })
+        const t3 = await tarefas.criarTarefa({
+          titulo: tituloLongo,
+          data: hoje,
+          categoryId: catLeitura.id,
+        })
+        const tExtra = await tarefas.criarTarefa({
+          titulo: 'Pausa rápida',
+          data: hoje,
+        })
+
+        await db.table('sessions').bulkAdd([
+          {
+            id: 's-l1',
+            tarefaId: t1.id,
+            categoryId: catCursos.id,
+            inicio: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T11:10:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T11:10:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-l2',
+            tarefaId: t2.id,
+            categoryId: catTrabalho.id,
+            inicio: new Date(`${hoje}T11:30:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T13:15:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T11:30:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T13:15:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-l3',
+            tarefaId: t3.id,
+            categoryId: catLeitura.id,
+            inicio: new Date(`${hoje}T16:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T16:17:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T16:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T16:17:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-lextra',
+            tarefaId: tExtra.id,
+            inicio: new Date(`${hoje}T17:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T17:00:30-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T17:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T17:00:30-03:00`).toISOString(),
+          },
+        ])
+      },
+      { hoje: HOJE, tituloLongo: TAREFA_LONGA },
+    )
+
+    await page.goto('/dados')
+    await page.getByRole('button', { name: 'Hoje', exact: true }).click()
+
+    // 1. Janela larga: grade 1 x 4 (todos os 4 blocos na mesma linha)
+    const blocoMedia = page.locator('[data-resumo-media]').locator('..')
+    const blocoRealizadas = page.locator('[data-resumo-realizadas]').locator('..')
+    const blocoMaior = page.locator('[data-resumo-maior]')
+    const blocoMenor = page.locator('[data-resumo-menor]')
+
+    const boxMedia = await blocoMedia.boundingBox()
+    const boxRealizadas = await blocoRealizadas.boundingBox()
+    const boxMaior = await blocoMaior.boundingBox()
+    const boxMenor = await blocoMenor.boundingBox()
+
+    expect(boxMedia).not.toBeNull()
+    expect(boxRealizadas).not.toBeNull()
+    expect(boxMaior).not.toBeNull()
+    expect(boxMenor).not.toBeNull()
+
+    // Todos os blocos iniciam no mesmo Y (mesma linha)
+    expect(Math.abs(boxMedia!.y - boxRealizadas!.y)).toBeLessThan(2)
+    expect(Math.abs(boxRealizadas!.y - boxMaior!.y)).toBeLessThan(2)
+    expect(Math.abs(boxMaior!.y - boxMenor!.y)).toBeLessThan(2)
+
+    // Valores principais intactos e visíveis
+    await expect(page.locator('[data-resumo-media]')).toHaveText('1h 3 min')
+    await expect(page.locator('[data-resumo-realizadas]')).toHaveText('4')
+    await expect(page.locator('[data-resumo-maior-valor]')).toHaveText('2h 10 min')
+    await expect(page.locator('[data-resumo-menor-valor]')).toHaveText('17 min')
+
+    // Menos tempo: nome longo de 74 caracteres está cortado com reticências (scrollWidth > clientWidth)
+    const spanTituloLongo = page.locator('[data-resumo-menor-detalhe] span.truncate')
+    await expect(spanTituloLongo).toBeVisible()
+    const isTruncado = await spanTituloLongo.evaluate((el) => el.scrollWidth > el.clientWidth)
+    expect(isTruncado).toBe(true)
+
+    // Bolinha de cor visível no Menos tempo
+    const bolinhaCor = page.locator('[data-resumo-menor-detalhe] span[aria-hidden]')
+    await expect(bolinhaCor).toBeVisible()
+
+    // Passar o mouse no detalhe abre tooltip com o nome completo
+    await page.locator('[data-resumo-menor-detalhe] [tabindex]').hover()
+    await expect(page.getByRole('tooltip', { name: TAREFA_LONGA })).toBeVisible()
+
+    // Capturas largo (claro e escuro)
+    await capturar(page, 'resumo-largo-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'resumo-largo-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // 2. Janela estreita (600px): vira grade 2 x 2
+    await page.setViewportSize({ width: 600, height: 800 })
+
+    const boxMediaEstreito = await blocoMedia.boundingBox()
+    const boxRealizadasEstreito = await blocoRealizadas.boundingBox()
+    const boxMaiorEstreito = await blocoMaior.boundingBox()
+    const boxMenorEstreito = await blocoMenor.boundingBox()
+
+    // Linha 1: Média e Realizadas têm o mesmo Y
+    expect(Math.abs(boxMediaEstreito!.y - boxRealizadasEstreito!.y)).toBeLessThan(2)
+    // Linha 2: Mais tempo e Menos tempo têm o mesmo Y, e ficam abaixo da linha 1
+    expect(Math.abs(boxMaiorEstreito!.y - boxMenorEstreito!.y)).toBeLessThan(2)
+    expect(boxMaiorEstreito!.y).toBeGreaterThan(boxMediaEstreito!.y)
+
+    // Coluna 1: Média e Mais tempo começam no mesmo X
+    expect(Math.abs(boxMediaEstreito!.x - boxMaiorEstreito!.x)).toBeLessThan(2)
+    // Coluna 2: Realizadas e Menos tempo começam no mesmo X
+    expect(Math.abs(boxRealizadasEstreito!.x - boxMenorEstreito!.x)).toBeLessThan(2)
+
+    // Capturas estreito (claro e escuro)
+    await capturar(page, 'resumo-estreito-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'resumo-estreito-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // Restaura viewport
+    await page.setViewportSize({ width: 1280, height: 720 })
+
+    // 3. Período vazio: seleciona um dia passado sem tarefas (ontem)
+    const botaoEscolher = page.getByRole('button', { name: 'Escolher um dia' })
+    await botaoEscolher.click()
+    const botaoDiaOntem = page.getByRole('button', { name: /3 de novembro|03\/11/i }).first()
+    await botaoDiaOntem.click()
+
+    // Todos os valores mostram "—" e detalhes vazios
+    await expect(page.locator('[data-resumo-media]')).toHaveText('—')
+    await expect(page.locator('[data-resumo-realizadas]')).toHaveText('—')
+    await expect(page.locator('[data-resumo-maior-valor]')).toHaveText('—')
+    await expect(page.locator('[data-resumo-menor-valor]')).toHaveText('—')
+    await expect(page.locator('[data-resumo-maior-detalhe]')).toBeEmpty()
+    await expect(page.locator('[data-resumo-menor-detalhe]')).toBeEmpty()
+
+    // Mensagem de estado vazio visível abaixo dos blocos
+    await expect(page.locator('[data-estado-vazio-tempo]')).toBeVisible()
+    await capturar(page, 'resumo-vazio-claro')
   })
 })

@@ -325,8 +325,8 @@ export interface CategoriaComTarefas {
 export interface ResumoLinhaTempo {
   tempoMedioMs: number
   tarefasMedidas: number
-  tarefaComMaisTempo?: { titulo: string; tempoMs: number }
-  tarefaComMenosTempo?: { titulo: string; tempoMs: number }
+  tarefaComMaisTempo?: { titulo: string; tempoMs: number; cor?: string | null }
+  tarefaComMenosTempo?: { titulo: string; tempoMs: number; cor?: string | null }
 }
 
 export interface RelatorioDeTempo {
@@ -334,8 +334,8 @@ export interface RelatorioDeTempo {
   tempoTotalMs: number
   tempoMedioMs: number
   tarefasMedidas: number
-  tarefaComMaisTempo?: { titulo: string; tempoMs: number }
-  tarefaComMenosTempo?: { titulo: string; tempoMs: number }
+  tarefaComMaisTempo?: { titulo: string; tempoMs: number; cor?: string | null }
+  tarefaComMenosTempo?: { titulo: string; tempoMs: number; cor?: string | null }
   porCategoria: TempoPorCategoria[]
   fatiasPizza: FatiaGraficoPizza[]
   porDia: TempoPorDia[]
@@ -670,18 +670,26 @@ export function calcularResumoTempo(
   const tempoMedioMs = tarefasMedidas > 0 ? Math.round(tempoTotalMs / tarefasMedidas) : 0
 
   const tarefaComMaisTempo = tarefas[0]
-    ? { titulo: tarefas[0].titulo, tempoMs: tarefas[0].tempoTotalMs }
+    ? {
+        titulo: tarefas[0].titulo,
+        tempoMs: tarefas[0].tempoTotalMs,
+        cor: tarefas[0].categoria?.cor ?? null,
+      }
     : undefined
 
   // "Ignorar sessões abaixo de 1 min para não aparecer '<1 min' como menor."
-  const candidatasMenor: { titulo: string; tempoMs: number }[] = []
+  const candidatasMenor: { titulo: string; tempoMs: number; cor: string | null }[] = []
 
   for (const tarefa of tarefas) {
     const sessoesValidas = tarefa.sessoes.filter((s) => s.duracaoNoPeriodoMs >= 60_000)
     if (sessoesValidas.length > 0) {
       const tempoValidoMs = sessoesValidas.reduce((acc, s) => acc + s.duracaoNoPeriodoMs, 0)
       if (tempoValidoMs >= 60_000) {
-        candidatasMenor.push({ titulo: tarefa.titulo, tempoMs: tempoValidoMs })
+        candidatasMenor.push({
+          titulo: tarefa.titulo,
+          tempoMs: tempoValidoMs,
+          cor: tarefa.categoria?.cor ?? null,
+        })
       }
     }
   }

@@ -748,10 +748,15 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
     const resumo = calcularResumoTempo(tarefas4, totalMs)
     expect(resumo.tarefasMedidas).toBe(4)
     expect(formatarDuracao(resumo.tempoMedioMs)).toBe('1h 29 min')
-    expect(resumo.tarefaComMaisTempo).toEqual({ titulo: 'Fazer curso', tempoMs: t1Ms })
+    expect(resumo.tarefaComMaisTempo).toEqual({
+      titulo: 'Fazer curso',
+      tempoMs: t1Ms,
+      cor: null,
+    })
     expect(resumo.tarefaComMenosTempo).toEqual({
       titulo: 'Fazer o resumo do livro abc',
       tempoMs: t4Ms,
+      cor: null,
     })
 
     // Adiciona uma 5ª tarefa com sessão curta (30 segundos < 1 min)
@@ -781,6 +786,7 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
     expect(resumoComCurta.tarefaComMenosTempo).toEqual({
       titulo: 'Fazer o resumo do livro abc',
       tempoMs: t4Ms,
+      cor: null,
     })
   })
 

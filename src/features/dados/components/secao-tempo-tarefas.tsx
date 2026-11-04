@@ -8,21 +8,24 @@ import { FiltroPeriodoDados } from '@/features/dados/components/filtro-periodo-d
 import { GraficoPizzaCategoria, GraficoPorTarefa } from '@/features/dados/components/graficos-tempo'
 import { ListaTarefasTempo } from '@/features/dados/components/lista-tarefas-tempo'
 import { usePeriodoDeDados, useRelatorioDeTempo } from '@/features/dados/hooks/use-dados-tempo'
+import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 /**
  * Primeira seção da tela Dados: "Tempo nas tarefas".
- * Exibe filtro de período, linha de resumo, gráficos (barras nítidas e pizza por categoria na semana/mês),
- * busca e lista de tarefas agrupada por categoria.
+ * Exibe filtro de período, linha de resumo em 4 blocos alinhados, gráficos
+ * (barras nítidas e pizza por categoria na semana/mês), busca e lista de tarefas agrupada por categoria.
  */
 export function SecaoTempoTarefas() {
   const [periodo, definirPeriodo] = usePeriodoDeDados()
   const [busca, setBusca] = useState('')
   const { isCarregando, hoje, dados, relatorio } = useRelatorioDeTempo(periodo)
+  const corNaTela = useCorNaTela()
 
   if (isCarregando || !dados || !relatorio) return null
 
   const semNenhumDadoNoBanco = dados.sessoes.length === 0
   const semDadosNoPeriodo = relatorio.tarefas.length === 0
+  const temDados = !semDadosNoPeriodo && !semNenhumDadoNoBanco
   const categoriasFiltradas = filtrarCategoriasDeTempo(relatorio.categoriasComTarefas, busca)
   const isVisaoDeUmDia = periodo.tipo === 'hoje' || periodo.tipo === 'dia'
   const mostrarPizza = !isVisaoDeUmDia
@@ -41,87 +44,140 @@ export function SecaoTempoTarefas() {
         />
       </div>
 
-      {semNenhumDadoNoBanco || semDadosNoPeriodo ? (
+      {/* Grade de 4 blocos de resumo alinhados */}
+      <dl
+        aria-label="Resumo do período"
+        className="grid grid-cols-2 min-[700px]:grid-cols-4 border-y border-pauta py-3.5 gap-y-4 min-[700px]:gap-y-0 text-sm"
+      >
+        {/* Bloco 1: Tempo médio por tarefa */}
+        <div className="flex flex-col min-w-0 pr-3 min-[700px]:pr-4">
+          <dt className="text-xs text-grafite font-medium truncate">Tempo médio por tarefa</dt>
+          <dd
+            data-resumo-media=""
+            className="text-xl font-bold tracking-tight text-tinta tabular-nums whitespace-nowrap mt-0.5"
+          >
+            {temDados ? formatarDuracao(relatorio.tempoMedioMs) : '—'}
+          </dd>
+          <div aria-hidden className="min-h-[1.25rem] mt-0.5" />
+        </div>
+
+        {/* Bloco 2: Tarefas realizadas */}
+        <div className="flex flex-col min-w-0 border-l border-pauta pl-3 min-[700px]:px-4">
+          <dt className="text-xs text-grafite font-medium truncate">Tarefas realizadas</dt>
+          <dd
+            data-resumo-realizadas=""
+            className="text-xl font-bold tracking-tight text-tinta tabular-nums whitespace-nowrap mt-0.5"
+          >
+            {temDados ? relatorio.tarefasMedidas : '—'}
+          </dd>
+          <div aria-hidden className="min-h-[1.25rem] mt-0.5" />
+        </div>
+
+        {/* Bloco 3: Mais tempo */}
+        <div
+          data-resumo-maior=""
+          className="flex flex-col min-w-0 border-pauta border-l-0 min-[700px]:border-l pr-3 min-[700px]:px-4"
+        >
+          <dt className="text-xs text-grafite font-medium truncate">Mais tempo</dt>
+          <dd
+            data-resumo-maior-valor=""
+            className="text-xl font-bold tracking-tight text-tinta tabular-nums whitespace-nowrap mt-0.5"
+          >
+            {temDados && relatorio.tarefaComMaisTempo
+              ? formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)
+              : '—'}
+          </dd>
+          <div
+            data-resumo-maior-detalhe=""
+            className="text-xs text-grafite min-h-[1.25rem] mt-0.5 flex items-center min-w-0"
+          >
+            {temDados && relatorio.tarefaComMaisTempo ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    tabIndex={0}
+                    className="flex items-center gap-1.5 min-w-0 cursor-default focus-visible:outline-none"
+                  >
+                    <span
+                      aria-hidden
+                      className="size-2 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: relatorio.tarefaComMaisTempo.cor
+                          ? corNaTela(relatorio.tarefaComMaisTempo.cor)
+                          : 'var(--cor-grafite)',
+                      }}
+                    />
+                    <span className="truncate">{relatorio.tarefaComMaisTempo.titulo}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{relatorio.tarefaComMaisTempo.titulo}</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Bloco 4: Menos tempo */}
+        <div
+          data-resumo-menor=""
+          className="flex flex-col min-w-0 border-l border-pauta pl-3 min-[700px]:pl-4"
+        >
+          <dt className="text-xs text-grafite font-medium truncate">Menos tempo</dt>
+          <dd
+            data-resumo-menor-valor=""
+            className="text-xl font-bold tracking-tight text-tinta tabular-nums whitespace-nowrap mt-0.5"
+          >
+            {temDados && relatorio.tarefaComMenosTempo
+              ? formatarDuracao(relatorio.tarefaComMenosTempo.tempoMs)
+              : '—'}
+          </dd>
+          <div
+            data-resumo-menor-detalhe=""
+            className="text-xs text-grafite min-h-[1.25rem] mt-0.5 flex items-center min-w-0"
+          >
+            {temDados && relatorio.tarefaComMenosTempo ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    tabIndex={0}
+                    className="flex items-center gap-1.5 min-w-0 cursor-default focus-visible:outline-none"
+                  >
+                    <span
+                      aria-hidden
+                      className="size-2 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: relatorio.tarefaComMenosTempo.cor
+                          ? corNaTela(relatorio.tarefaComMenosTempo.cor)
+                          : 'var(--cor-grafite)',
+                      }}
+                    />
+                    <span className="truncate">{relatorio.tarefaComMenosTempo.titulo}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{relatorio.tarefaComMenosTempo.titulo}</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+          </div>
+        </div>
+      </dl>
+
+      {!temDados ? (
         <div
           data-estado-vazio-tempo=""
           className="flex flex-col items-center justify-center gap-2.5 rounded-lg border border-dashed border-pauta bg-papel/60 px-6 py-12 text-center"
         >
           <Clock aria-hidden className="size-7 text-grafite/60" />
           <p className="max-w-md text-sm text-grafite">
-            Nenhum tempo medido ainda. Marque uma tarefa como Em andamento para começar.
+            {semNenhumDadoNoBanco
+              ? 'Nenhum tempo medido ainda. Marque uma tarefa como Em andamento para começar.'
+              : 'Nenhum tempo medido neste período.'}
           </p>
         </div>
       ) : (
         <div className="grid gap-6">
-          {/* Linha de resumo com 4 métricas */}
-          <dl
-            aria-label="Resumo do período"
-            className="flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-b border-pauta py-3 text-sm"
-          >
-            <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-grafite">Tempo médio por tarefa</dt>
-              <dd data-resumo-media="" className="font-semibold text-tinta tabular-nums">
-                {formatarDuracao(relatorio.tempoMedioMs)}
-              </dd>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-grafite">Tarefas realizadas</dt>
-              <dd data-resumo-realizadas="" className="font-semibold text-tinta tabular-nums">
-                {relatorio.tarefasMedidas}
-              </dd>
-            </div>
-            {relatorio.tarefaComMaisTempo && (
-              <div className="flex min-w-0 max-w-xs items-baseline gap-2">
-                <dt className="shrink-0 text-xs text-grafite">Mais tempo</dt>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <dd
-                      data-resumo-maior=""
-                      title={`${relatorio.tarefaComMaisTempo.titulo} (${formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)})`}
-                      className="truncate font-medium text-tinta cursor-default"
-                    >
-                      {relatorio.tarefaComMaisTempo.titulo}{' '}
-                      <span className="text-grafite tabular-nums">
-                        ({formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)})
-                      </span>
-                    </dd>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      {relatorio.tarefaComMaisTempo.titulo} (
-                      {formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)})
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-            {relatorio.tarefaComMenosTempo && (
-              <div className="flex min-w-0 max-w-xs items-baseline gap-2">
-                <dt className="shrink-0 text-xs text-grafite">Menos tempo</dt>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <dd
-                      data-resumo-menor=""
-                      title={`${relatorio.tarefaComMenosTempo.titulo} (${formatarDuracao(relatorio.tarefaComMenosTempo.tempoMs)})`}
-                      className="truncate font-medium text-tinta cursor-default"
-                    >
-                      {relatorio.tarefaComMenosTempo.titulo}{' '}
-                      <span className="text-grafite tabular-nums">
-                        ({formatarDuracao(relatorio.tarefaComMenosTempo.tempoMs)})
-                      </span>
-                    </dd>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      {relatorio.tarefaComMenosTempo.titulo} (
-                      {formatarDuracao(relatorio.tarefaComMenosTempo.tempoMs)})
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-          </dl>
-
           {/* Gráficos */}
           <div className={cn('grid gap-6', mostrarPizza && 'md:grid-cols-2')}>
             <GraficoPorTarefa
