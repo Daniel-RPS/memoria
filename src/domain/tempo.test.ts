@@ -43,6 +43,7 @@ import {
   formatarTempoAgora,
   gerarCsvDeTempo,
   lerPeriodoDeDados,
+  montarGraficoPorTarefa,
   montarRelatorioDeTempo,
   somarTempoDoAlvo,
 } from '@/domain/tempo'
@@ -548,5 +549,90 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
     if (!lidoAntigo.isValido) return
     await importarDados(lidoAntigo.backup)
     expect(await db.sessions.count()).toBe(0)
+  })
+
+  it('montarGraficoPorTarefa: ordenação, proporção, limite de 8 com +N outras, cores e legenda', () => {
+    // 3 tarefas com categorias diferentes e tempos 30 min, 20 min, 10 min
+    const tarefas3 = [
+      {
+        chave: 't-10',
+        tipo: 'tarefa' as const,
+        titulo: 'Tarefa 10 min',
+        categoria: { id: 'cat-c', nome: 'Saúde', cor: '#EC4899' },
+        isArquivada: false,
+        tempoTotalMs: 10 * 60_000,
+        diasTrabalhados: ['2026-11-04'],
+        sessoes: [],
+      },
+      {
+        chave: 't-30',
+        tipo: 'tarefa' as const,
+        titulo: 'Tarefa 30 min',
+        categoria: { id: 'cat-a', nome: 'Trabalho', cor: '#8B3DFF' },
+        isArquivada: false,
+        tempoTotalMs: 30 * 60_000,
+        diasTrabalhados: ['2026-11-04'],
+        sessoes: [],
+      },
+      {
+        chave: 't-20',
+        tipo: 'tarefa' as const,
+        titulo: 'Tarefa 20 min',
+        // Sem categoria: cor neutra (null)
+        isArquivada: false,
+        tempoTotalMs: 20 * 60_000,
+        diasTrabalhados: ['2026-11-04'],
+        sessoes: [],
+      },
+    ]
+
+    const grafico3 = montarGraficoPorTarefa(tarefas3)
+    expect(
+      grafico3.itens.map((i) => ({ titulo: i.titulo, prop: i.proporcao, cor: i.cor })),
+    ).toEqual([
+      { titulo: 'Tarefa 30 min', prop: 100, cor: '#8B3DFF' },
+      { titulo: 'Tarefa 20 min', prop: 67, cor: null },
+      { titulo: 'Tarefa 10 min', prop: 33, cor: '#EC4899' },
+    ])
+    // Legenda na ordem de aparição das tarefas
+    expect(grafico3.categoriasLegenda).toEqual([
+      { id: 'cat-a', nome: 'Trabalho', cor: '#8B3DFF' },
+      { id: null, nome: 'Sem categoria', cor: null },
+      { id: 'cat-c', nome: 'Saúde', cor: '#EC4899' },
+    ])
+
+    // 10 tarefas -> 8 barras individuais + 1 barra "+2 outras" com a soma dos tempos
+    const tarefas10 = Array.from({ length: 10 }, (_, i) => ({
+      chave: `t-${i + 1}`,
+      tipo: 'tarefa' as const,
+      titulo: `Tarefa ${i + 1}`,
+      isArquivada: false,
+      tempoTotalMs: (10 - i) * 10 * 60_000, // 100, 90, 80, 70, 60, 50, 40, 30, 20, 10 min
+      diasTrabalhados: ['2026-11-04'],
+      sessoes: [],
+    }))
+
+    const grafico10 = montarGraficoPorTarefa(tarefas10)
+    expect(grafico10.itens).toHaveLength(9)
+    expect(grafico10.itens.slice(0, 8).map((i) => i.titulo)).toEqual([
+      'Tarefa 1',
+      'Tarefa 2',
+      'Tarefa 3',
+      'Tarefa 4',
+      'Tarefa 5',
+      'Tarefa 6',
+      'Tarefa 7',
+      'Tarefa 8',
+    ])
+    // Tarefas 9 (20 min) e 10 (10 min) somam 30 min -> proporção 30/100 = 30%
+    const outras = grafico10.itens[8]
+    expect(outras).toMatchObject({
+      chave: 'outras',
+      titulo: '+2 outras',
+      cor: null,
+      tempoMs: 30 * 60_000,
+      proporcao: 30,
+      isOutras: true,
+    })
   })
 })

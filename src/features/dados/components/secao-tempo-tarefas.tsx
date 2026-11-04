@@ -1,47 +1,22 @@
 import { useState } from 'react'
-import { Clock, Download, Search, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Clock, Search, X } from 'lucide-react'
+import { cn } from 'cn'
 import { Input } from '@/components/ui/input'
-import {
-  filtrarTarefasDeTempo,
-  formatarDuracao,
-  gerarCsvDeTempo,
-  type DadosDeTempo,
-  type PeriodoDeDados,
-} from '@/domain/tempo'
-import type { DataLocal } from '@/db/types'
+import { filtrarTarefasDeTempo, formatarDuracao } from '@/domain/tempo'
 import { FiltroPeriodoDados } from '@/features/dados/components/filtro-periodo-dados'
-import { GraficoPorCategoria, GraficoPorDia } from '@/features/dados/components/graficos-tempo'
+import { GraficoPorDia, GraficoPorTarefa } from '@/features/dados/components/graficos-tempo'
 import { ListaTarefasTempo } from '@/features/dados/components/lista-tarefas-tempo'
 import { usePeriodoDeDados, useRelatorioDeTempo } from '@/features/dados/hooks/use-dados-tempo'
 
-function baixarCsv(
-  dados: DadosDeTempo,
-  periodo: PeriodoDeDados,
-  hoje: DataLocal,
-  agoraIso: string,
-) {
-  const csv = gerarCsvDeTempo(dados, periodo, hoje, agoraIso)
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `memoria-tempo-${hoje}.csv`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
-
 /**
  * Primeira seção da tela Dados: "Tempo nas tarefas".
- * Exibe filtro de período, resumo, gráficos por categoria e por dia, busca, lista de tarefas
- * expansível por sessão e exportação CSV.
+ * Exibe filtro de período, resumo, gráficos por tarefa e por dia, busca e lista de tarefas
+ * expansível por sessão.
  */
 export function SecaoTempoTarefas() {
   const [periodo, definirPeriodo] = usePeriodoDeDados()
   const [busca, setBusca] = useState('')
-  const { isCarregando, hoje, dados, relatorio, agoraIso } = useRelatorioDeTempo(periodo)
+  const { isCarregando, hoje, dados, relatorio } = useRelatorioDeTempo(periodo)
 
   if (isCarregando || !dados || !relatorio) return null
 
@@ -56,21 +31,7 @@ export function SecaoTempoTarefas() {
         <h2 id="titulo-tempo-tarefas" className="text-lg font-bold tracking-tight text-tinta">
           Tempo nas tarefas
         </h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <FiltroPeriodoDados periodo={periodo} hoje={hoje} onMudar={definirPeriodo} />
-          {!semDadosNoPeriodo && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => baixarCsv(dados, periodo, hoje, agoraIso)}
-              className="h-8 gap-1.5 text-xs text-grafite hover:text-tinta"
-            >
-              <Download aria-hidden className="size-3.5" />
-              Exportar CSV
-            </Button>
-          )}
-        </div>
+        <FiltroPeriodoDados periodo={periodo} hoje={hoje} onMudar={definirPeriodo} />
       </div>
 
       {semNenhumDadoNoBanco || semDadosNoPeriodo ? (
@@ -116,8 +77,8 @@ export function SecaoTempoTarefas() {
           </dl>
 
           {/* Gráficos */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <GraficoPorCategoria itens={relatorio.porCategoria} />
+          <div className={cn('grid gap-6', mostrarGraficoPorDia && 'md:grid-cols-2')}>
+            <GraficoPorTarefa dados={relatorio.graficoPorTarefa} />
             {mostrarGraficoPorDia && <GraficoPorDia dias={relatorio.porDia} />}
           </div>
 

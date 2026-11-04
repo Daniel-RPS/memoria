@@ -207,8 +207,8 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await expect(page.locator('[data-resumo-total]')).toHaveText('1h 10 min')
     await expect(page.locator('[data-resumo-tarefas]')).toHaveText('2 tarefas')
 
-    // Gráfico por categoria e gráfico por dia visíveis
-    await expect(page.getByRole('region', { name: 'Tempo por categoria' })).toBeVisible()
+    // Gráfico por tarefa e gráfico por dia visíveis
+    await expect(page.getByRole('region', { name: 'Tempo por tarefa' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Tempo por dia' })).toBeVisible()
     await page.locator(`[data-coluna-dia="${HOJE}"]`).hover()
     await expect(page.locator('[data-resumo-dia-grafico]')).toContainText('03/11')
@@ -255,12 +255,155 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await dialog.getByLabel('Horário de fim').fill('09:35')
     await dialog.getByRole('button', { name: 'Salvar' }).click()
     await expect(linhaRelatorio).toContainText('50 min')
+  })
 
-    // Exportar CSV dispara download com as sessões
-    const promessaDownload = page.waitForEvent('download')
-    await page.getByRole('button', { name: 'Exportar CSV' }).click()
-    const download = await promessaDownload
-    expect(download.suggestedFilename()).toMatch(/^memoria-tempo-.*\.csv$/)
+  test('gráfico "Por tarefa": 3 tarefas com proporções 100%/67%/33% e 10 tarefas com 8 linhas + "+2 outras"', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date(`${HOJE}T12:00:00-03:00`) })
+    await page.goto(`/dia/${HOJE}`)
+
+    // Semeia 3 tarefas com categorias diferentes e tempos 30 min, 20 min e 10 min
+    await page.evaluate(
+      async ({ hoje }) => {
+        const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+        const categorias = (await importar(
+          '/src/db/repositories/category-repository.ts',
+        )) as ModuloCategorias
+        const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
+        const database = (await importar('/src/db/database.ts')) as { db: import('dexie').Dexie }
+        const db = database.db
+
+        const catTrabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#8B3DFF' })
+        const catEstudos = await categorias.criarCategoria({ nome: 'Estudos', cor: '#10B981' })
+        const catPessoal = await categorias.criarCategoria({ nome: 'Pessoal', cor: '#EC4899' })
+
+        const t1 = await tarefas.criarTarefa({
+          titulo: 'Tarefa 30 min',
+          data: hoje,
+          categoryId: catTrabalho.id,
+        })
+        const t2 = await tarefas.criarTarefa({
+          titulo: 'Tarefa 20 min',
+          data: hoje,
+          categoryId: catEstudos.id,
+        })
+        const t3 = await tarefas.criarTarefa({
+          titulo: 'Tarefa 10 min',
+          data: hoje,
+          categoryId: catPessoal.id,
+        })
+
+        await db.table('sessions').bulkAdd([
+          {
+            id: 's-t1',
+            tarefaId: t1.id,
+            categoryId: catTrabalho.id,
+            inicio: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T10:30:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T10:30:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-t2',
+            tarefaId: t2.id,
+            categoryId: catEstudos.id,
+            inicio: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T10:20:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T10:20:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-t3',
+            tarefaId: t3.id,
+            categoryId: catPessoal.id,
+            inicio: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T10:10:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T10:10:00-03:00`).toISOString(),
+          },
+        ])
+      },
+      { hoje: HOJE },
+    )
+
+    await page.goto('/dados')
+    const regiaoGrafico = page.getByRole('region', { name: 'Tempo por tarefa' })
+    await expect(regiaoGrafico).toBeVisible()
+
+    // Legenda exibe as 3 categorias
+    const legenda = regiaoGrafico.locator('[data-legenda-categorias]')
+    await expect(legenda.getByText('Trabalho')).toBeVisible()
+    await expect(legenda.getByText('Estudos')).toBeVisible()
+    await expect(legenda.getByText('Pessoal')).toBeVisible()
+
+    // 3 barras na ordem 30 min, 20 min, 10 min com proporções 100%, 67%, 33%
+    const barras = regiaoGrafico.locator('[data-barra-tarefa]')
+    await expect(barras).toHaveCount(3)
+
+    const barra1 = barras.nth(0)
+    await expect(barra1).toContainText('Tarefa 30 min')
+    await expect(barra1).toContainText('30 min')
+    await expect(barra1).toHaveAttribute('data-proporcao', '100')
+
+    const barra2 = barras.nth(1)
+    await expect(barra2).toContainText('Tarefa 20 min')
+    await expect(barra2).toContainText('20 min')
+    await expect(barra2).toHaveAttribute('data-proporcao', '67')
+
+    const barra3 = barras.nth(2)
+    await expect(barra3).toContainText('Tarefa 10 min')
+    await expect(barra3).toContainText('10 min')
+    await expect(barra3).toHaveAttribute('data-proporcao', '33')
+
+    // Capturas da tela Dados em Esta semana (claro e escuro)
+    await capturar(page, 'esta-semana-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'esta-semana-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // Filtro Hoje: ocupa a largura toda (sem gráfico por dia)
+    await page.getByRole('button', { name: 'Hoje', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Tempo por dia' })).toHaveCount(0)
+    await capturar(page, 'hoje-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'hoje-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // Agora adiciona mais 7 tarefas (total 10 tarefas) para testar o limite de 8 + "+2 outras"
+    await page.evaluate(
+      async ({ hoje }) => {
+        const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+        const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
+        const database = (await importar('/src/db/database.ts')) as { db: import('dexie').Dexie }
+        const db = database.db
+
+        for (let i = 4; i <= 10; i++) {
+          const t = await tarefas.criarTarefa({
+            titulo: `Tarefa extra ${i}`,
+            data: hoje,
+          })
+          const minutos = 10 - i + 2 // 8, 7, 6, 5, 4, 3, 2 min
+          await db.table('sessions').add({
+            id: `s-extra-${i}`,
+            tarefaId: t.id,
+            inicio: new Date(`${hoje}T08:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T08:0${minutos}:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T08:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T08:0${minutos}:00-03:00`).toISOString(),
+          })
+        }
+      },
+      { hoje: HOJE },
+    )
+
+    // Recarrega em /dados e verifica 8 linhas individuais + "+2 outras"
+    await page.goto('/dados')
+    const novasBarras = page
+      .getByRole('region', { name: 'Tempo por tarefa' })
+      .locator('[data-barra-tarefa]')
+    await expect(novasBarras).toHaveCount(9)
+    await expect(novasBarras.nth(8)).toContainText('+2 outras')
   })
 
   test('ligar e avançar 5h mostra aviso de sessão longa ao reabrir; "Ajustar…" corrige o fim', async ({

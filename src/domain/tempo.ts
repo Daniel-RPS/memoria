@@ -259,6 +259,27 @@ export interface TempoPorDia {
   tempoMs: number
 }
 
+export interface ItemGraficoPorTarefa {
+  chave: string
+  titulo: string
+  nomeGrupo?: string
+  cor: string | null
+  tempoMs: number
+  proporcao: number
+  isOutras?: boolean
+}
+
+export interface CategoriaDaLegenda {
+  id: string | null
+  nome: string
+  cor: string | null
+}
+
+export interface DadosGraficoPorTarefa {
+  itens: ItemGraficoPorTarefa[]
+  categoriasLegenda: CategoriaDaLegenda[]
+}
+
 export interface RelatorioDeTempo {
   intervalo: { inicio: DataLocal; fim: DataLocal }
   tempoTotalMs: number
@@ -267,6 +288,7 @@ export interface RelatorioDeTempo {
   porCategoria: TempoPorCategoria[]
   porDia: TempoPorDia[]
   tarefas: ResumoTarefaNoTempo[]
+  graficoPorTarefa: DadosGraficoPorTarefa
 }
 
 interface AlvoResolvido {
@@ -488,6 +510,8 @@ export function montarRelatorioDeTempo(
     tempoMs,
   }))
 
+  const graficoPorTarefa = montarGraficoPorTarefa(tarefas)
+
   return {
     intervalo,
     tempoTotalMs,
@@ -498,7 +522,69 @@ export function montarRelatorioDeTempo(
     porCategoria,
     porDia,
     tarefas,
+    graficoPorTarefa,
   }
+}
+
+/**
+ * Prepara os dados para o gráfico "Por tarefa":
+ * - Ordenadas do maior para o menor tempo no período
+ * - Comprimento proporcional à tarefa com mais tempo (100% para a maior)
+ * - Até 8 tarefas no gráfico; acima disso, agrupa o excedente na linha "+N outras" (cor neutra)
+ * - Extrai a legenda compacta das categorias únicas presentes nas tarefas do período
+ */
+export function montarGraficoPorTarefa(
+  tarefas: ResumoTarefaNoTempo[],
+  limiteTarefas = 8,
+): DadosGraficoPorTarefa {
+  const tarefasValidas = [...tarefas]
+    .filter((t) => t.tempoTotalMs > 0)
+    .sort((a, b) => b.tempoTotalMs - a.tempoTotalMs || a.titulo.localeCompare(b.titulo, 'pt-BR'))
+
+  if (tarefasValidas.length === 0) {
+    return { itens: [], categoriasLegenda: [] }
+  }
+
+  const maiorTempoMs = tarefasValidas[0].tempoTotalMs
+
+  const mapaCategorias = new Map<string, CategoriaDaLegenda>()
+  for (const tarefa of tarefasValidas) {
+    const chave = tarefa.categoria?.id ?? 'sem-categoria'
+    if (!mapaCategorias.has(chave)) {
+      mapaCategorias.set(chave, {
+        id: tarefa.categoria?.id ?? null,
+        nome: tarefa.categoria?.nome ?? 'Sem categoria',
+        cor: tarefa.categoria?.cor ?? null,
+      })
+    }
+  }
+  const categoriasLegenda = [...mapaCategorias.values()]
+
+  const principais = tarefasValidas.slice(0, limiteTarefas)
+  const excedentes = tarefasValidas.slice(limiteTarefas)
+
+  const itens: ItemGraficoPorTarefa[] = principais.map((t) => ({
+    chave: t.chave,
+    titulo: t.titulo,
+    ...(t.nomeGrupo ? { nomeGrupo: t.nomeGrupo } : {}),
+    cor: t.categoria?.cor ?? null,
+    tempoMs: t.tempoTotalMs,
+    proporcao: maiorTempoMs > 0 ? Math.round((t.tempoTotalMs / maiorTempoMs) * 100) : 0,
+  }))
+
+  if (excedentes.length > 0) {
+    const tempoOutrasMs = excedentes.reduce((soma, t) => soma + t.tempoTotalMs, 0)
+    itens.push({
+      chave: 'outras',
+      titulo: `+${excedentes.length} outras`,
+      cor: null,
+      tempoMs: tempoOutrasMs,
+      proporcao: maiorTempoMs > 0 ? Math.round((tempoOutrasMs / maiorTempoMs) * 100) : 0,
+      isOutras: true,
+    })
+  }
+
+  return { itens, categoriasLegenda }
 }
 
 /** Filtra a lista de tarefas medidas por título, nome do grupo ou nome da categoria. */

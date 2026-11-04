@@ -1,53 +1,94 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { formatarDuracao, type TempoPorCategoria, type TempoPorDia } from '@/domain/tempo'
+import { formatarDuracao, type DadosGraficoPorTarefa, type TempoPorDia } from '@/domain/tempo'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 import { deDataLocal } from '@/lib/datas'
 
-interface GraficoPorCategoriaProps {
-  itens: TempoPorCategoria[]
+interface GraficoPorTarefaProps {
+  dados: DadosGraficoPorTarefa
 }
 
 /**
- * Gráfico 1 — tempo por categoria: barras horizontais simples em SVG, na cor de cada categoria
- * (sem categoria = neutra), com o valor escrito no fim da barra.
+ * Gráfico 1 — tempo por tarefa: uma barra por tarefa na cor da categoria (ou neutra),
+ * ordenada do maior para o menor tempo no período, com comprimento proporcional à maior tarefa.
+ * Exibe até 8 tarefas; excedentes são somados na linha "+N outras".
+ * Logo acima das barras, uma legenda compacta de categorias presentes no período.
  */
-export function GraficoPorCategoria({ itens }: GraficoPorCategoriaProps) {
+export function GraficoPorTarefa({ dados }: GraficoPorTarefaProps) {
   const corNaTela = useCorNaTela()
+  const { itens, categoriasLegenda } = dados
   if (itens.length === 0) return null
-  const maiorMs = Math.max(1, ...itens.map((item) => item.tempoMs))
 
   return (
-    <section aria-label="Tempo por categoria" className="grid gap-2.5">
-      <h3 className="text-xs font-semibold tracking-tight text-grafite">Por categoria</h3>
+    <section aria-label="Tempo por tarefa" className="grid gap-2.5">
+      <div className="flex flex-col gap-1.5">
+        <h3 className="text-xs font-semibold tracking-tight text-grafite">Por tarefa</h3>
+        {categoriasLegenda.length > 0 && (
+          <div
+            data-legenda-categorias=""
+            className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-grafite"
+          >
+            {categoriasLegenda.map((cat) => {
+              const cor = cat.cor ? corNaTela(cat.cor) : 'var(--grafite)'
+              return (
+                <span
+                  key={cat.id ?? 'sem-categoria'}
+                  data-legenda-item={cat.nome}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <span
+                    aria-hidden
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: cor }}
+                  />
+                  <span className="text-tinta">{cat.nome}</span>
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       <ul className="grid gap-2">
         {itens.map((item) => {
           const cor = item.cor ? corNaTela(item.cor) : 'var(--grafite)'
-          const larguraPct = Math.max(3, Math.round((item.tempoMs / maiorMs) * 100))
+          const larguraPct = Math.max(3, Math.min(100, item.proporcao))
+          const tituloCompleto = item.nomeGrupo ? `${item.titulo} (${item.nomeGrupo})` : item.titulo
+
           return (
             <li
-              key={item.categoryId ?? 'sem-categoria'}
-              data-barra-categoria={item.nome}
-              className="grid grid-cols-[minmax(6.5rem,9rem)_1fr] items-center gap-3 text-sm"
+              key={item.chave}
+              data-barra-tarefa={item.titulo}
+              data-proporcao={item.proporcao}
+              className="grid grid-cols-[minmax(7rem,12rem)_1fr] items-center gap-3 text-sm"
             >
-              <span className="flex min-w-0 items-center gap-2 truncate text-tinta">
-                <span
-                  aria-hidden
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: cor }}
-                />
-                <span className="truncate">{item.nome}</span>
+              <span
+                className="flex min-w-0 items-baseline gap-1.5 truncate text-tinta"
+                title={tituloCompleto}
+              >
+                <span className="truncate">{item.titulo}</span>
+                {item.nomeGrupo && (
+                  <span className="shrink-0 text-xs text-grafite">{item.nomeGrupo}</span>
+                )}
               </span>
               <div className="flex min-w-0 items-center gap-2.5">
                 <svg
                   aria-hidden
-                  viewBox={`0 0 100 8`}
+                  viewBox="0 0 100 8"
                   preserveAspectRatio="none"
                   className="h-2 rounded-full"
                   style={{ width: `${larguraPct}%`, minWidth: '0.5rem' }}
                 >
-                  <rect x={0} y={0} width={100} height={8} rx={4} style={{ fill: cor }} />
+                  <rect
+                    data-barra-retangulo=""
+                    x={0}
+                    y={0}
+                    width={100}
+                    height={8}
+                    rx={4}
+                    style={{ fill: cor }}
+                  />
                 </svg>
                 <span className="shrink-0 text-xs font-medium whitespace-nowrap text-grafite tabular-nums">
                   {formatarDuracao(item.tempoMs)}
