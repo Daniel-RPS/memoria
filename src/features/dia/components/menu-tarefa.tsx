@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
+import { RodapeTempoDoMenu } from '@/components/rodape-tempo-do-menu'
 import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categoria'
 import type { DataLocal, Task } from '@/db/types'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
@@ -170,6 +171,7 @@ export function MenuTarefa({
           <DropdownMenuItem variant="destructive" onSelect={() => setIsConfirmandoExclusao(true)}>
             <Trash2 /> Excluir…
           </DropdownMenuItem>
+          <RodapeTempoDoMenu alvo={{ tipo: 'tarefa', id: tarefa.id }} />
         </DropdownMenuContent>
       </DropdownMenu>
 

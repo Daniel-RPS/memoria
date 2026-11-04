@@ -88,7 +88,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
             className={cn(isConcluido && 'text-grafite line-through decoration-tinta/50')}
           />
         )}
-        {isEmAndamento && !isEditando && <IndicadorAndamento />}
+        {isEmAndamento && !isEditando && <IndicadorAndamento desde={item.emAndamentoDesde} />}
         {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
         {isAtrasado && !isEditando && (
           <span className={SELO_DE_ATRASO}>pendente desde {diaCurto(item.dataOriginal)}</span>

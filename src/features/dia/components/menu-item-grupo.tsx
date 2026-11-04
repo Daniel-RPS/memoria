@@ -13,6 +13,7 @@ import {
 import { cn } from 'cn'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
 import { ItensDeNotaDoMenu } from '@/components/notas/itens-de-nota-do-menu'
+import { RodapeTempoDoMenu } from '@/components/rodape-tempo-do-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -148,6 +149,7 @@ export function MenuItemGrupo({
           <DropdownMenuItem variant="destructive" onSelect={() => void handleExcluir()}>
             <Trash2 /> Excluir
           </DropdownMenuItem>
+          <RodapeTempoDoMenu alvo={{ tipo: 'item', id: item.id, cadeiaId: item.cadeiaId }} />
         </DropdownMenuContent>
       </DropdownMenu>
 

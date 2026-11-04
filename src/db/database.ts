@@ -10,6 +10,7 @@ import type {
   Subcategory,
   Subtask,
   Task,
+  TimeSession,
 } from '@/db/types'
 import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
 import { preencherCadeias } from '@/lib/grupos'
@@ -32,6 +33,7 @@ export class MemoriaDatabase extends Dexie {
   groupSeries!: EntityTable<GroupSeries, 'id'>
   groupCards!: EntityTable<GroupCard, 'id'>
   groupItems!: EntityTable<GroupItem, 'id'>
+  sessions!: EntityTable<TimeSession, 'id'>
 
   constructor(nome = 'memoria') {
     super(nome)
@@ -206,6 +208,56 @@ export class MemoriaDatabase extends Dexie {
           .table('groupItems')
           .filter((item: GroupItem) => item.status === 'arquivado' && !item.arquivadoEm)
           .modify({ arquivadoEm: momento })
+      })
+    // v12: tabela `sessions` para medir tempo em andamento. Tarefa ou item que já está em
+    // andamento no momento da migração ganha uma sessão aberta começando em `emAndamentoDesde`.
+    this.version(12)
+      .stores({
+        sessions: 'id, tarefaId, itemId, cadeiaId, grupoId, categoryId, inicio',
+      })
+      .upgrade(async (transacao) => {
+        const momento = new Date().toISOString()
+        const [tarefas, itens, cards, series] = await Promise.all([
+          transacao
+            .table('tasks')
+            .filter((tarefa: Task) => tarefa.emAndamento === true)
+            .toArray() as Promise<Task[]>,
+          transacao
+            .table('groupItems')
+            .filter((item: GroupItem) => item.emAndamento === true)
+            .toArray() as Promise<GroupItem[]>,
+          transacao.table('groupCards').toArray() as Promise<GroupCard[]>,
+          transacao.table('groupSeries').toArray() as Promise<GroupSeries[]>,
+        ])
+        const cardPorId = new Map(cards.map((card) => [card.id, card]))
+        const seriePorId = new Map(series.map((serie) => [serie.id, serie]))
+        const sessoes: TimeSession[] = [
+          ...tarefas.map((tarefa): TimeSession => ({
+            id: crypto.randomUUID(),
+            tarefaId: tarefa.id,
+            ...(tarefa.categoryId ? { categoryId: tarefa.categoryId } : {}),
+            inicio: tarefa.emAndamentoDesde ?? momento,
+            criadoEm: momento,
+            atualizadoEm: momento,
+          })),
+          ...itens.map((item): TimeSession => {
+            const card = cardPorId.get(item.cardId)
+            const serie = card ? seriePorId.get(card.seriesId) : undefined
+            return {
+              id: crypto.randomUUID(),
+              itemId: item.id,
+              cadeiaId: item.cadeiaId,
+              ...(card ? { grupoId: card.seriesId } : {}),
+              ...(serie?.categoryId ? { categoryId: serie.categoryId } : {}),
+              inicio: item.emAndamentoDesde ?? momento,
+              criadoEm: momento,
+              atualizadoEm: momento,
+            }
+          }),
+        ]
+        if (sessoes.length > 0) {
+          await transacao.table('sessions').bulkAdd(sessoes)
+        }
       })
   }
 }

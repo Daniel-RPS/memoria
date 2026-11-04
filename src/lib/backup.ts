@@ -11,7 +11,7 @@ import { converterNotaAntiga } from '@/lib/notas'
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 11
+export const FORMATO_ATUAL = 12
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -158,6 +158,18 @@ const anexoNoArquivo = z.object({
   conteudo: z.object({ tipo: texto, base64: z.string() }).optional(),
 })
 
+// Formato 12: sessões de tempo em andamento; backups anteriores entram sem sessões.
+const sessaoDeTempo = z.object({
+  ...base,
+  tarefaId: texto.optional(),
+  itemId: texto.optional(),
+  cadeiaId: texto.optional(),
+  grupoId: texto.optional(),
+  categoryId: texto.optional(),
+  inicio: texto,
+  fim: texto.optional(),
+})
+
 /** Backup anterior ao formato 10 não guardava quando arquivou: vale a última alteração. */
 function comArquivadoEm<T extends { atualizadoEm: string; arquivadoEm?: string | undefined }>(
   registro: T,
@@ -188,6 +200,8 @@ export const esquemaBackup = z.object({
       groupItems: z.array(itemDeGrupo).default([]),
       // Formato 2: cards se chamavam instâncias e os itens eram tarefas.
       groupInstances: z.array(cardDeGrupo).optional(),
+      // Formato 12: sessões de tempo.
+      sessions: z.array(sessaoDeTempo).default([]),
     })
     .transform(({ groupInstances, tasks, notes, attachments, ...tabelas }) => {
       const { cards, itens, soltas } = converterGruposAntigos(groupInstances ?? [], tasks)
@@ -237,6 +251,7 @@ export const NOMES_DAS_TABELAS: Record<NomeTabela, [string, string]> = {
   groupSeries: ['grupo', 'grupos'],
   groupCards: ['card de grupo', 'cards de grupo'],
   groupItems: ['item de grupo', 'itens de grupo'],
+  sessions: ['sessão de tempo', 'sessões de tempo'],
 }
 
 export type Quantidades = Record<NomeTabela, number>

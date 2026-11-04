@@ -4,6 +4,7 @@ import {
   Calendar,
   CalendarDays,
   CalendarRange,
+  ChartColumn,
   HardDriveDownload,
   House,
   ListOrdered,
@@ -200,6 +201,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const isNasCategorias = useMatch('/categorias') !== null
   const isNoBackup = useMatch('/backup') !== null
   const isNosArquivados = useMatch('/arquivados') !== null
+  const isNosDados = useMatch('/dados') !== null
   const isNasNotas = useMatch({ path: '/notas', end: false }) !== null
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
   // "Semana", "Mês" e "Ano" abrem o período da data que está aberta; "Dia" abre hoje.
@@ -242,6 +244,12 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
       isAtiva: isNosArquivados,
       nome: 'Arquivados',
       contador: totalArquivados,
+    },
+    {
+      para: '/dados',
+      icone: ChartColumn,
+      isAtiva: isNosDados,
+      nome: 'Dados',
     },
     {
       para: '/backup',

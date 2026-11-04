@@ -7,6 +7,7 @@ import { useAparencia } from '@/app/use-aparencia'
 import { useAplicarTema } from '@/app/use-aplicar-tema'
 import { useBarraRecolhida } from '@/app/use-barra-recolhida'
 import { ProvedorPainelNotas } from '@/components/notas/provedor-painel-notas'
+import { AvisoSessaoLonga } from '@/components/aviso-sessao-longa'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAtalhoCaptura } from '@/app/use-atalho-captura'
@@ -27,6 +28,7 @@ export function LayoutApp() {
   const isNoDia = useMatch('/dia/:data') !== null
   const isNoInicio = useMatch('/inicio') !== null
   const isNasCategorias = useMatch('/categorias') !== null
+  const isNosDados = useMatch('/dados') !== null
   const isNaListaDeNotas = useMatch('/notas') !== null
   // No modo Colunas o Dia precisa de espaço para as duas seções lado a lado.
   const { modo: modoDoDia } = usePreferenciasDoDia()
@@ -35,7 +37,7 @@ export function LayoutApp() {
     ? 'max-w-[96rem]'
     : isNoMesOuAno || isNoInicio
       ? 'max-w-6xl'
-      : isNasCategorias || isNaListaDeNotas || isDiaEmColunas
+      : isNasCategorias || isNaListaDeNotas || isDiaEmColunas || isNosDados
         ? 'max-w-5xl'
         : isNosProcedimentos || isNoDia
           ? 'max-w-3xl'
@@ -54,6 +56,7 @@ export function LayoutApp() {
             </div>
           </main>
         </div>
+        <AvisoSessaoLonga />
         <Toaster theme={tema === 'escuro' ? 'dark' : 'light'} position="bottom-center" />
       </ProvedorPainelNotas>
     </TooltipProvider>

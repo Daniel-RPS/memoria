@@ -1,5 +1,5 @@
 import { db } from '@/db/database'
-import type { DataLocal, GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
+import type { DataLocal, GroupCard, GroupItem, GroupSeries, Task, TimeSession } from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
 import { soltarNotasSemAlvo, trocarVinculoDasNotas } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
@@ -12,6 +12,15 @@ import {
   tabelaDoDia,
   type PosicaoAnterior,
 } from '@/db/repositories/task-repository'
+import {
+  atualizarCategoriaDasSessoesDoGrupo,
+  atualizarGrupoDasSessoesDoItem,
+  converterSessoesParaItem,
+  converterSessoesParaTarefa,
+  excluirOuFecharSessoesDosItens,
+  fecharSessoesAbertasDe,
+  restaurarSessoes,
+} from '@/domain/tempo'
 import { marcaDe, SEM_ANDAMENTO } from '@/lib/andamento'
 import { somarDias } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -79,7 +88,14 @@ export async function listarGruposAtrasados(hoje: DataLocal) {
 }
 
 /** Tabelas que excluir item ou card toca (as notas sem alvo viram avulsas). */
-const TABELAS_DE_EXCLUSAO = [db.tasks, db.groupSeries, db.groupCards, db.groupItems, db.notes]
+const TABELAS_DE_EXCLUSAO = [
+  db.tasks,
+  db.groupSeries,
+  db.groupCards,
+  db.groupItems,
+  db.notes,
+  db.sessions,
+]
 
 async function serieComTitulo(titulo: string) {
   const series = await db.groupSeries.toArray()
@@ -280,10 +296,14 @@ export async function definirCategoriaDoGrupo(
   seriesId: string,
   categoria: { categoryId?: string; subcategoryId?: string },
 ) {
-  await db.groupSeries.update(seriesId, {
-    categoryId: categoria.categoryId,
-    subcategoryId: categoria.categoryId ? categoria.subcategoryId : undefined,
-    atualizadoEm: agora(),
+  const momento = agora()
+  await db.transaction('rw', [db.groupSeries, db.sessions], async () => {
+    await db.groupSeries.update(seriesId, {
+      categoryId: categoria.categoryId,
+      subcategoryId: categoria.categoryId ? categoria.subcategoryId : undefined,
+      atualizadoEm: momento,
+    })
+    await atualizarCategoriaDasSessoesDoGrupo(seriesId, categoria.categoryId, momento)
   })
 }
 
@@ -293,7 +313,7 @@ export async function renomearItem(id: string, titulo: string) {
 
 /** Marca ou desmarca. Item transferido não muda (e a cópia nunca é afetada). */
 export async function definirConclusaoItem(id: string, concluido: boolean) {
-  await db.transaction('rw', db.groupItems, async () => {
+  await db.transaction('rw', [db.groupItems, db.sessions], async () => {
     const item = await db.groupItems.get(id)
     if (!item || item.status === 'transferido' || item.status === 'arquivado') return
     const momento = agora()
@@ -303,6 +323,9 @@ export async function definirConclusaoItem(id: string, concluido: boolean) {
         ? { status: 'concluido', concluidoEm: momento, atualizadoEm: momento, ...SEM_ANDAMENTO }
         : { status: 'pendente', concluidoEm: undefined, atualizadoEm: momento },
     )
+    if (concluido) {
+      await fecharSessoesAbertasDe({ itens: [id], cadeias: [item.cadeiaId] }, momento)
+    }
   })
 }
 
@@ -315,11 +338,18 @@ export async function reordenarItem(idsEmOrdem: string[], idMovido: string) {
 
 export async function arquivarItem(id: string) {
   const momento = agora()
-  await db.groupItems.update(id, {
-    status: 'arquivado',
-    arquivadoEm: momento,
-    atualizadoEm: momento,
-    ...SEM_ANDAMENTO,
+  await db.transaction('rw', [db.groupItems, db.sessions], async () => {
+    const item = await db.groupItems.get(id)
+    await db.groupItems.update(id, {
+      status: 'arquivado',
+      arquivadoEm: momento,
+      atualizadoEm: momento,
+      ...SEM_ANDAMENTO,
+    })
+    await fecharSessoesAbertasDe(
+      { itens: [id], ...(item ? { cadeias: [item.cadeiaId] } : {}) },
+      momento,
+    )
   })
 }
 
@@ -329,6 +359,7 @@ export async function excluirItem(id: string) {
     const item = await db.groupItems.get(id)
     if (!item) return
     await db.groupItems.delete(id)
+    await excluirOuFecharSessoesDosItens([item], agora())
     await soltarNotasSemAlvo([{ tipo: 'item', id: item.cadeiaId }])
   })
 }
@@ -340,17 +371,31 @@ export async function excluirItem(id: string) {
  */
 export async function arquivarGrupo(cardId: string) {
   const momento = agora()
-  await db.transaction('rw', db.groupCards, db.groupItems, async () => {
+  await db.transaction('rw', [db.groupCards, db.groupItems, db.sessions], async () => {
     await db.groupCards.update(cardId, {
       arquivado: true,
       arquivadoEm: momento,
       atualizadoEm: momento,
     })
-    await db.groupItems
+    const emAndamento = await db.groupItems
       .where('cardId')
       .equals(cardId)
       .filter((item) => item.emAndamento === true)
-      .modify({ ...SEM_ANDAMENTO, atualizadoEm: momento })
+      .toArray()
+    if (emAndamento.length > 0) {
+      await db.groupItems
+        .where('cardId')
+        .equals(cardId)
+        .filter((item) => item.emAndamento === true)
+        .modify({ ...SEM_ANDAMENTO, atualizadoEm: momento })
+      await fecharSessoesAbertasDe(
+        {
+          itens: emAndamento.map((i) => i.id),
+          cadeias: emAndamento.map((i) => i.cadeiaId),
+        },
+        momento,
+      )
+    }
   })
 }
 
@@ -367,6 +412,7 @@ export async function excluirGrupo(cardId: string) {
     await db.groupCards.delete(cardId)
     const restantes = await db.groupCards.where('seriesId').equals(card.seriesId).count()
     if (restantes === 0) await db.groupSeries.delete(card.seriesId)
+    await excluirOuFecharSessoesDosItens(itens, agora())
     await soltarNotasSemAlvo([
       { tipo: 'grupo', id: card.seriesId },
       ...itens.map((item) => ({ tipo: 'item' as const, id: item.cadeiaId })),
@@ -383,13 +429,15 @@ export interface ResultadoAcao {
   anteriores: PosicaoAnterior[]
   /** Mudanças que restauram os grupos, na ordem em que devem ser aplicadas. */
   desfazer: MudancasDosGrupos[]
+  /** Sessões abertas que foram fechadas ao transferir os itens. */
+  sessoesFechadas?: TimeSession[]
 }
 
 function acaoVazia(): ResultadoAcao {
   return { tarefasMovidas: 0, itensLevados: 0, anteriores: [], desfazer: [] }
 }
 
-const TABELAS_DA_ACAO = [db.tasks, db.groupSeries, db.groupCards, db.groupItems]
+const TABELAS_DA_ACAO = [db.tasks, db.groupSeries, db.groupCards, db.groupItems, db.sessions]
 
 /**
  * Lê os registros que levar `ids` para `destino` pode tocar (ver `EstadoDosGrupos`): todos os
@@ -464,16 +512,34 @@ async function gravarMudancas({ gravar, apagar }: MudancasDosGrupos) {
 export async function copiarItens(ids: string[], destino: DataLocal): Promise<ResultadoAcao> {
   return db.transaction('rw', TABELAS_DA_ACAO, async () => {
     const estado = await carregarEstado(ids, destino)
+    const momento = agora()
     const plano = planejarLevarItens(estado, ids, destino, {
-      momento: agora(),
+      momento,
       novoId: () => crypto.randomUUID(),
       maiorOrdemDoDestino: await maiorOrdemDoDia(destino),
     })
     await gravarMudancas(plano.mudancas)
+    const emAndamentoAntes = estado.itens.filter((i) => i.emAndamento === true)
+    const desligados = emAndamentoAntes.filter((antes) => {
+      const gravado = plano.mudancas.gravar.itens.find((g) => g.id === antes.id)
+      const apagado = plano.mudancas.apagar.itens.includes(antes.id)
+      return apagado || (gravado !== undefined && !gravado.emAndamento)
+    })
+    const sessoesFechadas =
+      desligados.length > 0
+        ? await fecharSessoesAbertasDe(
+            {
+              itens: desligados.map((i) => i.id),
+              cadeias: desligados.map((i) => i.cadeiaId),
+            },
+            momento,
+          )
+        : undefined
     return {
       ...acaoVazia(),
       itensLevados: plano.itensLevados,
       desfazer: [inverterMudancas(estado, plano.mudancas)],
+      ...(sessoesFechadas && sessoesFechadas.length > 0 ? { sessoesFechadas } : {}),
     }
   })
 }
@@ -514,12 +580,15 @@ async function adiarItensECards(itemIds: string[], cardIds: string[], hoje: Data
     porDestino.set(destino, (porDestino.get(destino) ?? new Set()).add(item.id))
   }
   const total = acaoVazia()
+  const sessoesFechadas: TimeSession[] = []
   for (const [destino, ids] of porDestino) {
     const parcial = await copiarItens([...ids], destino)
     total.itensLevados += parcial.itensLevados
     // Desfazer na ordem contrária à que foi feito.
     total.desfazer.unshift(...parcial.desfazer)
+    if (parcial.sessoesFechadas) sessoesFechadas.push(...parcial.sessoesFechadas)
   }
+  if (sessoesFechadas.length > 0) total.sessoesFechadas = sessoesFechadas
   return total
 }
 
@@ -591,6 +660,7 @@ export async function desfazerAcao(resultado: ResultadoAcao) {
   await db.transaction('rw', TABELAS_DA_ACAO, async () => {
     await restaurarPosicoes(resultado.anteriores)
     for (const mudancas of resultado.desfazer) await gravarMudancas(mudancas)
+    await restaurarSessoes({ fechadas: resultado.sessoesFechadas })
   })
 }
 
@@ -602,10 +672,21 @@ export async function desfazerAcao(resultado: ResultadoAcao) {
 export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrdem?: string[]) {
   await db.transaction(
     'rw',
-    [db.tasks, db.subtasks, db.notes, db.attachments, db.groupCards, db.groupItems],
+    [
+      db.tasks,
+      db.subtasks,
+      db.notes,
+      db.attachments,
+      db.groupSeries,
+      db.groupCards,
+      db.groupItems,
+      db.sessions,
+    ],
     async () => {
       const [tarefa, card] = await Promise.all([db.tasks.get(tarefaId), db.groupCards.get(cardId)])
       if (!tarefa || !card || tarefa.status === 'arquivada') return
+      const momento = agora()
+      const serie = await db.groupSeries.get(card.seriesId)
       const item: GroupItem = {
         id: tarefa.id,
         cadeiaId: tarefa.id,
@@ -617,13 +698,14 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
         ...marcaDe(tarefa),
         dataOriginal: tarefa.dataOriginal,
         criadoEm: tarefa.criadoEm,
-        atualizadoEm: agora(),
+        atualizadoEm: momento,
       }
       await excluirAnexosDe([{ tipo: 'task' as const, id: tarefa.id }])
       await trocarVinculoDasNotas(
         { tipo: 'tarefa', id: tarefa.id },
         { tipo: 'item', id: tarefa.id },
       )
+      await converterSessoesParaItem(tarefa.id, card, serie, momento)
       await db.subtasks.where('taskId').equals(tarefa.id).delete()
       await db.tasks.delete(tarefa.id)
       await db.groupItems.add(item)
@@ -638,43 +720,56 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
  * com ele (os registros "transferido" de outros dias deixam de mostrá-las).
  */
 export async function tirarDoGrupo(itemId: string, idsEmOrdemNoDia?: string[]) {
-  await db.transaction('rw', db.tasks, db.groupCards, db.groupItems, db.notes, async () => {
-    const item = await db.groupItems.get(itemId)
-    if (!item || (item.status !== 'pendente' && item.status !== 'concluido')) return
-    const card = await db.groupCards.get(item.cardId)
-    if (!card) return
-    const tarefa: Task = {
-      id: item.id,
-      titulo: item.titulo,
-      data: card.data,
-      dataOriginal: item.dataOriginal,
-      ordem: (await maiorOrdemDoDia(card.data)) + 1,
-      status: item.status === 'concluido' ? 'concluida' : 'pendente',
-      ...(item.concluidoEm && { concluidaEm: item.concluidoEm }),
-      ...marcaDe(item),
-      criadoEm: item.criadoEm,
-      atualizadoEm: agora(),
-    }
-    await db.groupItems.delete(item.id)
-    await db.tasks.add(tarefa)
-    await trocarVinculoDasNotas(
-      { tipo: 'item', id: item.cadeiaId },
-      { tipo: 'tarefa', id: tarefa.id },
-    )
-    if (idsEmOrdemNoDia) await gravarNovaPosicao(tabelaDoDia, idsEmOrdemNoDia, tarefa.id)
-  })
+  await db.transaction(
+    'rw',
+    [db.tasks, db.groupCards, db.groupItems, db.notes, db.sessions],
+    async () => {
+      const item = await db.groupItems.get(itemId)
+      if (!item || (item.status !== 'pendente' && item.status !== 'concluido')) return
+      const card = await db.groupCards.get(item.cardId)
+      if (!card) return
+      const momento = agora()
+      const tarefa: Task = {
+        id: item.id,
+        titulo: item.titulo,
+        data: card.data,
+        dataOriginal: item.dataOriginal,
+        ordem: (await maiorOrdemDoDia(card.data)) + 1,
+        status: item.status === 'concluido' ? 'concluida' : 'pendente',
+        ...(item.concluidoEm && { concluidaEm: item.concluidoEm }),
+        ...marcaDe(item),
+        criadoEm: item.criadoEm,
+        atualizadoEm: momento,
+      }
+      await db.groupItems.delete(item.id)
+      await db.tasks.add(tarefa)
+      await converterSessoesParaTarefa(item, momento)
+      await trocarVinculoDasNotas(
+        { tipo: 'item', id: item.cadeiaId },
+        { tipo: 'tarefa', id: tarefa.id },
+      )
+      if (idsEmOrdemNoDia) await gravarNovaPosicao(tabelaDoDia, idsEmOrdemNoDia, tarefa.id)
+    },
+  )
 }
 
 /** Passa o item para outro card do MESMO dia (outra série), na posição de `idsEmOrdem`. */
 export async function passarItemParaCard(itemId: string, cardId: string, idsEmOrdem?: string[]) {
-  await db.transaction('rw', db.groupCards, db.groupItems, async () => {
-    const [item, card] = await Promise.all([db.groupItems.get(itemId), db.groupCards.get(cardId)])
-    if (!item || !card || item.cardId === cardId) return
-    await db.groupItems.update(itemId, {
-      cardId,
-      ordem: (await maiorOrdemDoCard(cardId)) + 1,
-      atualizadoEm: agora(),
-    })
-    if (idsEmOrdem) await gravarNovaPosicao(db.groupItems, idsEmOrdem, itemId)
-  })
+  await db.transaction(
+    'rw',
+    [db.groupSeries, db.groupCards, db.groupItems, db.sessions],
+    async () => {
+      const [item, card] = await Promise.all([db.groupItems.get(itemId), db.groupCards.get(cardId)])
+      if (!item || !card || item.cardId === cardId) return
+      const momento = agora()
+      const serie = await db.groupSeries.get(card.seriesId)
+      await db.groupItems.update(itemId, {
+        cardId,
+        ordem: (await maiorOrdemDoCard(cardId)) + 1,
+        atualizadoEm: momento,
+      })
+      await atualizarGrupoDasSessoesDoItem(item, card, serie, momento)
+      if (idsEmOrdem) await gravarNovaPosicao(db.groupItems, idsEmOrdem, itemId)
+    },
+  )
 }

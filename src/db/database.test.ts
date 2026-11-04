@@ -296,6 +296,6 @@ describe('MemoriaDatabase', () => {
     expect((await banco.groupCards.get('c2'))?.arquivadoEm).toBeUndefined()
     expect((await banco.groupItems.get('i2'))?.arquivadoEm).toBeUndefined()
     expect(await banco.notes.get('n')).toEqual({ ...base, id: 'n', titulo: 'N', conteudo: 'x' })
-    expect(banco.verno).toBe(11)
+    expect(banco.verno).toBe(12)
   })
 })

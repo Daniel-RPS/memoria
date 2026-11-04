@@ -38,13 +38,14 @@ describe('tela Arquivados', () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
   })
 
-  it('o item fica entre Categorias e Backup, sem contador quando não há nada', async () => {
+  it('o item fica entre Categorias e Dados, sem contador quando não há nada', async () => {
     renderizarApp('/arquivados')
     const links = await within(navegacao()).findAllByRole('link')
     const nomes = links.map((link) => link.textContent)
     const indice = nomes.indexOf('Arquivados')
     expect(nomes[indice - 1]).toBe('Categorias')
-    expect(nomes[indice + 1]).toBe('Backup')
+    expect(nomes[indice + 1]).toBe('Dados')
+    expect(nomes[indice + 2]).toBe('Backup')
     expect(within(navegacao()).getByRole('link', { name: 'Arquivados' })).toHaveAttribute(
       'aria-current',
       'page',

@@ -1,6 +1,7 @@
 import { db } from '@/db/database'
 import type { Category, Icone, Subcategory, TipoCategoria } from '@/db/types'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
+import { limparCategoriaDasSessoes } from '@/domain/tempo'
 import { isMesmoNome, montarCategorias, NOMES_DO_TIPO, outroTipo, somarUso } from '@/lib/categorias'
 import { coresRecentes, proximaCor } from '@/lib/cores'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -135,38 +136,49 @@ export async function reordenarCategoria(idsEmOrdem: string[], idMovido: string)
  * Recusa com `ErroDeValidacao` se o outro tipo já tem uma categoria com o mesmo nome.
  */
 export async function moverCategoriaDeTipo(id: string) {
-  await db.transaction('rw', [db.categories, db.tasks, db.procedures, db.groupSeries], async () => {
-    const categoria = await db.categories.get(id)
-    if (!categoria) return
-    const destino = outroTipo(categoria.tipo)
-    const doDestino = await categoriasDoTipoNoBanco(destino)
-    if (doDestino.some((outra) => isMesmoNome(outra.nome, categoria.nome))) {
-      throw new ErroDeValidacao(
-        `Já existe “${categoria.nome}” em ${NOMES_DO_TIPO[destino].plural}. Renomeie antes de mover.`,
-      )
-    }
-    const momento = agora()
-    const semCategoria = { categoryId: undefined, subcategoryId: undefined, atualizadoEm: momento }
-    const tabelas = categoria.tipo === 'grupo' ? [db.tasks, db.groupSeries] : [db.procedures]
-    for (const tabela of tabelas) {
-      await tabela.where('categoryId').equals(id).modify(semCategoria)
-    }
-    await db.categories.update(id, {
-      tipo: destino,
-      ordem: maiorOrdem(doDestino) + 1,
-      atualizadoEm: momento,
-    })
-  })
+  await db.transaction(
+    'rw',
+    [db.categories, db.tasks, db.procedures, db.groupSeries, db.sessions],
+    async () => {
+      const categoria = await db.categories.get(id)
+      if (!categoria) return
+      const destino = outroTipo(categoria.tipo)
+      const doDestino = await categoriasDoTipoNoBanco(destino)
+      if (doDestino.some((outra) => isMesmoNome(outra.nome, categoria.nome))) {
+        throw new ErroDeValidacao(
+          `Já existe “${categoria.nome}” em ${NOMES_DO_TIPO[destino].plural}. Renomeie antes de mover.`,
+        )
+      }
+      const momento = agora()
+      const semCategoria = {
+        categoryId: undefined,
+        subcategoryId: undefined,
+        atualizadoEm: momento,
+      }
+      const tabelas = categoria.tipo === 'grupo' ? [db.tasks, db.groupSeries] : [db.procedures]
+      for (const tabela of tabelas) {
+        await tabela.where('categoryId').equals(id).modify(semCategoria)
+      }
+      if (categoria.tipo === 'grupo') {
+        await limparCategoriaDasSessoes(id, momento)
+      }
+      await db.categories.update(id, {
+        tipo: destino,
+        ordem: maiorOrdem(doDestino) + 1,
+        atualizadoEm: momento,
+      })
+    },
+  )
 }
 
 /**
- * Exclui a categoria e as subcategorias dela. Tarefas, grupos e procedimentos NÃO são apagados:
- * só ficam sem categoria.
+ * Exclui a categoria e as subcategorias dela. Tarefas, grupos, procedimentos e sessões de tempo
+ * NÃO são apagados: só ficam sem categoria.
  */
 export async function excluirCategoria(id: string) {
   await db.transaction(
     'rw',
-    [db.categories, db.subcategories, db.tasks, db.procedures, db.groupSeries],
+    [db.categories, db.subcategories, db.tasks, db.procedures, db.groupSeries, db.sessions],
     async () => {
       const momento = agora()
       const semCategoria = {
@@ -177,6 +189,7 @@ export async function excluirCategoria(id: string) {
       await db.tasks.where('categoryId').equals(id).modify(semCategoria)
       await db.groupSeries.where('categoryId').equals(id).modify(semCategoria)
       await db.procedures.where('categoryId').equals(id).modify(semCategoria)
+      await limparCategoriaDasSessoes(id, momento)
       await db.subcategories.where('categoryId').equals(id).delete()
       await db.categories.delete(id)
     },

@@ -4,6 +4,7 @@ import { AnoPage } from '@/features/ano/ano-page'
 import { ArquivadosPage } from '@/features/arquivados/arquivados-page'
 import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
+import { DadosPage } from '@/features/dados/dados-page'
 import { DiaPage } from '@/features/dia/dia-page'
 import { InicioPage } from '@/features/inicio/inicio-page'
 import { MesPage } from '@/features/mes/mes-page'
@@ -32,6 +33,7 @@ export const rotas: RouteObject[] = [
       { path: '/notas/:id', element: <NotaPage /> },
       { path: '/categorias', element: <CategoriasPage /> },
       { path: '/arquivados', element: <ArquivadosPage /> },
+      { path: '/dados', element: <DadosPage /> },
       { path: '/backup', element: <BackupPage /> },
       { path: '*', element: <Navigate to="/inicio" replace /> },
     ],

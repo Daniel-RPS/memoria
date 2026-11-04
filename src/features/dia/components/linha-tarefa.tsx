@@ -115,7 +115,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               className={cn(isConcluida && 'text-grafite line-through decoration-tinta/50')}
             />
           )}
-          {isEmAndamento && !isEditando && <IndicadorAndamento />}
+          {isEmAndamento && !isEditando && <IndicadorAndamento desde={tarefa.emAndamentoDesde} />}
           {!isEditando && (
             <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />
           )}

@@ -1,12 +1,21 @@
 import { format } from 'date-fns'
 import { db } from '@/db/database'
-import type { DataLocal, GroupCard, GroupItem, Note, Procedure, Task } from '@/db/types'
+import type {
+  DataLocal,
+  GroupCard,
+  GroupItem,
+  Note,
+  Procedure,
+  Task,
+  TimeSession,
+} from '@/db/types'
 import { listarCategorias } from '@/db/repositories/category-repository'
 import { excluirGrupo, excluirItem } from '@/db/repositories/group-repository'
 import { carregarDadosDosVinculos, excluirNota } from '@/db/repositories/note-repository'
 import { agora } from '@/db/repositories/ordenacao'
 import { excluirProcedimento } from '@/db/repositories/procedure-repository'
 import { excluirTarefa, maiorOrdemDoDia } from '@/db/repositories/task-repository'
+import { fecharSessoesAbertasDe, restaurarSessoes } from '@/domain/tempo'
 import { semAndamento } from '@/lib/andamento'
 import type { Alvos, DadosDoArquivo } from '@/lib/arquivados'
 import { deDataLocal } from '@/lib/datas'
@@ -30,6 +39,8 @@ export interface EstadoAnterior {
   procedimentos: Procedure[]
   /** Itens dos cards arquivados que estavam em andamento (a marca sai ao arquivar o card). */
   itensEmAndamento?: GroupItem[]
+  /** Sessões abertas que foram fechadas ao arquivar. */
+  sessoesFechadas?: TimeSession[]
 }
 
 const TABELAS = [
@@ -40,6 +51,7 @@ const TABELAS = [
   db.groupItems,
   db.notes,
   db.procedures,
+  db.sessions,
 ]
 
 function existentes<T>(lista: (T | undefined)[]) {
@@ -90,6 +102,16 @@ export async function arquivar(alvos: Alvos): Promise<EstadoAnterior> {
       .toArray()
     await db.groupItems.bulkPut(itensEmAndamento.map(semAndamento))
     anteriores.itensEmAndamento = itensEmAndamento
+    const todosItensFechados = [...anteriores.itens, ...itensEmAndamento]
+    const sessoesFechadas = await fecharSessoesAbertasDe(
+      {
+        tarefas: anteriores.tarefas.map((t) => t.id),
+        itens: todosItensFechados.map((i) => i.id),
+        cadeias: todosItensFechados.map((i) => i.cadeiaId),
+      },
+      momento,
+    )
+    if (sessoesFechadas.length > 0) anteriores.sessoesFechadas = sessoesFechadas
     await db.notes.bulkPut(
       anteriores.notas.map((nota) => ({ ...nota, arquivado: true, ...quando })),
     )
@@ -197,6 +219,7 @@ export async function restaurarEstado(anteriores: EstadoAnterior) {
     await db.groupItems.bulkPut(anteriores.itensEmAndamento ?? [])
     await db.notes.bulkPut(anteriores.notas)
     await db.procedures.bulkPut(anteriores.procedimentos)
+    await restaurarSessoes({ fechadas: anteriores.sessoesFechadas })
   })
 }
 

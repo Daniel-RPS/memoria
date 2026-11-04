@@ -38,6 +38,7 @@ const TODAS_AS_TABELAS = () => [
   db.procedures,
   db.notes,
   db.attachments,
+  db.sessions,
 ]
 
 /** Categoria das entradas de um tipo (Grupos para tarefas e grupos; Procedimentos). */

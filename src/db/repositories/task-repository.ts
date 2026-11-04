@@ -1,8 +1,14 @@
 import { db } from '@/db/database'
-import type { DataLocal, Task } from '@/db/types'
+import type { DataLocal, Task, TimeSession } from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
 import { soltarNotasSemAlvo } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
+import {
+  atualizarCategoriaDasSessoesDaTarefa,
+  excluirSessoesDaTarefa,
+  fecharSessoesAbertasDe,
+  restaurarSessoes,
+} from '@/domain/tempo'
 import { SEM_ANDAMENTO, type CamposDeAndamento } from '@/lib/andamento'
 import { somarDias } from '@/lib/datas'
 import { destinoDoAdiamento, pendenciasDeOntem, planejarMovimento } from '@/lib/mover'
@@ -59,12 +65,17 @@ export async function renomearTarefa(id: string, titulo: string) {
 
 export async function definirConclusao(id: string, concluida: boolean) {
   const momento = agora()
-  await db.tasks.update(
-    id,
-    concluida
-      ? { status: 'concluida', concluidaEm: momento, atualizadoEm: momento, ...SEM_ANDAMENTO }
-      : { status: 'pendente', concluidaEm: undefined, atualizadoEm: momento },
-  )
+  await db.transaction('rw', [db.tasks, db.sessions], async () => {
+    await db.tasks.update(
+      id,
+      concluida
+        ? { status: 'concluida', concluidaEm: momento, atualizadoEm: momento, ...SEM_ANDAMENTO }
+        : { status: 'pendente', concluidaEm: undefined, atualizadoEm: momento },
+    )
+    if (concluida) {
+      await fecharSessoesAbertasDe({ tarefas: [id] }, momento)
+    }
+  })
 }
 
 /** Define a categoria (e opcionalmente a subcategoria); sem `categoryId`, tira a categoria. */
@@ -72,34 +83,42 @@ export async function definirCategoria(
   id: string,
   categoria: { categoryId?: string; subcategoryId?: string },
 ) {
-  await db.tasks.update(id, {
-    categoryId: categoria.categoryId,
-    subcategoryId: categoria.categoryId ? categoria.subcategoryId : undefined,
-    atualizadoEm: agora(),
+  const momento = agora()
+  await db.transaction('rw', [db.tasks, db.sessions], async () => {
+    await db.tasks.update(id, {
+      categoryId: categoria.categoryId,
+      subcategoryId: categoria.categoryId ? categoria.subcategoryId : undefined,
+      atualizadoEm: momento,
+    })
+    await atualizarCategoriaDasSessoesDaTarefa(id, categoria.categoryId, momento)
   })
 }
 
 /** Tira do calendário sem concluir. */
 export async function arquivarTarefa(id: string) {
   const momento = agora()
-  await db.tasks.update(id, {
-    status: 'arquivada',
-    arquivadoEm: momento,
-    atualizadoEm: momento,
-    ...SEM_ANDAMENTO,
+  await db.transaction('rw', [db.tasks, db.sessions], async () => {
+    await db.tasks.update(id, {
+      status: 'arquivada',
+      arquivadoEm: momento,
+      atualizadoEm: momento,
+      ...SEM_ANDAMENTO,
+    })
+    await fecharSessoesAbertasDe({ tarefas: [id] }, momento)
   })
 }
 
 /**
- * Exclusão definitiva, junto com subtarefas e anexos. As notas ligadas a ela NÃO são apagadas:
- * viram avulsas.
+ * Exclusão definitiva, junto com subtarefas, anexos e sessões de tempo. As notas ligadas a ela
+ * NÃO são apagadas: viram avulsas.
  */
 export async function excluirTarefa(id: string) {
   await db.transaction(
     'rw',
-    [db.tasks, db.subtasks, db.notes, db.attachments, db.groupSeries, db.groupItems],
+    [db.tasks, db.subtasks, db.notes, db.attachments, db.groupSeries, db.groupItems, db.sessions],
     async () => {
       await excluirAnexosDe([{ tipo: 'task' as const, id }])
+      await excluirSessoesDaTarefa(id)
       await db.subtasks.where('taskId').equals(id).delete()
       await db.tasks.delete(id)
       await soltarNotasSemAlvo([{ tipo: 'tarefa', id }])
@@ -142,6 +161,7 @@ export interface PosicaoAnterior extends CamposDeAndamento {
   id: string
   data: DataLocal
   ordem: number
+  sessoesFechadas?: TimeSession[]
 }
 
 export interface ResultadoMovimento {
@@ -155,7 +175,7 @@ export interface ResultadoMovimento {
  * são copiados, não movidos: ver `copiarItens` em `group-repository`.)
  */
 export async function moverTarefas(ids: string[], destino: DataLocal): Promise<ResultadoMovimento> {
-  return db.transaction('rw', db.tasks, db.groupCards, async () => {
+  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
     const tarefas = (await db.tasks.bulkGet(ids)).filter((tarefa) => tarefa !== undefined)
     const maiorOrdem = await maiorOrdemDoDia(destino, new Set(ids))
     const movimentos = planejarMovimento(tarefas, destino, maiorOrdem)
@@ -166,11 +186,30 @@ export async function moverTarefas(ids: string[], destino: DataLocal): Promise<R
         db.tasks.update(id, { data, ordem, atualizadoEm: momento, ...SEM_ANDAMENTO }),
       ),
     )
+    const fechadas = await fecharSessoesAbertasDe(
+      { tarefas: movimentos.map(({ id }) => id) },
+      momento,
+    )
+    const fechadasPorTarefa = new Map<string, TimeSession[]>()
+    for (const sessao of fechadas) {
+      if (!sessao.tarefaId) continue
+      const lista = fechadasPorTarefa.get(sessao.tarefaId) ?? []
+      lista.push(sessao)
+      fechadasPorTarefa.set(sessao.tarefaId, lista)
+    }
     return {
       quantidade: movimentos.length,
       anteriores: movimentos.map(({ id }) => {
         const { data, ordem, emAndamento, emAndamentoDesde } = porId.get(id)!
-        return { id, data, ordem, emAndamento, emAndamentoDesde }
+        const sessoesFechadas = fechadasPorTarefa.get(id)
+        return {
+          id,
+          data,
+          ordem,
+          emAndamento,
+          emAndamentoDesde,
+          ...(sessoesFechadas ? { sessoesFechadas } : {}),
+        }
       }),
     }
   })
@@ -178,7 +217,7 @@ export async function moverTarefas(ids: string[], destino: DataLocal): Promise<R
 
 /** Adia pendentes um dia (ver `destinoDoAdiamento`). */
 export async function adiarTarefas(ids: string[], hoje: DataLocal): Promise<ResultadoMovimento> {
-  return db.transaction('rw', db.tasks, db.groupCards, async () => {
+  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
     const pendentes = (await db.tasks.bulkGet(ids)).filter(
       (tarefa) => tarefa?.status === 'pendente',
     )
@@ -200,13 +239,16 @@ export async function adiarTarefas(ids: string[], hoje: DataLocal): Promise<Resu
 /** Desfaz um movimento, devolvendo cada tarefa ao dia e à posição em que estava. */
 export async function restaurarPosicoes(anteriores: PosicaoAnterior[]) {
   const momento = agora()
-  await db.transaction('rw', db.tasks, () =>
-    Promise.all(
+  await db.transaction('rw', [db.tasks, db.sessions], async () => {
+    await Promise.all(
       anteriores.map(({ id, data, ordem, emAndamento, emAndamentoDesde }) =>
         db.tasks.update(id, { data, ordem, emAndamento, emAndamentoDesde, atualizadoEm: momento }),
       ),
-    ),
-  )
+    )
+    await restaurarSessoes({
+      fechadas: anteriores.flatMap((a) => a.sessoesFechadas ?? []),
+    })
+  })
 }
 
 /** Tarefas soltas pendentes em dias que já passaram, da mais antiga à mais nova. */
@@ -227,7 +269,7 @@ export async function listarPendenciasDeOntem(hoje: DataLocal) {
 
 /** Traz para o fim de hoje as tarefas soltas pendentes de ontem. */
 export async function trazerPendenciasDeOntem(hoje: DataLocal): Promise<ResultadoMovimento> {
-  return db.transaction('rw', db.tasks, db.groupCards, async () => {
+  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
     const pendentes = await listarPendenciasDeOntem(hoje)
     return moverTarefas(
       pendentes.map((tarefa) => tarefa.id),
@@ -246,13 +288,18 @@ export async function soltarTarefaNoDia(
   destino: DataLocal,
   idsEmOrdemNoDestino: string[],
 ) {
-  await db.transaction('rw', db.tasks, db.groupCards, async () => {
+  await db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
     const tarefa = await db.tasks.get(id)
+    const momento = agora()
+    const mudouDeDia = Boolean(tarefa && tarefa.data !== destino)
     await db.tasks.update(id, {
       data: destino,
-      atualizadoEm: agora(),
-      ...(tarefa && tarefa.data !== destino && SEM_ANDAMENTO),
+      atualizadoEm: momento,
+      ...(mudouDeDia && SEM_ANDAMENTO),
     })
+    if (mudouDeDia) {
+      await fecharSessoesAbertasDe({ tarefas: [id] }, momento)
+    }
     await gravarNovaPosicao(tabelaDoDia, idsEmOrdemNoDestino, id)
   })
 }

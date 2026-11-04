@@ -185,3 +185,24 @@ export interface Attachment extends EntidadeBase {
   blob?: Blob
   url?: string
 }
+
+/**
+ * Um período em que uma tarefa solta ou um item de grupo esteve marcado como "Em andamento".
+ * Uma mesma tarefa/item pode ter várias sessões (pausou e voltou, ou passou para outro dia).
+ */
+export interface TimeSession extends EntidadeBase {
+  /** Id da tarefa solta (quando a sessão é de tarefa solta). */
+  tarefaId?: string
+  /** Id do item de grupo no dia em que a sessão rodou (quando é item de grupo). */
+  itemId?: string
+  /** `GroupItem.cadeiaId` do item: une todas as cópias levadas entre dias como a mesma tarefa. */
+  cadeiaId?: string
+  /** `GroupSeries.id` do grupo a que o item pertence. */
+  grupoId?: string
+  /** Categoria da tarefa ou do grupo (`undefined` = sem categoria). */
+  categoryId?: string
+  /** Momento ISO (UTC) em que o andamento começou. */
+  inicio: string
+  /** Momento ISO (UTC) em que o andamento parou; ausente enquanto a sessão está aberta. */
+  fim?: string
+}
