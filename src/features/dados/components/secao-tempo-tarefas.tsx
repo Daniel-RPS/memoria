@@ -28,7 +28,7 @@ export function SecaoTempoTarefas() {
   const temDados = !semDadosNoPeriodo && !semNenhumDadoNoBanco
   const categoriasFiltradas = filtrarCategoriasDeTempo(relatorio.categoriasComTarefas, busca)
   const isVisaoDeUmDia = periodo.tipo === 'hoje' || periodo.tipo === 'dia'
-  const mostrarPizza = !isVisaoDeUmDia
+  const mostrarPizza = relatorio.fatiasPizza.length > 0
 
   return (
     <section aria-labelledby="titulo-tempo-tarefas" className="grid gap-6">
@@ -184,7 +184,14 @@ export function SecaoTempoTarefas() {
               dados={relatorio.graficoPorTarefa}
               titulo={isVisaoDeUmDia ? 'Por tarefa' : 'Top 5 tarefas'}
             />
-            {mostrarPizza && <GraficoPizzaCategoria fatias={relatorio.fatiasPizza} />}
+            {mostrarPizza && (
+              <GraficoPizzaCategoria
+                fatias={relatorio.fatiasPizza}
+                tempoAtivoTotalMs={relatorio.tempoAtivoTotalMs}
+                metricasJornada={relatorio.metricasJornada}
+                isVisaoDeUmDia={isVisaoDeUmDia}
+              />
+            )}
           </div>
 
           {/* Busca e lista por categoria */}

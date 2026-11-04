@@ -29,7 +29,7 @@ interface ModuloGrupos {
     titulo: string
     data: string
     categoryId?: string
-  }) => Promise<{ id: string }>
+  }) => Promise<{ id: string; seriesId?: string }>
   criarItem: (cardId: string, titulo: string) => Promise<{ id: string }>
 }
 
@@ -286,10 +286,10 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await expect(page.locator('[data-resumo-menor]')).toContainText('Fazer o resumo do livro abc')
     await expect(page.locator('[data-resumo-menor]')).toContainText('17 min')
 
-    // 2. Gráfico por tarefa: título "Por tarefa", sem pizza
+    // 2. Gráficos: título "Por tarefa" e rosca por categoria
     await expect(page.locator('[data-grafico-por-tarefa]')).toBeVisible()
     await expect(page.locator('[data-grafico-por-tarefa] h3')).toHaveText('Por tarefa')
-    await expect(page.locator('[data-grafico-pizza]')).toHaveCount(0)
+    await expect(page.locator('[data-grafico-pizza]')).toBeVisible()
 
     // 3. Lista por categoria: expande categoria Cursos e confere horário da sessão
     const catCursos = page.locator('[data-categoria-tempo="Cursos"]')
@@ -374,9 +374,9 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await expect(fatias).toHaveCount(6)
     await expect(regiaoPizza.locator('[data-legenda-pizza="Outras"]')).toBeVisible()
 
-    // Centro da rosca mostra 6 categorias
-    await expect(regiaoPizza).toContainText('6')
-    await expect(regiaoPizza).toContainText('categorias')
+    // Centro da rosca mostra tempo ativo e "trabalhadas"
+    await expect(regiaoPizza.locator('[data-centro-valor]')).toHaveText('2h 20')
+    await expect(regiaoPizza.locator('[data-centro-rotulo]')).toHaveText('trabalhadas')
 
     // Hover na legenda de Trabalho destaca fatia e atualiza centro
     const legendaTrabalho = regiaoPizza.locator('[data-legenda-pizza="Trabalho"]')
@@ -474,8 +474,8 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await expect(botaoDiaAtivo).toBeVisible()
     await expect(botaoDiaAtivo).toHaveAttribute('aria-pressed', 'true')
 
-    // 5. Conteúdo é exatamente o mesmo de Hoje (sem pizza, barras com título "Por tarefa")
-    await expect(page.locator('[data-grafico-pizza]')).toHaveCount(0)
+    // 5. Conteúdo com rosca por categoria e barras com título "Por tarefa"
+    await expect(page.locator('[data-grafico-pizza]')).toBeVisible()
     await expect(page.locator('[data-grafico-por-tarefa] h3')).toHaveText('Por tarefa')
 
     // Abre a categoria e confere a sessão "09:00 – 11:55" e duração "2h 55 min"
@@ -590,16 +590,15 @@ test.describe('Dados › Tempo nas tarefas', () => {
     // Semeia tarefas: curso (2h 10 min), relatório (1h 45 min), tarefa longa (17 min) e extra curta (30s)
     await page.evaluate(
       async ({ hoje, tituloLongo }) => {
-        const database = (await import(/* @vite-ignore */ '/src/db/database.ts')) as {
+        const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+        const database = (await importar('/src/db/database.ts')) as {
           db: import('dexie').Dexie
         }
         const db = database.db
-        const categorias = (await import(
-          /* @vite-ignore */ '/src/db/repositories/category-repository.ts'
+        const categorias = (await importar(
+          '/src/db/repositories/category-repository.ts',
         )) as ModuloCategorias
-        const tarefas = (await import(
-          /* @vite-ignore */ '/src/db/repositories/task-repository.ts'
-        )) as ModuloTarefas
+        const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
 
         const catCursos = await categorias.criarCategoria({ nome: 'Cursos', cor: '#8B3DFF' })
         const catTrabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#3B82F6' })
@@ -761,5 +760,138 @@ test.describe('Dados › Tempo nas tarefas', () => {
     // Mensagem de estado vazio visível abaixo dos blocos
     await expect(page.locator('[data-estado-vazio-tempo]')).toBeVisible()
     await capturar(page, 'resumo-vazio-claro')
+  })
+
+  test('tempo real na rosca por categoria e barras sem nome de grupo/categoria ao lado', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date(`${HOJE}T15:00:00-03:00`) })
+    await page.goto(`/dia/${HOJE}`)
+
+    // Monta o exemplo do usuário:
+    // Casa 09:00–10:00, Trabalho 09:30–11:00, Estudo 13:00–14:00
+    // Trabalho inserido dentro de um grupo "Livros" para conferir que não vaza na barra
+    await page.evaluate(
+      async ({ hoje }) => {
+        const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+        const categorias = (await importar(
+          '/src/db/repositories/category-repository.ts',
+        )) as ModuloCategorias
+        const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
+        const grupos = (await importar('/src/db/repositories/group-repository.ts')) as ModuloGrupos
+        const database = (await importar('/src/db/database.ts')) as { db: import('dexie').Dexie }
+        const db = database.db
+
+        const catCasa = await categorias.criarCategoria({ nome: 'Casa', cor: '#EF4444' })
+        const catTrabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#8B3DFF' })
+        const catEstudo = await categorias.criarCategoria({ nome: 'Estudo', cor: '#10B981' })
+
+        const tCasa = await tarefas.criarTarefa({
+          titulo: 'Organizar armário',
+          data: hoje,
+          categoryId: catCasa.id,
+        })
+
+        const tEstudo = await tarefas.criarTarefa({
+          titulo: 'Ler capítulo 3',
+          data: hoje,
+          categoryId: catEstudo.id,
+        })
+
+        const cardTrabalho = await grupos.criarGrupo({
+          titulo: 'Livros',
+          data: hoje,
+          categoryId: catTrabalho.id,
+        })
+        const itemTrabalho = await grupos.criarItem(cardTrabalho.id, 'Revisar contrato')
+
+        await db.table('sessions').bulkAdd([
+          {
+            id: 'sess-casa',
+            tarefaId: tCasa.id,
+            categoryId: catCasa.id,
+            inicio: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
+          },
+          {
+            id: 'sess-trabalho',
+            itemId: itemTrabalho.id,
+            ...(cardTrabalho.seriesId ? { grupoId: cardTrabalho.seriesId } : {}),
+            categoryId: catTrabalho.id,
+            inicio: new Date(`${hoje}T09:30:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T11:00:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T09:30:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T11:00:00-03:00`).toISOString(),
+          },
+          {
+            id: 'sess-estudo',
+            tarefaId: tEstudo.id,
+            categoryId: catEstudo.id,
+            inicio: new Date(`${hoje}T13:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T14:00:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T13:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T14:00:00-03:00`).toISOString(),
+          },
+        ])
+      },
+      { hoje: HOJE },
+    )
+
+    await page.goto('/dados')
+
+    // 1. Visão Hoje
+    await page.getByRole('button', { name: 'Hoje', exact: true }).click()
+
+    const regiaoPizzaHoje = page.locator('[data-grafico-pizza]')
+    await expect(regiaoPizzaHoje).toBeVisible()
+
+    // Centro da rosca: "3h" em destaque e "trabalhadas" abaixo
+    await expect(regiaoPizzaHoje.locator('[data-centro-valor]')).toHaveText('3h')
+    await expect(regiaoPizzaHoje.locator('[data-centro-rotulo]')).toHaveText('trabalhadas')
+
+    // Legenda: 41,7% / 33,3% / 25%
+    await expect(regiaoPizzaHoje.locator('[data-legenda-pizza="Trabalho"]')).toContainText('41,7%')
+    await expect(regiaoPizzaHoje.locator('[data-legenda-pizza="Estudo"]')).toContainText('33,3%')
+    await expect(regiaoPizzaHoje.locator('[data-legenda-pizza="Casa"]')).toContainText('25%')
+
+    // Linha abaixo da legenda: "Jornada 09:00–14:00 · pausas 2h"
+    await expect(regiaoPizzaHoje.locator('[data-linha-jornada]')).toHaveText(
+      'Jornada 09:00–14:00 · pausas 2h',
+    )
+
+    // Barras por tarefa: sem o texto "Livros" ou "Casa" ao lado do nome da tarefa
+    const barraTrabalho = page.locator('[data-barra-tarefa="Revisar contrato"]')
+    await expect(barraTrabalho).toBeVisible()
+    await expect(barraTrabalho).not.toContainText('Livros')
+    await expect(barraTrabalho).not.toContainText('Trabalho')
+
+    const barraCasa = page.locator('[data-barra-tarefa="Organizar armário"]')
+    await expect(barraCasa).toBeVisible()
+    await expect(barraCasa).not.toContainText('Casa')
+
+    // Screenshots de Hoje (claro e escuro)
+    await capturar(page, 'tempo-real-hoje-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'tempo-real-hoje-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // 2. Visão Esta semana
+    await page.getByRole('button', { name: 'Esta semana', exact: true }).click()
+
+    const regiaoPizzaSemana = page.locator('[data-grafico-pizza]')
+    await expect(regiaoPizzaSemana).toBeVisible()
+    await expect(regiaoPizzaSemana.locator('[data-centro-valor]')).toHaveText('3h')
+    await expect(regiaoPizzaSemana.locator('[data-centro-rotulo]')).toHaveText('trabalhadas')
+    await expect(regiaoPizzaSemana.locator('[data-linha-jornada]')).toHaveText(
+      'Jornada 5h · pausas 2h · 1 dia',
+    )
+
+    // Screenshots de Semana (claro e escuro)
+    await capturar(page, 'tempo-real-semana-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'tempo-real-semana-escuro')
+    await page.keyboard.press('Control+Shift+L')
   })
 })

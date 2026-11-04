@@ -34,6 +34,8 @@ import {
   ajustarFimDaSessao,
   calcularFimAjustado,
   calcularResumoTempo,
+  calcularTempoRealDoDia,
+  calcularTempoRealDoPeriodo,
   carregarDadosDeTempo,
   cortarSessaoNoIntervalo,
   editarSessao,
@@ -43,6 +45,8 @@ import {
   filtrarCategoriasDeTempo,
   filtrarTarefasDeTempo,
   formatarDuracao,
+  formatarDuracaoCurta,
+  formatarPercentual,
   formatarTempoAgora,
   gerarCsvDeTempo,
   lerPeriodoDeDados,
@@ -922,5 +926,161 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
     expect(rotuloDoDiaEscolhido({ tipo: 'hoje' })).toBeUndefined()
     expect(rotuloDoDiaEscolhido({ tipo: 'dia', dia: '2026-11-04' })).toBe('qua, 04/11')
     expect(rotuloDoDiaEscolhido({ tipo: 'dia', dia: '2026-11-12' })).toBe('qui, 12/11')
+  })
+})
+
+describe('tempo real: jornada, pausas, tempo ativo e divisão entre categorias', () => {
+  it('formata duração curta e percentual', () => {
+    expect(formatarDuracaoCurta(0)).toBe('0 min')
+    expect(formatarDuracaoCurta(45 * 60_000)).toBe('45 min')
+    expect(formatarDuracaoCurta(60 * 60_000)).toBe('1h')
+    expect(formatarDuracaoCurta(75 * 60_000)).toBe('1h 15')
+    expect(formatarDuracaoCurta(384 * 60_000)).toBe('6h 24')
+    expect(formatarDuracaoCurta(69 * 60_000)).toBe('1h 09')
+    expect(formatarDuracaoCurta(302 * 60_000)).toBe('5h 02')
+    expect(formatarDuracaoCurta(2290 * 60_000)).toBe('38h 10')
+
+    expect(formatarPercentual(0)).toBe('0%')
+    expect(formatarPercentual(25)).toBe('25%')
+    expect(formatarPercentual(41.6666)).toBe('41,7%')
+    expect(formatarPercentual(33.3333)).toBe('33,3%')
+    expect(formatarPercentual(100)).toBe('100%')
+  })
+
+  it('exemplo especificado: Casa 09-10h, Trabalho 09:30-11h, Estudo 13-14h no mesmo dia', () => {
+    // 2026-11-04:
+    // 09:00 = 12:00 UTC (GMT-3)
+    const t = (horaHHmm: string) => new Date(`2026-11-04T${horaHHmm}:00-03:00`).getTime()
+
+    const fatias = [
+      { inicioMs: t('09:00'), fimMs: t('10:00'), categoryId: 'cat-casa' },
+      { inicioMs: t('09:30'), fimMs: t('11:00'), categoryId: 'cat-trabalho' },
+      { inicioMs: t('13:00'), fimMs: t('14:00'), categoryId: 'cat-estudo' },
+    ]
+
+    const metrica = calcularTempoRealDoDia(fatias)
+
+    // Jornada 09:00–14:00 = 5h
+    expect(metrica.primeiroInicio).toBe('09:00')
+    expect(metrica.ultimoFim).toBe('14:00')
+    expect(metrica.jornadaMs).toBe(5 * 60 * 60_000)
+
+    // Pausas = 2h (11:00 às 13:00)
+    expect(metrica.pausasMs).toBe(2 * 60 * 60_000)
+
+    // Tempo ativo = 3h
+    expect(metrica.tempoAtivoMs).toBe(3 * 60 * 60_000)
+
+    // Divisão por categoria:
+    // Casa: 30 min (09:00-09:30) + 15 min (09:30-10:00) = 45 min (25%)
+    expect(metrica.tempoPorCategoriaMs.get('cat-casa')).toBe(45 * 60_000)
+
+    // Trabalho: 15 min (09:30-10:00) + 60 min (10:00-11:00) = 75 min (41,666...% -> 41,7%)
+    expect(metrica.tempoPorCategoriaMs.get('cat-trabalho')).toBe(75 * 60_000)
+
+    // Estudo: 60 min (13:00-14:00) = 60 min (33,333...% -> 33,3%)
+    expect(metrica.tempoPorCategoriaMs.get('cat-estudo')).toBe(60 * 60_000)
+
+    // Soma das categorias = tempo ativo
+    const somaCategorias =
+      (metrica.tempoPorCategoriaMs.get('cat-casa') ?? 0) +
+      (metrica.tempoPorCategoriaMs.get('cat-trabalho') ?? 0) +
+      (metrica.tempoPorCategoriaMs.get('cat-estudo') ?? 0)
+    expect(somaCategorias).toBe(metrica.tempoAtivoMs)
+
+    // Fatias da rosca
+    const fatiasPizza = montarPizzaPorCategoria(
+      [
+        {
+          id: 'cat-casa',
+          nome: 'Casa',
+          cor: '#ff0000',
+          tempoAtivoMs: metrica.tempoPorCategoriaMs.get('cat-casa') ?? 0,
+          tempoBrutoMs: 60 * 60_000,
+        },
+        {
+          id: 'cat-trabalho',
+          nome: 'Trabalho',
+          cor: '#00ff00',
+          tempoAtivoMs: metrica.tempoPorCategoriaMs.get('cat-trabalho') ?? 0,
+          tempoBrutoMs: 90 * 60_000,
+        },
+        {
+          id: 'cat-estudo',
+          nome: 'Estudo',
+          cor: '#0000ff',
+          tempoAtivoMs: metrica.tempoPorCategoriaMs.get('cat-estudo') ?? 0,
+          tempoBrutoMs: 60 * 60_000,
+        },
+      ],
+      metrica.tempoAtivoMs,
+    )
+
+    expect(fatiasPizza).toHaveLength(3)
+    // Ordenadas do maior para o menor: Trabalho (75 min), Estudo (60 min), Casa (45 min)
+    expect(fatiasPizza[0].nome).toBe('Trabalho')
+    expect(formatarPercentual(fatiasPizza[0].percentual)).toBe('41,7%')
+    expect(fatiasPizza[0].tempoMs).toBe(75 * 60_000)
+    expect(fatiasPizza[0].tempoBrutoMs).toBe(90 * 60_000)
+
+    expect(fatiasPizza[1].nome).toBe('Estudo')
+    expect(formatarPercentual(fatiasPizza[1].percentual)).toBe('33,3%')
+    expect(fatiasPizza[1].tempoMs).toBe(60 * 60_000)
+    expect(fatiasPizza[1].tempoBrutoMs).toBe(60 * 60_000)
+
+    expect(fatiasPizza[2].nome).toBe('Casa')
+    expect(formatarPercentual(fatiasPizza[2].percentual)).toBe('25%')
+    expect(fatiasPizza[2].tempoMs).toBe(45 * 60_000)
+    expect(fatiasPizza[2].tempoBrutoMs).toBe(60 * 60_000)
+
+    // Soma das porcentagens = 100%
+    const somaPct = fatiasPizza.reduce((acc, f) => acc + f.percentual, 0)
+    expect(Math.round(somaPct)).toBe(100)
+  })
+
+  it('duas tarefas da MESMA categoria simultâneas contam uma vez só para a categoria', () => {
+    const t = (horaHHmm: string) => new Date(`2026-11-04T${horaHHmm}:00-03:00`).getTime()
+
+    // Duas tarefas de Trabalho 09:00–10:00 e 09:30–10:30
+    const fatias = [
+      { inicioMs: t('09:00'), fimMs: t('10:00'), categoryId: 'cat-trabalho' },
+      { inicioMs: t('09:30'), fimMs: t('10:30'), categoryId: 'cat-trabalho' },
+    ]
+
+    const metrica = calcularTempoRealDoDia(fatias)
+    // União 09:00 às 10:30 = 1h 30 (não 2h)
+    expect(metrica.jornadaMs).toBe(90 * 60_000)
+    expect(metrica.pausasMs).toBe(0)
+    expect(metrica.tempoAtivoMs).toBe(90 * 60_000)
+    expect(metrica.tempoPorCategoriaMs.get('cat-trabalho')).toBe(90 * 60_000)
+  })
+
+  it('semana com dois dias: jornadas somadas, noite NÃO conta como pausa', () => {
+    const tDia1 = (hora: string) => new Date(`2026-11-03T${hora}:00-03:00`).getTime()
+    const tDia2 = (hora: string) => new Date(`2026-11-04T${hora}:00-03:00`).getTime()
+
+    const fatias = [
+      {
+        data: '2026-11-03' as const,
+        inicioMs: tDia1('09:00'),
+        fimMs: tDia1('12:00'),
+        categoryId: 'cat-1',
+      },
+      {
+        data: '2026-11-04' as const,
+        inicioMs: tDia2('14:00'),
+        fimMs: tDia2('17:00'),
+        categoryId: 'cat-2',
+      },
+    ]
+
+    const resultado = calcularTempoRealDoPeriodo(fatias)
+    // Dia 1: jornada 3h, pausa 0, ativo 3h
+    // Dia 2: jornada 3h, pausa 0, ativo 3h
+    // Total: jornada 6h, pausa 0, ativo 6h, diasComAtividade = 2
+    expect(resultado.metricasJornada.jornadaTotalMs).toBe(6 * 60 * 60_000)
+    expect(resultado.metricasJornada.pausasTotalMs).toBe(0)
+    expect(resultado.metricasJornada.tempoAtivoTotalMs).toBe(6 * 60 * 60_000)
+    expect(resultado.metricasJornada.diasComAtividade).toBe(2)
   })
 })

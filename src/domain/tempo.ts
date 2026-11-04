@@ -151,6 +151,28 @@ export function formatarDuracaoAviso(ms: number): string {
   return resto === 0 ? `${horas}h` : `${horas}h ${resto} min`
 }
 
+/**
+ * Formata durações de forma concisa para a rosca, centro e linha de jornada:
+ * "6h 24", "1h 09", "3h", "45 min", "<1 min" ou "0 min".
+ */
+export function formatarDuracaoCurta(ms: number): string {
+  if (ms <= 0) return '0 min'
+  const totalMinutos = Math.round(ms / 60_000)
+  if (totalMinutos < 1) return '<1 min'
+  if (totalMinutos < 60) return `${totalMinutos} min`
+  const horas = Math.floor(totalMinutos / 60)
+  const restoMinutos = totalMinutos % 60
+  if (restoMinutos === 0) return `${horas}h`
+  return `${horas}h ${String(restoMinutos).padStart(2, '0')}`
+}
+
+/** Formata percentual com até uma casa decimal ("41,7%", "25%", "0%"). */
+export function formatarPercentual(pct: number): string {
+  if (pct <= 0) return '0%'
+  const valor = Number(pct.toFixed(1))
+  return valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'
+}
+
 /** Início (00:00 do 1º dia) e fim exclusivo (00:00 do dia seguinte ao último) em ms locais. */
 export function limitesDoIntervaloLocal(
   inicio: DataLocal,
@@ -299,8 +321,46 @@ export interface FatiaGraficoPizza {
   nome: string
   cor: string | null
   tempoMs: number
+  tempoBrutoMs: number
   percentual: number
   isOutras?: boolean
+}
+
+export interface FatiaComCategoria {
+  inicioMs: number
+  fimMs: number
+  categoryId: string | null
+}
+
+export interface MetricasDiaTempoReal {
+  data: DataLocal
+  primeiroInicioMs?: number
+  ultimoFimMs?: number
+  primeiroInicio?: string
+  ultimoFim?: string
+  jornadaMs: number
+  pausasMs: number
+  tempoAtivoMs: number
+  tempoPorCategoriaMs: Map<string | null, number>
+}
+
+export interface MetricasJornadaPeriodo {
+  jornadaTotalMs: number
+  pausasTotalMs: number
+  tempoAtivoTotalMs: number
+  diasComAtividade: number
+  primeiroInicio?: string
+  ultimoFim?: string
+}
+
+export interface EntradaPizzaCategoria {
+  categoryId?: string | null
+  id?: string | null
+  nome: string
+  cor: string | null
+  tempoMs?: number
+  tempoAtivoMs?: number
+  tempoBrutoMs?: number
 }
 
 export interface TarefaNaCategoria {
@@ -332,6 +392,8 @@ export interface ResumoLinhaTempo {
 export interface RelatorioDeTempo {
   intervalo: { inicio: DataLocal; fim: DataLocal }
   tempoTotalMs: number
+  tempoAtivoTotalMs: number
+  metricasJornada: MetricasJornadaPeriodo
   tempoMedioMs: number
   tarefasMedidas: number
   tarefaComMaisTempo?: { titulo: string; tempoMs: number; cor?: string | null }
@@ -460,6 +522,154 @@ function criarResolvedorDeAlvo(dados: DadosDeTempo) {
 }
 
 /**
+ * Calcula a jornada, pausas, tempo ativo e atribuição por categoria em um dia específico.
+ * - Jornada: do primeiro início ao último fim do dia.
+ * - Pausas: trechos sem nenhuma sessão ligada entre o primeiro início e o último fim.
+ * - Tempo ativo: jornada - pausas (união de todas as sessões).
+ * - Categorias simultâneas: cada trecho elementar com N categorias distintas ativas é dividido por N.
+ * - Tarefas da mesma categoria contam como 1 categoria no instante (união por categoria).
+ */
+export function calcularTempoRealDoDia(fatiasDoDia: FatiaComCategoria[]): MetricasDiaTempoReal {
+  if (fatiasDoDia.length === 0) {
+    return {
+      data: '' as DataLocal,
+      jornadaMs: 0,
+      pausasMs: 0,
+      tempoAtivoMs: 0,
+      tempoPorCategoriaMs: new Map(),
+    }
+  }
+
+  let primeiroInicioMs = Infinity
+  let ultimoFimMs = -Infinity
+
+  for (const f of fatiasDoDia) {
+    if (f.inicioMs < primeiroInicioMs) primeiroInicioMs = f.inicioMs
+    if (f.fimMs > ultimoFimMs) ultimoFimMs = f.fimMs
+  }
+
+  if (ultimoFimMs <= primeiroInicioMs) {
+    return {
+      data: '' as DataLocal,
+      jornadaMs: 0,
+      pausasMs: 0,
+      tempoAtivoMs: 0,
+      tempoPorCategoriaMs: new Map(),
+    }
+  }
+
+  const jornadaMs = ultimoFimMs - primeiroInicioMs
+  const pontosSet = new Set<number>()
+  for (const f of fatiasDoDia) {
+    pontosSet.add(f.inicioMs)
+    pontosSet.add(f.fimMs)
+  }
+  const pontos = Array.from(pontosSet).sort((a, b) => a - b)
+
+  let tempoAtivoMs = 0
+  let pausasMs = 0
+  const tempoPorCategoriaMs = new Map<string | null, number>()
+
+  for (let i = 0; i < pontos.length - 1; i += 1) {
+    const tInicio = pontos[i]
+    const tFim = pontos[i + 1]
+    const delta = tFim - tInicio
+    if (delta <= 0) continue
+
+    const catsAtivas = new Set<string | null>()
+    for (const f of fatiasDoDia) {
+      if (f.inicioMs <= tInicio && f.fimMs >= tFim) {
+        catsAtivas.add(f.categoryId)
+      }
+    }
+
+    if (catsAtivas.size === 0) {
+      pausasMs += delta
+    } else {
+      tempoAtivoMs += delta
+      const parcela = delta / catsAtivas.size
+      for (const catId of catsAtivas) {
+        tempoPorCategoriaMs.set(catId, (tempoPorCategoriaMs.get(catId) ?? 0) + parcela)
+      }
+    }
+  }
+
+  const primeiroInicio = format(new Date(primeiroInicioMs), 'HH:mm')
+  const ultimoFim = format(new Date(ultimoFimMs), 'HH:mm')
+
+  return {
+    data: '' as DataLocal,
+    primeiroInicioMs,
+    ultimoFimMs,
+    primeiroInicio,
+    ultimoFim,
+    jornadaMs,
+    pausasMs,
+    tempoAtivoMs,
+    tempoPorCategoriaMs,
+  }
+}
+
+/**
+ * Agrupa fatias por dia e soma as métricas de tempo real do período:
+ * soma dia a dia (jornadas somadas, a noite entre dois dias NÃO conta como pausa).
+ */
+export function calcularTempoRealDoPeriodo(
+  fatiasComData: Array<FatiaComCategoria & { data: DataLocal }>,
+  isVisaoDeUmDia = false,
+): {
+  metricasJornada: MetricasJornadaPeriodo
+  tempoPorCategoriaMs: Map<string | null, number>
+} {
+  const fatiasPorDia = new Map<DataLocal, FatiaComCategoria[]>()
+  for (const f of fatiasComData) {
+    const lista = fatiasPorDia.get(f.data) ?? []
+    lista.push(f)
+    fatiasPorDia.set(f.data, lista)
+  }
+
+  let jornadaTotalMs = 0
+  let pausasTotalMs = 0
+  let tempoAtivoTotalMs = 0
+  let diasComAtividade = 0
+  let primeiroInicioDia: string | undefined
+  let ultimoFimDia: string | undefined
+  const tempoPorCategoriaMs = new Map<string | null, number>()
+
+  const diasOrdenados = [...fatiasPorDia.keys()].sort()
+  for (const dia of diasOrdenados) {
+    const fatiasDoDia = fatiasPorDia.get(dia) ?? []
+    if (fatiasDoDia.length === 0) continue
+    const metrica = calcularTempoRealDoDia(fatiasDoDia)
+    if (metrica.jornadaMs > 0 || metrica.tempoAtivoMs > 0) {
+      jornadaTotalMs += metrica.jornadaMs
+      pausasTotalMs += metrica.pausasMs
+      tempoAtivoTotalMs += metrica.tempoAtivoMs
+      diasComAtividade += 1
+      if (diasOrdenados.length === 1 || isVisaoDeUmDia) {
+        primeiroInicioDia = metrica.primeiroInicio
+        ultimoFimDia = metrica.ultimoFim
+      }
+      for (const [catId, parcela] of metrica.tempoPorCategoriaMs.entries()) {
+        tempoPorCategoriaMs.set(catId, (tempoPorCategoriaMs.get(catId) ?? 0) + parcela)
+      }
+    }
+  }
+
+  return {
+    metricasJornada: {
+      jornadaTotalMs,
+      pausasTotalMs,
+      tempoAtivoTotalMs,
+      diasComAtividade,
+      primeiroInicio: primeiroInicioDia,
+      ultimoFim: ultimoFimDia,
+    },
+    tempoPorCategoriaMs,
+  }
+}
+
+/**
  * Monta todos os números, gráficos e a lista de tarefas da seção "Tempo nas tarefas" para o
  * período escolhido. Sessões que atravessam o período ou a meia-noite contam só a fatia dentro
  * de cada dia do período.
@@ -494,6 +704,7 @@ export function montarRelatorioDeTempo(
   }
 
   let tempoTotalMs = 0
+  const fatiasPorDia = new Map<DataLocal, FatiaComCategoria[]>()
 
   for (const sessao of dados.sessoes) {
     const corte = cortarSessaoNoIntervalo(sessao, inicioMs, fimMs, agoraIso)
@@ -518,6 +729,19 @@ export function montarRelatorioDeTempo(
     }
     atualCat.tempoMs += corte.duracaoMs
     mapaCategorias.set(chaveCat, atualCat)
+
+    // Coleta fatias para cálculo do tempo real
+    for (const fatia of fatias) {
+      if (fatia.duracaoMs > 0) {
+        const lista = fatiasPorDia.get(fatia.data) ?? []
+        lista.push({
+          inicioMs: fatia.inicioMs,
+          fimMs: fatia.fimMs,
+          categoryId: chaveCat,
+        })
+        fatiasPorDia.set(fatia.data, lista)
+      }
+    }
 
     // Soma por tarefa/item
     let entrada = mapaTarefas.get(alvo.chave)
@@ -570,7 +794,29 @@ export function montarRelatorioDeTempo(
     ? montarGraficoPorTarefa(tarefas, 5, false)
     : montarGraficoPorTarefa(tarefas, 8, true)
 
-  const fatiasPizza = montarPizzaPorCategoria(porCategoria, tempoTotalMs)
+  const fatiasComData: Array<FatiaComCategoria & { data: DataLocal }> = []
+  for (const [dia, lista] of fatiasPorDia.entries()) {
+    for (const f of lista) {
+      fatiasComData.push({ ...f, data: dia })
+    }
+  }
+
+  const { metricasJornada, tempoPorCategoriaMs: tempoAtivoPorCategoria } =
+    calcularTempoRealDoPeriodo(fatiasComData, isVisaoDeUmDia)
+
+  const listaParaPizza: EntradaPizzaCategoria[] = []
+  for (const [catId, tempoAtivo] of tempoAtivoPorCategoria.entries()) {
+    const catInfo = mapaCategorias.get(catId)
+    listaParaPizza.push({
+      id: catId,
+      nome: catInfo?.nome ?? 'Sem categoria',
+      cor: catInfo?.cor ?? null,
+      tempoAtivoMs: tempoAtivo,
+      tempoBrutoMs: catInfo?.tempoMs ?? tempoAtivo,
+    })
+  }
+
+  const fatiasPizza = montarPizzaPorCategoria(listaParaPizza, metricasJornada.tempoAtivoTotalMs)
   const categoriasComTarefas = agruparTarefasPorCategoria(tarefas)
   const resumo = calcularResumoTempo(tarefas, tempoTotalMs)
   const diasComTempo = listarDiasComTempo(dados.sessoes, agoraIso)
@@ -578,6 +824,8 @@ export function montarRelatorioDeTempo(
   return {
     intervalo,
     tempoTotalMs,
+    tempoAtivoTotalMs: metricasJornada.tempoAtivoTotalMs,
+    metricasJornada,
     tempoMedioMs: resumo.tempoMedioMs,
     tarefasMedidas: resumo.tarefasMedidas,
     tarefaComMaisTempo: resumo.tarefaComMaisTempo,
@@ -707,37 +955,58 @@ export function calcularResumoTempo(
 }
 
 /**
- * Prepara fatias para o gráfico de pizza por categoria:
+ * Prepara fatias para o gráfico de pizza / rosca por categoria:
  * - Fatias ordenadas da maior para a menor
+ * - Baseadas no tempo ativo real (ou tempo total em chamadas legadas)
+ * - Preserva o tempo bruto somando as tarefas para o tooltip
  * - Mais de 6 categorias: top 5 mantidas e o resto vira fatia "Outras"
  */
 export function montarPizzaPorCategoria(
-  porCategoria: TempoPorCategoria[],
-  tempoTotalMs: number,
+  categorias: EntradaPizzaCategoria[],
+  tempoAtivoTotalMs: number,
 ): FatiaGraficoPizza[] {
-  const validas = porCategoria.filter((c) => c.tempoMs > 0)
-  if (validas.length === 0 || tempoTotalMs <= 0) return []
+  const normalizadas = categorias.map((c) => {
+    const id = c.id !== undefined ? c.id : (c.categoryId ?? null)
+    const tempoAtivo = c.tempoAtivoMs !== undefined ? c.tempoAtivoMs : (c.tempoMs ?? 0)
+    const tempoBruto = c.tempoBrutoMs !== undefined ? c.tempoBrutoMs : (c.tempoMs ?? 0)
+    return {
+      id,
+      nome: c.nome,
+      cor: c.cor,
+      tempoMs: tempoAtivo,
+      tempoBrutoMs: tempoBruto,
+    }
+  })
+
+  const validas = normalizadas
+    .filter((c) => c.tempoMs > 0)
+    .sort((a, b) => b.tempoMs - a.tempoMs || a.nome.localeCompare(b.nome, 'pt-BR'))
+
+  if (validas.length === 0 || tempoAtivoTotalMs <= 0) return []
 
   if (validas.length <= 6) {
     return validas.map((c) => ({
-      id: c.categoryId,
+      id: c.id,
       nome: c.nome,
       cor: c.cor,
       tempoMs: c.tempoMs,
-      percentual: (c.tempoMs / tempoTotalMs) * 100,
+      tempoBrutoMs: c.tempoBrutoMs,
+      percentual: (c.tempoMs / tempoAtivoTotalMs) * 100,
     }))
   }
 
   const top5 = validas.slice(0, 5)
   const excedentes = validas.slice(5)
   const somaExcedenteMs = excedentes.reduce((acc, c) => acc + c.tempoMs, 0)
+  const somaExcedenteBrutoMs = excedentes.reduce((acc, c) => acc + c.tempoBrutoMs, 0)
 
   const resultado: FatiaGraficoPizza[] = top5.map((c) => ({
-    id: c.categoryId,
+    id: c.id,
     nome: c.nome,
     cor: c.cor,
     tempoMs: c.tempoMs,
-    percentual: (c.tempoMs / tempoTotalMs) * 100,
+    tempoBrutoMs: c.tempoBrutoMs,
+    percentual: (c.tempoMs / tempoAtivoTotalMs) * 100,
   }))
 
   if (somaExcedenteMs > 0) {
@@ -746,7 +1015,8 @@ export function montarPizzaPorCategoria(
       nome: 'Outras',
       cor: null,
       tempoMs: somaExcedenteMs,
-      percentual: (somaExcedenteMs / tempoTotalMs) * 100,
+      tempoBrutoMs: somaExcedenteBrutoMs,
+      percentual: (somaExcedenteMs / tempoAtivoTotalMs) * 100,
       isOutras: true,
     })
   }
