@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { Clock, Search, X } from 'lucide-react'
 import { cn } from 'cn'
 import { Input } from '@/components/ui/input'
-import { filtrarTarefasDeTempo, formatarDuracao } from '@/domain/tempo'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { filtrarCategoriasDeTempo, formatarDuracao } from '@/domain/tempo'
 import { FiltroPeriodoDados } from '@/features/dados/components/filtro-periodo-dados'
-import { GraficoPorDia, GraficoPorTarefa } from '@/features/dados/components/graficos-tempo'
+import { GraficoPizzaCategoria, GraficoPorTarefa } from '@/features/dados/components/graficos-tempo'
 import { ListaTarefasTempo } from '@/features/dados/components/lista-tarefas-tempo'
 import { usePeriodoDeDados, useRelatorioDeTempo } from '@/features/dados/hooks/use-dados-tempo'
 
 /**
  * Primeira seção da tela Dados: "Tempo nas tarefas".
- * Exibe filtro de período, resumo, gráficos por tarefa e por dia, busca e lista de tarefas
- * expansível por sessão.
+ * Exibe filtro de período, linha de resumo, gráficos (barras nítidas e pizza por categoria na semana/mês),
+ * busca e lista de tarefas agrupada por categoria.
  */
 export function SecaoTempoTarefas() {
   const [periodo, definirPeriodo] = usePeriodoDeDados()
@@ -22,8 +23,9 @@ export function SecaoTempoTarefas() {
 
   const semNenhumDadoNoBanco = dados.sessoes.length === 0
   const semDadosNoPeriodo = relatorio.tarefas.length === 0
-  const tarefasFiltradas = filtrarTarefasDeTempo(relatorio.tarefas, busca)
-  const mostrarGraficoPorDia = periodo.tipo !== 'hoje'
+  const categoriasFiltradas = filtrarCategoriasDeTempo(relatorio.categoriasComTarefas, busca)
+  const isVisaoDeUmDia = periodo.tipo === 'hoje' || periodo.tipo === 'dia'
+  const mostrarPizza = !isVisaoDeUmDia
 
   return (
     <section aria-labelledby="titulo-tempo-tarefas" className="grid gap-6">
@@ -31,7 +33,12 @@ export function SecaoTempoTarefas() {
         <h2 id="titulo-tempo-tarefas" className="text-lg font-bold tracking-tight text-tinta">
           Tempo nas tarefas
         </h2>
-        <FiltroPeriodoDados periodo={periodo} hoje={hoje} onMudar={definirPeriodo} />
+        <FiltroPeriodoDados
+          periodo={periodo}
+          hoje={hoje}
+          diasComTempo={relatorio.diasComTempo}
+          onMudar={definirPeriodo}
+        />
       </div>
 
       {semNenhumDadoNoBanco || semDadosNoPeriodo ? (
@@ -46,47 +53,89 @@ export function SecaoTempoTarefas() {
         </div>
       ) : (
         <div className="grid gap-6">
-          {/* Linha de resumo com 3 números pequenos */}
+          {/* Linha de resumo com 4 métricas */}
           <dl
             aria-label="Resumo do período"
             className="flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-b border-pauta py-3 text-sm"
           >
             <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-grafite">Total no período</dt>
-              <dd data-resumo-total="" className="font-semibold text-tinta tabular-nums">
-                {formatarDuracao(relatorio.tempoTotalMs)}
+              <dt className="text-xs text-grafite">Tempo médio por tarefa</dt>
+              <dd data-resumo-media="" className="font-semibold text-tinta tabular-nums">
+                {formatarDuracao(relatorio.tempoMedioMs)}
               </dd>
             </div>
             <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-grafite">Tarefas medidas</dt>
-              <dd data-resumo-tarefas="" className="font-semibold text-tinta tabular-nums">
-                {relatorio.tarefasMedidas} {relatorio.tarefasMedidas === 1 ? 'tarefa' : 'tarefas'}
+              <dt className="text-xs text-grafite">Tarefas realizadas</dt>
+              <dd data-resumo-realizadas="" className="font-semibold text-tinta tabular-nums">
+                {relatorio.tarefasMedidas}
               </dd>
             </div>
             {relatorio.tarefaComMaisTempo && (
-              <div className="flex min-w-0 items-baseline gap-2">
+              <div className="flex min-w-0 max-w-xs items-baseline gap-2">
                 <dt className="shrink-0 text-xs text-grafite">Mais tempo</dt>
-                <dd data-resumo-maior="" className="truncate font-medium text-tinta">
-                  {relatorio.tarefaComMaisTempo.titulo}{' '}
-                  <span className="text-grafite tabular-nums">
-                    ({formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)})
-                  </span>
-                </dd>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <dd
+                      data-resumo-maior=""
+                      title={`${relatorio.tarefaComMaisTempo.titulo} (${formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)})`}
+                      className="truncate font-medium text-tinta cursor-default"
+                    >
+                      {relatorio.tarefaComMaisTempo.titulo}{' '}
+                      <span className="text-grafite tabular-nums">
+                        ({formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)})
+                      </span>
+                    </dd>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {relatorio.tarefaComMaisTempo.titulo} (
+                      {formatarDuracao(relatorio.tarefaComMaisTempo.tempoMs)})
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+            {relatorio.tarefaComMenosTempo && (
+              <div className="flex min-w-0 max-w-xs items-baseline gap-2">
+                <dt className="shrink-0 text-xs text-grafite">Menos tempo</dt>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <dd
+                      data-resumo-menor=""
+                      title={`${relatorio.tarefaComMenosTempo.titulo} (${formatarDuracao(relatorio.tarefaComMenosTempo.tempoMs)})`}
+                      className="truncate font-medium text-tinta cursor-default"
+                    >
+                      {relatorio.tarefaComMenosTempo.titulo}{' '}
+                      <span className="text-grafite tabular-nums">
+                        ({formatarDuracao(relatorio.tarefaComMenosTempo.tempoMs)})
+                      </span>
+                    </dd>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {relatorio.tarefaComMenosTempo.titulo} (
+                      {formatarDuracao(relatorio.tarefaComMenosTempo.tempoMs)})
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             )}
           </dl>
 
           {/* Gráficos */}
-          <div className={cn('grid gap-6', mostrarGraficoPorDia && 'md:grid-cols-2')}>
-            <GraficoPorTarefa dados={relatorio.graficoPorTarefa} />
-            {mostrarGraficoPorDia && <GraficoPorDia dias={relatorio.porDia} />}
+          <div className={cn('grid gap-6', mostrarPizza && 'md:grid-cols-2')}>
+            <GraficoPorTarefa
+              dados={relatorio.graficoPorTarefa}
+              titulo={isVisaoDeUmDia ? 'Por tarefa' : 'Top 5 tarefas'}
+            />
+            {mostrarPizza && <GraficoPizzaCategoria fatias={relatorio.fatiasPizza} />}
           </div>
 
-          {/* Busca e lista de tarefas */}
+          {/* Busca e lista por categoria */}
           <div className="grid gap-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-xs font-semibold tracking-tight text-grafite">
-                Tarefas ({tarefasFiltradas.length})
+                Por categoria ({categoriasFiltradas.length})
               </h3>
               <div className="relative w-full max-w-xs">
                 <Search
@@ -114,8 +163,11 @@ export function SecaoTempoTarefas() {
               </div>
             </div>
 
-            {tarefasFiltradas.length > 0 ? (
-              <ListaTarefasTempo tarefas={tarefasFiltradas} />
+            {categoriasFiltradas.length > 0 ? (
+              <ListaTarefasTempo
+                categorias={categoriasFiltradas}
+                isFiltrando={busca.trim().length > 0}
+              />
             ) : (
               <p className="py-6 text-center text-sm text-grafite">
                 Nenhuma tarefa encontrada para “{busca}”.

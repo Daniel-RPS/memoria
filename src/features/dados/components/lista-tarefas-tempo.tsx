@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { cn } from 'cn'
 import {
@@ -22,28 +23,41 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import type { DataLocal } from '@/db/types'
 import {
   editarSessao,
   excluirSessao,
   formatarDuracao,
-  type ResumoTarefaNoTempo,
+  type CategoriaComTarefas,
   type SessaoNoPeriodo,
 } from '@/domain/tempo'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 import { deDataLocal } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
 
-interface ListaTarefasTempoProps {
-  tarefas: ResumoTarefaNoTempo[]
+const CHAVE_CATEGORIAS_ABERTAS = 'memoria:dados-categorias-abertas'
+
+function lerCategoriasAbertas(): Set<string> {
+  try {
+    const salvo = localStorage.getItem(CHAVE_CATEGORIAS_ABERTAS)
+    if (!salvo) return new Set()
+    const parsed = JSON.parse(salvo)
+    return Array.isArray(parsed) ? new Set(parsed) : new Set()
+  } catch {
+    return new Set()
+  }
 }
 
-function formatarDiasTrabalhados(dias: DataLocal[]): string {
-  if (dias.length === 0) return ''
-  if (dias.length <= 3) {
-    return dias.map((d) => format(deDataLocal(d), 'dd/MM')).join(', ')
+function salvarCategoriasAbertas(ids: Set<string>) {
+  try {
+    localStorage.setItem(CHAVE_CATEGORIAS_ABERTAS, JSON.stringify([...ids]))
+  } catch {
+    // ignorar quota ou falha de storage
   }
-  return `${dias.length} dias (${format(deDataLocal(dias[0]), 'dd/MM')}–${format(deDataLocal(dias[dias.length - 1]), 'dd/MM')})`
+}
+
+interface ListaTarefasTempoProps {
+  categorias: CategoriaComTarefas[]
+  isFiltrando?: boolean
 }
 
 function combinarDiaEHorario(baseIso: string, horarioHHmm: string): Date {
@@ -57,12 +71,13 @@ function combinarDiaEHorario(baseIso: string, horarioHHmm: string): Date {
 }
 
 /**
- * Lista de tarefas medidas no período, ordenadas por tempo (maior primeiro).
- * Clicar na linha expande as sessões individuais com edição de horário e exclusão.
+ * Lista de tarefas medidas agrupadas por categoria.
+ * Cada linha é uma categoria expansível contendo as tarefas e as respectivas sessões.
+ * Categorias abertas são lembradas no localStorage.
  */
-export function ListaTarefasTempo({ tarefas }: ListaTarefasTempoProps) {
+export function ListaTarefasTempo({ categorias, isFiltrando = false }: ListaTarefasTempoProps) {
   const corNaTela = useCorNaTela()
-  const [abertas, setAbertas] = useState<Set<string>>(() => new Set())
+  const [categoriasAbertas, setCategoriasAbertas] = useState<Set<string>>(lerCategoriasAbertas)
   const [sessaoEditando, setSessaoEditando] = useState<{
     sessao: SessaoNoPeriodo
     tituloTarefa: string
@@ -75,11 +90,12 @@ export function ListaTarefasTempo({ tarefas }: ListaTarefasTempoProps) {
     tituloTarefa: string
   } | null>(null)
 
-  function alternarAberta(chave: string) {
-    setAbertas((atual) => {
+  function alternarCategoria(chave: string) {
+    setCategoriasAbertas((atual) => {
       const proximo = new Set(atual)
       if (proximo.has(chave)) proximo.delete(chave)
       else proximo.add(chave)
+      salvarCategoriasAbertas(proximo)
       return proximo
     })
   }
@@ -124,22 +140,23 @@ export function ListaTarefasTempo({ tarefas }: ListaTarefasTempoProps) {
   return (
     <>
       <ul
-        aria-label="Tarefas medidas"
+        aria-label="Tarefas medidas por categoria"
         className="divide-y divide-pauta border-t border-b border-pauta"
       >
-        {tarefas.map((tarefa) => {
-          const isAberta = abertas.has(tarefa.chave)
-          const cor = tarefa.categoria ? corNaTela(tarefa.categoria.cor) : 'var(--grafite)'
-          const idSessoes = `sessoes-${tarefa.chave.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+        {categorias.map((cat) => {
+          const chaveCat = cat.id ?? '__sem_categoria__'
+          const isAberta = isFiltrando || categoriasAbertas.has(chaveCat)
+          const cor = cat.cor ? corNaTela(cat.cor) : 'var(--grafite)'
+          const idListaTarefas = `tarefas-cat-${chaveCat.replace(/[^a-zA-Z0-9_-]/g, '-')}`
 
           return (
-            <li key={tarefa.chave} data-linha-tempo={tarefa.titulo} className="bg-papel">
+            <li key={chaveCat} data-categoria-tempo={cat.nome} className="bg-papel">
               <button
                 type="button"
                 aria-expanded={isAberta}
-                aria-controls={idSessoes}
-                onClick={() => alternarAberta(tarefa.chave)}
-                className="flex min-h-11 w-full items-center gap-2.5 px-2 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-caneta"
+                aria-controls={idListaTarefas}
+                onClick={() => alternarCategoria(chaveCat)}
+                className="flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-caneta"
               >
                 <ChevronRight
                   aria-hidden
@@ -150,78 +167,129 @@ export function ListaTarefasTempo({ tarefas }: ListaTarefasTempoProps) {
                 />
                 <span
                   aria-hidden
-                  title={tarefa.categoria?.nome ?? 'Sem categoria'}
+                  title={cat.nome}
                   className="size-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: cor }}
                 />
                 <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-                  <span className="font-medium break-words text-tinta">{tarefa.titulo}</span>
-                  {tarefa.nomeGrupo && (
-                    <span className="text-xs text-grafite">{tarefa.nomeGrupo}</span>
-                  )}
-                  {tarefa.isArquivada && (
-                    <span className="rounded-sm bg-accent px-1.5 py-0.5 text-xs text-grafite italic">
-                      arquivada
-                    </span>
-                  )}
-                  <span className="text-xs text-grafite tabular-nums">
-                    {formatarDiasTrabalhados(tarefa.diasTrabalhados)}
+                  <span className="font-semibold text-sm text-tinta">{cat.nome}</span>
+                  <span className="text-xs text-grafite">
+                    {cat.tarefas.length} {cat.tarefas.length === 1 ? 'tarefa' : 'tarefas'}
                   </span>
                 </div>
                 <span className="shrink-0 text-sm font-semibold whitespace-nowrap text-tinta tabular-nums">
-                  {formatarDuracao(tarefa.tempoTotalMs)}
+                  {formatarDuracao(cat.tempoTotalMs)}
                 </span>
               </button>
 
               {isAberta && (
                 <ul
-                  id={idSessoes}
-                  aria-label={`Sessões de ${tarefa.titulo}`}
-                  className="divide-y divide-pauta/60 border-t border-pauta/60 bg-background/40 py-1 pr-2 pl-9"
+                  id={idListaTarefas}
+                  aria-label={`Tarefas de ${cat.nome}`}
+                  className="divide-y divide-pauta/40 border-t border-pauta/60 bg-background/30"
                 >
-                  {tarefa.sessoes.map((sessao) => {
-                    const dataTexto = format(deDataLocal(sessao.dataLocal), 'dd/MM/yyyy')
-                    const inicioTexto = format(new Date(sessao.inicio), 'HH:mm')
-                    const fimTexto = sessao.fim ? format(new Date(sessao.fim), 'HH:mm') : 'agora'
+                  {cat.tarefas.map((tarefa) => {
                     return (
                       <li
-                        key={sessao.id}
-                        data-sessao-id={sessao.id}
-                        className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-xs"
+                        key={tarefa.chave}
+                        data-linha-tempo={tarefa.titulo}
+                        className="py-2.5 pr-3 pl-8"
                       >
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
-                          <span className="text-grafite">{dataTexto}</span>
-                          <span className="font-medium text-tinta">
-                            {inicioTexto}–{fimTexto}
-                          </span>
-                          <span className="text-violeta-profundo">
-                            {formatarDuracao(sessao.duracaoNoPeriodoMs)}
+                        {/* Linha da tarefa */}
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                            <span className="text-sm font-medium break-words text-tinta">
+                              {tarefa.titulo}
+                            </span>
+                            {tarefa.nomeGrupo && (
+                              <span className="text-xs text-grafite">{tarefa.nomeGrupo}</span>
+                            )}
+                            {tarefa.isArquivada && (
+                              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-xs text-grafite italic">
+                                arquivada
+                              </span>
+                            )}
+                          </div>
+                          <span className="shrink-0 text-xs font-semibold whitespace-nowrap text-tinta tabular-nums">
+                            {formatarDuracao(tarefa.tempoTotalMs)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Editar sessão de ${tarefa.titulo} (${inicioTexto}–${fimTexto})`}
-                            onClick={() => handleAbrirEdicao(sessao, tarefa.titulo)}
-                            className="size-6 text-grafite hover:text-tinta"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Excluir sessão de ${tarefa.titulo} (${inicioTexto}–${fimTexto})`}
-                            onClick={() =>
-                              setSessaoExcluindo({ sessao, tituloTarefa: tarefa.titulo })
-                            }
-                            className="size-6 text-grafite hover:text-destructive"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
+
+                        {/* Sessões da tarefa */}
+                        <ul
+                          aria-label={`Sessões de ${tarefa.titulo}`}
+                          className="mt-1.5 grid gap-1 pl-2 border-l border-pauta/50"
+                        >
+                          {tarefa.sessoes.map((sessao) => {
+                            const dataTexto = format(
+                              deDataLocal(sessao.dataLocal),
+                              'cccccc, dd/MM',
+                              {
+                                locale: ptBR,
+                              },
+                            )
+                            const inicioTexto = format(new Date(sessao.inicio), 'HH:mm')
+                            const fimTexto = sessao.fim
+                              ? format(new Date(sessao.fim), 'HH:mm')
+                              : 'agora'
+                            const isCurta = sessao.duracaoNoPeriodoMs < 60_000
+
+                            return (
+                              <li
+                                key={sessao.id}
+                                data-sessao-id={sessao.id}
+                                className={cn(
+                                  'flex flex-wrap items-center justify-between gap-2 py-0.5 text-xs',
+                                  isCurta ? 'opacity-60 text-grafite' : 'text-grafite',
+                                )}
+                              >
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
+                                  <span>{dataTexto}</span>
+                                  <span
+                                    className={cn(
+                                      'font-medium',
+                                      isCurta ? 'text-grafite' : 'text-tinta',
+                                    )}
+                                  >
+                                    {inicioTexto} – {fimTexto}
+                                  </span>
+                                  <span
+                                    className={
+                                      isCurta ? 'text-grafite' : 'text-violeta-profundo font-medium'
+                                    }
+                                  >
+                                    {formatarDuracao(sessao.duracaoNoPeriodoMs)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label={`Editar sessão de ${tarefa.titulo} (${inicioTexto}–${fimTexto})`}
+                                    onClick={() => handleAbrirEdicao(sessao, tarefa.titulo)}
+                                    className="size-6 text-grafite hover:text-tinta"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label={`Excluir sessão de ${tarefa.titulo} (${inicioTexto}–${fimTexto})`}
+                                    onClick={() =>
+                                      setSessaoExcluindo({ sessao, tituloTarefa: tarefa.titulo })
+                                    }
+                                    className="size-6 text-grafite hover:text-destructive"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              </li>
+                            )
+                          })}
+                        </ul>
                       </li>
                     )
                   })}

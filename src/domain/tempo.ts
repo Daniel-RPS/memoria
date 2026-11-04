@@ -1,4 +1,5 @@
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { z } from 'zod'
 import { db } from '@/db/database'
 import { agora } from '@/db/repositories/ordenacao'
@@ -28,6 +29,7 @@ export type PeriodoDeDados =
   | { tipo: 'hoje' }
   | { tipo: 'semana' }
   | { tipo: 'mes' }
+  | { tipo: 'dia'; dia: DataLocal }
   | { tipo: 'intervalo'; inicio: DataLocal; fim: DataLocal }
 
 export const PERIODO_PADRAO_DADOS: PeriodoDeDados = { tipo: 'semana' }
@@ -38,6 +40,7 @@ const esquemaPeriodoDeDados = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('hoje') }),
   z.object({ tipo: z.literal('semana') }),
   z.object({ tipo: z.literal('mes') }),
+  z.object({ tipo: z.literal('dia'), dia: dataLocalSchema }),
   z.object({ tipo: z.literal('intervalo'), inicio: dataLocalSchema, fim: dataLocalSchema }),
 ])
 
@@ -61,6 +64,8 @@ export function intervaloDoPeriodoDeDados(
   switch (periodo.tipo) {
     case 'hoje':
       return { inicio: hoje, fim: hoje }
+    case 'dia':
+      return { inicio: periodo.dia, fim: periodo.dia }
     case 'semana':
       return {
         inicio: paraDataLocal(startOfWeek(dataHoje, { weekStartsOn: PRIMEIRO_DIA_DA_SEMANA })),
@@ -78,11 +83,20 @@ export function intervaloDoPeriodoDeDados(
   }
 }
 
-/** Rótulo curto do botão "Escolher…" quando há um intervalo personalizado ativo. */
+/** Rótulo do dia escolhido no filtro ("qua, 12/11"). */
+export function rotuloDoDiaEscolhido(periodo: PeriodoDeDados): string | undefined {
+  if (periodo.tipo === 'dia') {
+    return format(deDataLocal(periodo.dia), 'cccccc, dd/MM', { locale: ptBR })
+  }
+  return undefined
+}
+
+/** Rótulo curto do botão "Escolher…" quando há um intervalo personalizado ativo (legado). */
 export function rotuloDoIntervaloPersonalizado(
   periodo: PeriodoDeDados,
   hoje: DataLocal,
 ): string | undefined {
+  if (periodo.tipo === 'dia') return rotuloDoDiaEscolhido(periodo)
   if (periodo.tipo !== 'intervalo') return undefined
   const { inicio, fim } = intervaloDoPeriodoDeDados(periodo, hoje)
   const formatarDia = (dia: DataLocal) =>
@@ -280,15 +294,55 @@ export interface DadosGraficoPorTarefa {
   categoriasLegenda: CategoriaDaLegenda[]
 }
 
+export interface FatiaGraficoPizza {
+  id: string | null
+  nome: string
+  cor: string | null
+  tempoMs: number
+  percentual: number
+  isOutras?: boolean
+}
+
+export interface TarefaNaCategoria {
+  chave: string
+  tipo: 'tarefa' | 'item'
+  titulo: string
+  nomeGrupo?: string
+  isArquivada: boolean
+  tempoTotalMs: number
+  diasTrabalhados: DataLocal[]
+  sessoes: SessaoNoPeriodo[]
+}
+
+export interface CategoriaComTarefas {
+  id: string | null
+  nome: string
+  cor: string | null
+  tempoTotalMs: number
+  tarefas: TarefaNaCategoria[]
+}
+
+export interface ResumoLinhaTempo {
+  tempoMedioMs: number
+  tarefasMedidas: number
+  tarefaComMaisTempo?: { titulo: string; tempoMs: number }
+  tarefaComMenosTempo?: { titulo: string; tempoMs: number }
+}
+
 export interface RelatorioDeTempo {
   intervalo: { inicio: DataLocal; fim: DataLocal }
   tempoTotalMs: number
+  tempoMedioMs: number
   tarefasMedidas: number
   tarefaComMaisTempo?: { titulo: string; tempoMs: number }
+  tarefaComMenosTempo?: { titulo: string; tempoMs: number }
   porCategoria: TempoPorCategoria[]
+  fatiasPizza: FatiaGraficoPizza[]
   porDia: TempoPorDia[]
   tarefas: ResumoTarefaNoTempo[]
+  categoriasComTarefas: CategoriaComTarefas[]
   graficoPorTarefa: DadosGraficoPorTarefa
+  diasComTempo: Set<DataLocal>
 }
 
 interface AlvoResolvido {
@@ -510,19 +564,31 @@ export function montarRelatorioDeTempo(
     tempoMs,
   }))
 
-  const graficoPorTarefa = montarGraficoPorTarefa(tarefas)
+  const isVisaoDeUmDia = periodo.tipo === 'hoje' || periodo.tipo === 'dia'
+  const modoTop5 = !isVisaoDeUmDia
+  const graficoPorTarefa = modoTop5
+    ? montarGraficoPorTarefa(tarefas, 5, false)
+    : montarGraficoPorTarefa(tarefas, 8, true)
+
+  const fatiasPizza = montarPizzaPorCategoria(porCategoria, tempoTotalMs)
+  const categoriasComTarefas = agruparTarefasPorCategoria(tarefas)
+  const resumo = calcularResumoTempo(tarefas, tempoTotalMs)
+  const diasComTempo = listarDiasComTempo(dados.sessoes, agoraIso)
 
   return {
     intervalo,
     tempoTotalMs,
-    tarefasMedidas: tarefas.length,
-    ...(tarefas[0]
-      ? { tarefaComMaisTempo: { titulo: tarefas[0].titulo, tempoMs: tarefas[0].tempoTotalMs } }
-      : {}),
+    tempoMedioMs: resumo.tempoMedioMs,
+    tarefasMedidas: resumo.tarefasMedidas,
+    tarefaComMaisTempo: resumo.tarefaComMaisTempo,
+    tarefaComMenosTempo: resumo.tarefaComMenosTempo,
     porCategoria,
+    fatiasPizza,
     porDia,
     tarefas,
+    categoriasComTarefas,
     graficoPorTarefa,
+    diasComTempo,
   }
 }
 
@@ -531,11 +597,13 @@ export function montarRelatorioDeTempo(
  * - Ordenadas do maior para o menor tempo no período
  * - Comprimento proporcional à tarefa com mais tempo (100% para a maior)
  * - Até 8 tarefas no gráfico; acima disso, agrupa o excedente na linha "+N outras" (cor neutra)
+ * - Em modo Top 5 (Semana/Mês), limita a 5 sem "+N outras"
  * - Extrai a legenda compacta das categorias únicas presentes nas tarefas do período
  */
 export function montarGraficoPorTarefa(
   tarefas: ResumoTarefaNoTempo[],
   limiteTarefas = 8,
+  permitirOutras = true,
 ): DadosGraficoPorTarefa {
   const tarefasValidas = [...tarefas]
     .filter((t) => t.tempoTotalMs > 0)
@@ -572,7 +640,7 @@ export function montarGraficoPorTarefa(
     proporcao: maiorTempoMs > 0 ? Math.round((t.tempoTotalMs / maiorTempoMs) * 100) : 0,
   }))
 
-  if (excedentes.length > 0) {
+  if (permitirOutras && excedentes.length > 0) {
     const tempoOutrasMs = excedentes.reduce((soma, t) => soma + t.tempoTotalMs, 0)
     itens.push({
       chave: 'outras',
@@ -585,6 +653,199 @@ export function montarGraficoPorTarefa(
   }
 
   return { itens, categoriasLegenda }
+}
+
+/**
+ * Calcula o resumo da linha de métricas de tempo:
+ * - Tempo médio por tarefa: soma / quantidade de tarefas
+ * - Tarefas realizadas: quantidade de tarefas/itens com tempo medido no período
+ * - Mais tempo: tarefa com maior tempo no período
+ * - Menos tempo: tarefa com menor tempo no período, ignorando sessões abaixo de 1 min
+ */
+export function calcularResumoTempo(
+  tarefas: ResumoTarefaNoTempo[],
+  tempoTotalMs: number,
+): ResumoLinhaTempo {
+  const tarefasMedidas = tarefas.length
+  const tempoMedioMs = tarefasMedidas > 0 ? Math.round(tempoTotalMs / tarefasMedidas) : 0
+
+  const tarefaComMaisTempo = tarefas[0]
+    ? { titulo: tarefas[0].titulo, tempoMs: tarefas[0].tempoTotalMs }
+    : undefined
+
+  // "Ignorar sessões abaixo de 1 min para não aparecer '<1 min' como menor."
+  const candidatasMenor: { titulo: string; tempoMs: number }[] = []
+
+  for (const tarefa of tarefas) {
+    const sessoesValidas = tarefa.sessoes.filter((s) => s.duracaoNoPeriodoMs >= 60_000)
+    if (sessoesValidas.length > 0) {
+      const tempoValidoMs = sessoesValidas.reduce((acc, s) => acc + s.duracaoNoPeriodoMs, 0)
+      if (tempoValidoMs >= 60_000) {
+        candidatasMenor.push({ titulo: tarefa.titulo, tempoMs: tempoValidoMs })
+      }
+    }
+  }
+
+  candidatasMenor.sort((a, b) => a.tempoMs - b.tempoMs || a.titulo.localeCompare(b.titulo, 'pt-BR'))
+
+  const tarefaComMenosTempo = candidatasMenor[0]
+
+  return {
+    tempoMedioMs,
+    tarefasMedidas,
+    tarefaComMaisTempo,
+    tarefaComMenosTempo,
+  }
+}
+
+/**
+ * Prepara fatias para o gráfico de pizza por categoria:
+ * - Fatias ordenadas da maior para a menor
+ * - Mais de 6 categorias: top 5 mantidas e o resto vira fatia "Outras"
+ */
+export function montarPizzaPorCategoria(
+  porCategoria: TempoPorCategoria[],
+  tempoTotalMs: number,
+): FatiaGraficoPizza[] {
+  const validas = porCategoria.filter((c) => c.tempoMs > 0)
+  if (validas.length === 0 || tempoTotalMs <= 0) return []
+
+  if (validas.length <= 6) {
+    return validas.map((c) => ({
+      id: c.categoryId,
+      nome: c.nome,
+      cor: c.cor,
+      tempoMs: c.tempoMs,
+      percentual: (c.tempoMs / tempoTotalMs) * 100,
+    }))
+  }
+
+  const top5 = validas.slice(0, 5)
+  const excedentes = validas.slice(5)
+  const somaExcedenteMs = excedentes.reduce((acc, c) => acc + c.tempoMs, 0)
+
+  const resultado: FatiaGraficoPizza[] = top5.map((c) => ({
+    id: c.categoryId,
+    nome: c.nome,
+    cor: c.cor,
+    tempoMs: c.tempoMs,
+    percentual: (c.tempoMs / tempoTotalMs) * 100,
+  }))
+
+  if (somaExcedenteMs > 0) {
+    resultado.push({
+      id: 'outras',
+      nome: 'Outras',
+      cor: null,
+      tempoMs: somaExcedenteMs,
+      percentual: (somaExcedenteMs / tempoTotalMs) * 100,
+      isOutras: true,
+    })
+  }
+
+  return resultado
+}
+
+/**
+ * Agrupa as tarefas medidas por categoria:
+ * - Cada categoria tem seu tempo total e tarefas
+ * - Tarefas dentro de cada categoria ordenadas da maior para a menor
+ * - Sessões dentro de cada tarefa ordenadas da mais recente para a mais antiga
+ * - Categorias ordenadas do maior tempo para o menor (com "Sem categoria" por último se empatar)
+ */
+export function agruparTarefasPorCategoria(tarefas: ResumoTarefaNoTempo[]): CategoriaComTarefas[] {
+  const mapa = new Map<string | null, CategoriaComTarefas>()
+
+  for (const t of tarefas) {
+    const id = t.categoria?.id ?? null
+    const nome = t.categoria?.nome ?? 'Sem categoria'
+    const cor = t.categoria?.cor ?? null
+
+    let cat = mapa.get(id)
+    if (!cat) {
+      cat = { id, nome, cor, tempoTotalMs: 0, tarefas: [] }
+      mapa.set(id, cat)
+    }
+
+    cat.tempoTotalMs += t.tempoTotalMs
+    cat.tarefas.push({
+      chave: t.chave,
+      tipo: t.tipo,
+      titulo: t.titulo,
+      ...(t.nomeGrupo ? { nomeGrupo: t.nomeGrupo } : {}),
+      isArquivada: t.isArquivada,
+      tempoTotalMs: t.tempoTotalMs,
+      diasTrabalhados: t.diasTrabalhados,
+      sessoes: [...t.sessoes].sort((a, b) => b.inicio.localeCompare(a.inicio)),
+    })
+  }
+
+  for (const cat of mapa.values()) {
+    cat.tarefas.sort(
+      (a, b) => b.tempoTotalMs - a.tempoTotalMs || a.titulo.localeCompare(b.titulo, 'pt-BR'),
+    )
+  }
+
+  return [...mapa.values()].sort((a, b) => {
+    if (b.tempoTotalMs !== a.tempoTotalMs) {
+      return b.tempoTotalMs - a.tempoTotalMs
+    }
+    // "Sem categoria" sempre por último se empatar
+    if (a.id === null && b.id !== null) return 1
+    if (a.id !== null && b.id === null) return -1
+    return a.nome.localeCompare(b.nome, 'pt-BR')
+  })
+}
+
+/**
+ * Filtra a árvore de categorias por busca:
+ * Se o nome da categoria bater, inclui todas as tarefas da categoria.
+ * Se apenas a tarefa/grupo bater, inclui apenas as tarefas correspondentes na categoria.
+ */
+export function filtrarCategoriasDeTempo(
+  categorias: CategoriaComTarefas[],
+  busca: string,
+): CategoriaComTarefas[] {
+  const termo = normalizar(busca.trim())
+  if (!termo) return categorias
+
+  const resultado: CategoriaComTarefas[] = []
+
+  for (const cat of categorias) {
+    const catBate = normalizar(cat.nome).includes(termo)
+    const tarefasFiltradas = cat.tarefas.filter(
+      (t) =>
+        catBate ||
+        normalizar(t.titulo).includes(termo) ||
+        (t.nomeGrupo && normalizar(t.nomeGrupo).includes(termo)),
+    )
+
+    if (tarefasFiltradas.length > 0) {
+      resultado.push({
+        ...cat,
+        tarefas: tarefasFiltradas,
+      })
+    }
+  }
+
+  return resultado
+}
+
+/** Extrai todos os dias locais que contêm sessões medidas com tempo > 0. */
+export function listarDiasComTempo(
+  sessoes: Pick<TimeSession, 'inicio' | 'fim'>[],
+  agoraIso: string = new Date().toISOString(),
+): Set<DataLocal> {
+  const dias = new Set<DataLocal>()
+  for (const sessao of sessoes) {
+    const fatias = fatiarSessaoPorDiaLocal(sessao, agoraIso)
+    for (const fatia of fatias) {
+      if (fatia.duracaoMs > 0) {
+        dias.add(fatia.data)
+      }
+    }
+  }
+  return dias
 }
 
 /** Filtra a lista de tarefas medidas por título, nome do grupo ou nome da categoria. */

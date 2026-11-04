@@ -213,7 +213,19 @@ function CalendarDayButton({
         className
       )}
       {...props}
-    />
+    >
+      {props.children}
+      {modifiers.comTempo && (
+        <span
+          aria-hidden
+          data-ponto-tempo=""
+          className={cn(
+            "pointer-events-none absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full",
+            modifiers.selected ? "bg-primary-foreground" : "bg-caneta"
+          )}
+        />
+      )}
+    </Button>
   )
 }
 

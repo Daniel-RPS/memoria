@@ -5,16 +5,13 @@ import { cn } from 'cn'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { DataLocal } from '@/db/types'
-import {
-  intervaloDoPeriodoDeDados,
-  rotuloDoIntervaloPersonalizado,
-  type PeriodoDeDados,
-} from '@/domain/tempo'
+import { rotuloDoDiaEscolhido, type PeriodoDeDados } from '@/domain/tempo'
 import { deDataLocal, paraDataLocal } from '@/lib/datas'
 
 interface FiltroPeriodoDadosProps {
   periodo: PeriodoDeDados
   hoje: DataLocal
+  diasComTempo?: Set<DataLocal>
   onMudar: (novo: PeriodoDeDados) => void
 }
 
@@ -29,13 +26,18 @@ const BOTAO_SEGMENTO =
 
 /**
  * Filtro de período em botões compactos (segmentado):
- * Hoje · Esta semana · Este mês · Escolher… (intervalo de datas).
+ * Hoje · Esta semana · Este mês · Escolher… (dia único).
  */
-export function FiltroPeriodoDados({ periodo, hoje, onMudar }: FiltroPeriodoDadosProps) {
+export function FiltroPeriodoDados({
+  periodo,
+  hoje,
+  diasComTempo,
+  onMudar,
+}: FiltroPeriodoDadosProps) {
   const [isCalendarioAberto, setIsCalendarioAberto] = useState(false)
-  const intervalo = intervaloDoPeriodoDeDados(periodo, hoje)
-  const rotuloPersonalizado = rotuloDoIntervaloPersonalizado(periodo, hoje)
-  const isPersonalizado = periodo.tipo === 'intervalo'
+  const isDiaEscolhido = periodo.tipo === 'dia'
+  const rotuloDia = rotuloDoDiaEscolhido(periodo)
+  const diaSelecionado = periodo.tipo === 'dia' ? periodo.dia : undefined
 
   return (
     <div
@@ -66,43 +68,41 @@ export function FiltroPeriodoDados({ periodo, hoje, onMudar }: FiltroPeriodoDado
       <Popover open={isCalendarioAberto} onOpenChange={setIsCalendarioAberto}>
         <PopoverTrigger
           type="button"
-          aria-pressed={isPersonalizado}
+          aria-pressed={isDiaEscolhido}
           aria-label={
-            rotuloPersonalizado ? `Escolher período: ${rotuloPersonalizado}` : 'Escolher…'
+            isDiaEscolhido && rotuloDia ? `Dia selecionado: ${rotuloDia}` : 'Escolher um dia'
           }
           className={cn(
             BOTAO_SEGMENTO,
-            isPersonalizado
+            isDiaEscolhido
               ? 'bg-caneta text-primary-foreground'
               : 'text-grafite hover:bg-accent hover:text-tinta',
           )}
         >
           <CalendarDays aria-hidden className="size-3.5" />
-          <span>{rotuloPersonalizado ? `Escolher… (${rotuloPersonalizado})` : 'Escolher…'}</span>
+          <span>{rotuloDia ?? 'Escolher…'}</span>
         </PopoverTrigger>
         <PopoverContent align="start" collisionPadding={8} className="w-auto p-2">
-          <p className="px-2 pt-1 pb-1.5 text-xs text-grafite">
-            Clique num dia; clique em outro para fechar o intervalo.
-          </p>
+          <p className="px-2 pt-1 pb-1.5 text-xs text-grafite">Escolha um dia</p>
           <Calendar
-            mode="range"
+            mode="single"
             locale={ptBR}
             weekStartsOn={1}
-            defaultMonth={deDataLocal(intervalo.fim)}
-            selected={
-              isPersonalizado
-                ? { from: deDataLocal(intervalo.inicio), to: deDataLocal(intervalo.fim) }
-                : undefined
-            }
-            onSelect={(selecao, diaClicado) => {
-              const recomecar = periodo.tipo === 'intervalo' && periodo.inicio !== periodo.fim
-              const inicio = recomecar ? diaClicado : (selecao?.from ?? diaClicado)
-              const fim = recomecar ? diaClicado : (selecao?.to ?? inicio)
-              onMudar({
-                tipo: 'intervalo',
-                inicio: paraDataLocal(inicio),
-                fim: paraDataLocal(fim),
-              })
+            defaultMonth={diaSelecionado ? deDataLocal(diaSelecionado) : deDataLocal(hoje)}
+            selected={diaSelecionado ? deDataLocal(diaSelecionado) : undefined}
+            disabled={{ after: deDataLocal(hoje) }}
+            modifiers={{
+              comTempo: (data) => (diasComTempo ? diasComTempo.has(paraDataLocal(data)) : false),
+            }}
+            onSelect={(data) => {
+              if (!data) return
+              const diaFormatado = paraDataLocal(data)
+              if (diaFormatado === hoje) {
+                onMudar({ tipo: 'hoje' })
+              } else {
+                onMudar({ tipo: 'dia', dia: diaFormatado })
+              }
+              setIsCalendarioAberto(false)
             }}
           />
         </PopoverContent>

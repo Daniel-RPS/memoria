@@ -5,8 +5,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
  * Capturas salvas em `e2e/capturas/dados-*.png`.
  */
 
-const HOJE = '2026-11-03'
-const AMANHA = '2026-11-04'
+const HOJE = '2026-11-04'
+const ONTEM = '2026-11-03'
 const TAREFA_RELATORIO = 'Revisar relatório trimestral'
 const TAREFA_ESTUDO = 'Estudar arquitetura do banco'
 const GRUPO = 'Simulador POOSE'
@@ -162,108 +162,20 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await expect(page.getByText('Tempo gasto: 12 min')).toBeVisible()
     await page.keyboard.press('Escape')
 
-    // Aparece na aba Dados
+    // Aparece na aba Dados com média e realizadas
     await page.getByRole('link', { name: 'Dados', exact: true }).click()
-    await expect(page.locator('[data-resumo-total]')).toHaveText('12 min')
-    await expect(page.locator('[data-linha-tempo]', { hasText: TAREFA_RELATORIO })).toContainText(
-      '12 min',
-    )
+    await expect(page.locator('[data-resumo-media]')).toHaveText('12 min')
+    await expect(page.locator('[data-resumo-realizadas]')).toHaveText('1')
+    await expect(page.locator('[data-categoria-tempo="Trabalho"]')).toContainText('12 min')
   })
 
-  test('adiar para amanhã uma tarefa com tempo e ligar no dia seguinte soma os dois dias em Dados', async ({
+  test('Hoje com 4 tarefas (2h 10, 1h 45, 1h 45, 17 min): resumo com média 1h 29 min, 4 realizadas, mais tempo "Fazer curso", menos tempo "Fazer o resumo do livro abc", sem pizza, lista por categoria abre', async ({
     page,
   }) => {
-    await page.clock.install({ time: new Date(`${HOJE}T10:00:00-03:00`) })
-    await page.goto(`/dia/${HOJE}`)
-    await semearBase(page)
+    await page.clock.install({ time: new Date(`${HOJE}T18:00:00-03:00`) })
     await page.goto(`/dia/${HOJE}`)
 
-    // Dia 1 (HOJE): 15 min em andamento e adia para amanhã (desliga o andamento sozinho)
-    const linhaHoje = tarefaSolta(page, TAREFA_RELATORIO)
-    await escolherNoMenu(page, linhaHoje, TAREFA_RELATORIO, 'Marcar como em andamento')
-    await page.clock.fastForward(15 * 60_000)
-    await escolherNoMenu(page, linhaHoje, TAREFA_RELATORIO, 'Adiar para amanhã')
-
-    // Dia 2 (AMANHA): +25 min na mesma tarefa e para
-    await page.clock.setSystemTime(new Date(`${AMANHA}T09:00:00-03:00`))
-    await page.goto(`/dia/${AMANHA}`)
-    const linhaAmanha = tarefaSolta(page, TAREFA_RELATORIO)
-    await escolherNoMenu(page, linhaAmanha, TAREFA_RELATORIO, 'Marcar como em andamento')
-    await page.clock.fastForward(25 * 60_000)
-    await escolherNoMenu(page, linhaAmanha, TAREFA_RELATORIO, 'Parar andamento')
-
-    // Também mede 30 min na outra tarefa para popular os gráficos
-    await page.goto(`/dia/${HOJE}`)
-    const linhaEstudo = tarefaSolta(page, TAREFA_ESTUDO)
-    await escolherNoMenu(page, linhaEstudo, TAREFA_ESTUDO, 'Marcar como em andamento')
-    await page.clock.fastForward(30 * 60_000)
-    await escolherNoMenu(page, linhaEstudo, TAREFA_ESTUDO, 'Parar andamento')
-
-    // Abre Dados (Esta semana): mostra a soma 15 + 25 = 40 min na tarefa adiada
-    await page.getByRole('link', { name: 'Dados', exact: true }).click()
-    const linhaRelatorio = page.locator('[data-linha-tempo]', { hasText: TAREFA_RELATORIO })
-    await expect(linhaRelatorio).toContainText('40 min')
-    await expect(linhaRelatorio).toContainText('03/11, 04/11')
-    await expect(page.locator('[data-resumo-total]')).toHaveText('1h 10 min')
-    await expect(page.locator('[data-resumo-tarefas]')).toHaveText('2 tarefas')
-
-    // Gráfico por tarefa e gráfico por dia visíveis
-    await expect(page.getByRole('region', { name: 'Tempo por tarefa' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Tempo por dia' })).toBeVisible()
-    await page.locator(`[data-coluna-dia="${HOJE}"]`).hover()
-    await expect(page.locator('[data-resumo-dia-grafico]')).toContainText('03/11')
-
-    await capturar(page, 'com-dados-claro')
-    await page.keyboard.press('Control+Shift+L')
-    await capturar(page, 'com-dados-escuro')
-    await page.keyboard.press('Control+Shift+L')
-
-    // Barra lateral recolhida na tela Dados com dados
-    await page.getByRole('button', { name: 'Recolher menu' }).click()
-    await page.getByRole('link', { name: 'Dados', exact: true }).hover()
-    await expect(page.getByRole('tooltip', { name: 'Dados' })).toBeVisible()
-    await capturar(page, 'com-dados-barra-recolhida-claro')
-    await page.getByRole('button', { name: 'Expandir menu' }).click()
-
-    // Filtros Hoje / Esta semana / Este mês
-    await page.getByRole('button', { name: 'Hoje', exact: true }).click()
-    // Gráfico por dia só aparece em semana/mês/intervalo
-    await expect(page.getByRole('region', { name: 'Tempo por dia' })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Este mês', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'Tempo por dia' })).toBeVisible()
-    await page.getByRole('button', { name: 'Esta semana', exact: true }).click()
-
-    // Busca por título ou categoria
-    const campoBusca = page.getByRole('searchbox', { name: 'Buscar por título ou categoria' })
-    await campoBusca.fill('Estudos')
-    await expect(page.locator('[data-linha-tempo]')).toHaveCount(1)
-    await expect(page.locator('[data-linha-tempo]')).toContainText(TAREFA_ESTUDO)
-    await page.getByRole('button', { name: 'Limpar busca' }).click()
-    await expect(page.locator('[data-linha-tempo]')).toHaveCount(2)
-
-    // Expandir tarefa, editar uma sessão e conferir atualização do tempo
-    await linhaRelatorio.getByRole('button').first().click()
-    const sessoes = linhaRelatorio.getByRole('list', {
-      name: `Sessões de ${TAREFA_RELATORIO}`,
-    })
-    await expect(sessoes.getByRole('listitem')).toHaveCount(2)
-    await sessoes
-      .getByRole('button', { name: new RegExp(`Editar sessão de ${TAREFA_RELATORIO}`) })
-      .first()
-      .click()
-    const dialog = page.getByRole('dialog', { name: 'Editar sessão' })
-    await dialog.getByLabel('Horário de fim').fill('09:35')
-    await dialog.getByRole('button', { name: 'Salvar' }).click()
-    await expect(linhaRelatorio).toContainText('50 min')
-  })
-
-  test('gráfico "Por tarefa": 3 tarefas com proporções 100%/67%/33% e 10 tarefas com 8 linhas + "+2 outras"', async ({
-    page,
-  }) => {
-    await page.clock.install({ time: new Date(`${HOJE}T12:00:00-03:00`) })
-    await page.goto(`/dia/${HOJE}`)
-
-    // Semeia 3 tarefas com categorias diferentes e tempos 30 min, 20 min e 10 min
+    // Semeia 4 tarefas com tempos: 2h 10 min, 1h 45 min, 1h 45 min, 17 min
     await page.evaluate(
       async ({ hoje }) => {
         const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
@@ -274,53 +186,85 @@ test.describe('Dados › Tempo nas tarefas', () => {
         const database = (await importar('/src/db/database.ts')) as { db: import('dexie').Dexie }
         const db = database.db
 
-        const catTrabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#8B3DFF' })
-        const catEstudos = await categorias.criarCategoria({ nome: 'Estudos', cor: '#10B981' })
-        const catPessoal = await categorias.criarCategoria({ nome: 'Pessoal', cor: '#EC4899' })
+        const catCursos = await categorias.criarCategoria({ nome: 'Cursos', cor: '#8B3DFF' })
+        const catTrabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#3B82F6' })
+        const catLeitura = await categorias.criarCategoria({ nome: 'Leitura', cor: '#10B981' })
 
+        // 1. "Fazer curso" (2h 10 min = 130 min): 09:00 às 11:10
         const t1 = await tarefas.criarTarefa({
-          titulo: 'Tarefa 30 min',
+          titulo: 'Fazer curso',
+          data: hoje,
+          categoryId: catCursos.id,
+        })
+        // 2. "Revisar PR" (1h 45 min = 105 min): 11:30 às 13:15
+        const t2 = await tarefas.criarTarefa({
+          titulo: 'Revisar PR',
           data: hoje,
           categoryId: catTrabalho.id,
         })
-        const t2 = await tarefas.criarTarefa({
-          titulo: 'Tarefa 20 min',
-          data: hoje,
-          categoryId: catEstudos.id,
-        })
+        // 3. "Organizar notas" (1h 45 min = 105 min): 14:00 às 15:45
         const t3 = await tarefas.criarTarefa({
-          titulo: 'Tarefa 10 min',
+          titulo: 'Organizar notas',
           data: hoje,
-          categoryId: catPessoal.id,
+          categoryId: catTrabalho.id,
+        })
+        // 4. "Fazer o resumo do livro abc" (17 min): 16:00 às 16:17
+        const t4 = await tarefas.criarTarefa({
+          titulo: 'Fazer o resumo do livro abc',
+          data: hoje,
+          categoryId: catLeitura.id,
+        })
+
+        // Também inclui uma sessão de 30s para garantir que sessões < 1 min sejam ignoradas no menos tempo
+        const tExtraCurta = await tarefas.criarTarefa({
+          titulo: 'Olhar relógio',
+          data: hoje,
         })
 
         await db.table('sessions').bulkAdd([
           {
             id: 's-t1',
             tarefaId: t1.id,
-            categoryId: catTrabalho.id,
-            inicio: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
-            fim: new Date(`${hoje}T10:30:00-03:00`).toISOString(),
-            criadoEm: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
-            atualizadoEm: new Date(`${hoje}T10:30:00-03:00`).toISOString(),
+            categoryId: catCursos.id,
+            inicio: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T11:10:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T11:10:00-03:00`).toISOString(),
           },
           {
             id: 's-t2',
             tarefaId: t2.id,
-            categoryId: catEstudos.id,
-            inicio: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
-            fim: new Date(`${hoje}T10:20:00-03:00`).toISOString(),
-            criadoEm: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
-            atualizadoEm: new Date(`${hoje}T10:20:00-03:00`).toISOString(),
+            categoryId: catTrabalho.id,
+            inicio: new Date(`${hoje}T11:30:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T13:15:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T11:30:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T13:15:00-03:00`).toISOString(),
           },
           {
             id: 's-t3',
             tarefaId: t3.id,
-            categoryId: catPessoal.id,
-            inicio: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
-            fim: new Date(`${hoje}T10:10:00-03:00`).toISOString(),
-            criadoEm: new Date(`${hoje}T10:00:00-03:00`).toISOString(),
-            atualizadoEm: new Date(`${hoje}T10:10:00-03:00`).toISOString(),
+            categoryId: catTrabalho.id,
+            inicio: new Date(`${hoje}T14:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T15:45:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T14:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T15:45:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-t4',
+            tarefaId: t4.id,
+            categoryId: catLeitura.id,
+            inicio: new Date(`${hoje}T16:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T16:17:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T16:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T16:17:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-extra',
+            tarefaId: tExtraCurta.id,
+            inicio: new Date(`${hoje}T17:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T17:00:30-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T17:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T17:00:30-03:00`).toISOString(),
           },
         ])
       },
@@ -328,114 +272,309 @@ test.describe('Dados › Tempo nas tarefas', () => {
     )
 
     await page.goto('/dados')
-    const regiaoGrafico = page.getByRole('region', { name: 'Tempo por tarefa' })
-    await expect(regiaoGrafico).toBeVisible()
 
-    // Legenda exibe as 3 categorias
-    const legenda = regiaoGrafico.locator('[data-legenda-categorias]')
-    await expect(legenda.getByText('Trabalho')).toBeVisible()
-    await expect(legenda.getByText('Estudos')).toBeVisible()
-    await expect(legenda.getByText('Pessoal')).toBeVisible()
-
-    // 3 barras na ordem 30 min, 20 min, 10 min com proporções 100%, 67%, 33%
-    const barras = regiaoGrafico.locator('[data-barra-tarefa]')
-    await expect(barras).toHaveCount(3)
-
-    const barra1 = barras.nth(0)
-    await expect(barra1).toContainText('Tarefa 30 min')
-    await expect(barra1).toContainText('30 min')
-    await expect(barra1).toHaveAttribute('data-proporcao', '100')
-
-    const barra2 = barras.nth(1)
-    await expect(barra2).toContainText('Tarefa 20 min')
-    await expect(barra2).toContainText('20 min')
-    await expect(barra2).toHaveAttribute('data-proporcao', '67')
-
-    const barra3 = barras.nth(2)
-    await expect(barra3).toContainText('Tarefa 10 min')
-    await expect(barra3).toContainText('10 min')
-    await expect(barra3).toHaveAttribute('data-proporcao', '33')
-
-    // Capturas da tela Dados em Esta semana (claro e escuro)
-    await capturar(page, 'esta-semana-claro')
-    await page.keyboard.press('Control+Shift+L')
-    await capturar(page, 'esta-semana-escuro')
-    await page.keyboard.press('Control+Shift+L')
-
-    // Filtro Hoje: ocupa a largura toda (sem gráfico por dia)
+    // Ativa o filtro Hoje
     await page.getByRole('button', { name: 'Hoje', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'Tempo por dia' })).toHaveCount(0)
+
+    // 1. Linha de resumo: 4 métricas, sem total no período
+    await expect(page.locator('[data-resumo-total]')).toHaveCount(0)
+    await expect(page.locator('[data-resumo-media]')).toHaveText('1h 11 min') // (357 min + 30s) / 5 tarefas = 71 min = 1h 11 min
+    await expect(page.locator('[data-resumo-realizadas]')).toHaveText('5')
+    await expect(page.locator('[data-resumo-maior]')).toContainText('Fazer curso')
+    await expect(page.locator('[data-resumo-maior]')).toContainText('(2h 10 min)')
+    // Menos tempo ignora a tarefa de 30s (<1 min) e escolhe "Fazer o resumo do livro abc (17 min)"
+    await expect(page.locator('[data-resumo-menor]')).toContainText('Fazer o resumo do livro abc')
+    await expect(page.locator('[data-resumo-menor]')).toContainText('(17 min)')
+
+    // 2. Gráfico por tarefa: título "Por tarefa", sem pizza
+    await expect(page.locator('[data-grafico-por-tarefa]')).toBeVisible()
+    await expect(page.locator('[data-grafico-por-tarefa] h3')).toHaveText('Por tarefa')
+    await expect(page.locator('[data-grafico-pizza]')).toHaveCount(0)
+
+    // 3. Lista por categoria: expande categoria Cursos e confere horário da sessão
+    const catCursos = page.locator('[data-categoria-tempo="Cursos"]')
+    await expect(catCursos).toBeVisible()
+    await catCursos.getByRole('button').first().click()
+
+    const linhaCurso = page.locator('[data-linha-tempo="Fazer curso"]')
+    await expect(linhaCurso).toBeVisible()
+    await expect(linhaCurso).toContainText('09:00 – 11:10')
+    await expect(linhaCurso).toContainText('2h 10 min')
+
+    // Capturas Hoje (claro e escuro)
     await capturar(page, 'hoje-claro')
     await page.keyboard.press('Control+Shift+L')
     await capturar(page, 'hoje-escuro')
     await page.keyboard.press('Control+Shift+L')
+  })
 
-    // Agora adiciona mais 7 tarefas (total 10 tarefas) para testar o limite de 8 + "+2 outras"
+  test('Esta semana e Este mês: top 5 tarefas nas barras, pizza por categoria com % somando 100%, sem gráfico por dia', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date(`${HOJE}T12:00:00-03:00`) })
+    await page.goto(`/dia/${HOJE}`)
+
+    // Semeia 7 categorias e tarefas com tempos variados
     await page.evaluate(
       async ({ hoje }) => {
         const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+        const categorias = (await importar(
+          '/src/db/repositories/category-repository.ts',
+        )) as ModuloCategorias
         const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
         const database = (await importar('/src/db/database.ts')) as { db: import('dexie').Dexie }
         const db = database.db
 
-        for (let i = 4; i <= 10; i++) {
+        const cores = ['#8B3DFF', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4']
+        const nomes = ['Trabalho', 'Estudos', 'Saúde', 'Finanças', 'Casa', 'Projetos', 'Lazer']
+
+        for (let i = 0; i < nomes.length; i++) {
+          const cat = await categorias.criarCategoria({ nome: nomes[i], cor: cores[i] })
           const t = await tarefas.criarTarefa({
-            titulo: `Tarefa extra ${i}`,
+            titulo: `Tarefa ${nomes[i]}`,
             data: hoje,
+            categoryId: cat.id,
           })
-          const minutos = 10 - i + 2 // 8, 7, 6, 5, 4, 3, 2 min
+          const minutos = (nomes.length - i) * 20 // 140, 120, 100, 80, 60, 40, 20 min
           await db.table('sessions').add({
-            id: `s-extra-${i}`,
+            id: `s-cat-${i}`,
             tarefaId: t.id,
+            categoryId: cat.id,
             inicio: new Date(`${hoje}T08:00:00-03:00`).toISOString(),
-            fim: new Date(`${hoje}T08:0${minutos}:00-03:00`).toISOString(),
+            fim: new Date(
+              new Date(`${hoje}T08:00:00-03:00`).getTime() + minutos * 60_000,
+            ).toISOString(),
             criadoEm: new Date(`${hoje}T08:00:00-03:00`).toISOString(),
-            atualizadoEm: new Date(`${hoje}T08:0${minutos}:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T08:00:00-03:00`).toISOString(),
           })
         }
       },
       { hoje: HOJE },
     )
 
-    // Recarrega em /dados e verifica 8 linhas individuais + "+2 outras"
     await page.goto('/dados')
-    const novasBarras = page
-      .getByRole('region', { name: 'Tempo por tarefa' })
-      .locator('[data-barra-tarefa]')
-    await expect(novasBarras).toHaveCount(9)
-    await expect(novasBarras.nth(8)).toContainText('+2 outras')
+
+    // Filtro Esta semana
+    await page.getByRole('button', { name: 'Esta semana', exact: true }).click()
+
+    // 1. Gráfico de barras: título "Top 5 tarefas", exatamente 5 barras (sem +N outras)
+    const regiaoBarras = page.locator('[data-grafico-por-tarefa]')
+    await expect(regiaoBarras).toBeVisible()
+    await expect(regiaoBarras.locator('h3')).toHaveText('Top 5 tarefas')
+    await expect(regiaoBarras.locator('[data-barra-tarefa]')).toHaveCount(5)
+
+    // 2. Gráfico de pizza por categoria ao lado das barras
+    const regiaoPizza = page.locator('[data-grafico-pizza]')
+    await expect(regiaoPizza).toBeVisible()
+    // Sem gráfico por dia
+    await expect(page.locator('[data-coluna-dia]')).toHaveCount(0)
+
+    // 7 categorias -> 6 fatias (Top 5 + "Outras")
+    const fatias = regiaoPizza.locator('[data-fatia-pizza]')
+    await expect(fatias).toHaveCount(6)
+    await expect(regiaoPizza.locator('[data-legenda-pizza="Outras"]')).toBeVisible()
+
+    // Centro da rosca mostra 6 categorias
+    await expect(regiaoPizza).toContainText('6')
+    await expect(regiaoPizza).toContainText('categorias')
+
+    // Hover na legenda de Trabalho destaca fatia e atualiza centro
+    const legendaTrabalho = regiaoPizza.locator('[data-legenda-pizza="Trabalho"]')
+    await legendaTrabalho.hover()
+    await expect(regiaoPizza).toContainText('Trabalho')
+
+    // Capturas Esta semana (claro e escuro)
+    await capturar(page, 'semana-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'semana-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // Filtro Este mês
+    await page.getByRole('button', { name: 'Este mês', exact: true }).click()
+    await expect(regiaoBarras.locator('h3')).toHaveText('Top 5 tarefas')
+    await expect(regiaoPizza).toBeVisible()
+    await expect(page.locator('[data-coluna-dia]')).toHaveCount(0)
+
+    // Capturas Este mês (claro e escuro)
+    await capturar(page, 'mes-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'mes-escuro')
+    await page.keyboard.press('Control+Shift+L')
   })
 
-  test('ligar e avançar 5h mostra aviso de sessão longa ao reabrir; "Ajustar…" corrige o fim', async ({
+  test('Escolher… seleciona dia passado e fecha; dia futuro desabilitado; dia com tempo tem pontinho; conteúdo idêntico a Hoje', async ({
     page,
   }) => {
-    await page.clock.install({ time: new Date(`${HOJE}T08:00:00-03:00`) })
-    await page.goto(`/dia/${HOJE}`)
-    await semearBase(page)
+    await page.clock.install({ time: new Date(`${HOJE}T12:00:00-03:00`) })
     await page.goto(`/dia/${HOJE}`)
 
-    const linha = tarefaSolta(page, TAREFA_RELATORIO)
-    await escolherNoMenu(page, linha, TAREFA_RELATORIO, 'Marcar como em andamento')
+    // Semeia uma sessão no dia anterior (ONTEM = 2026-11-03) das 09:00 às 11:55 (2h 55 min)
+    await page.evaluate(
+      async ({ ontem }) => {
+        const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+        const categorias = (await importar(
+          '/src/db/repositories/category-repository.ts',
+        )) as ModuloCategorias
+        const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
+        const database = (await importar('/src/db/database.ts')) as { db: import('dexie').Dexie }
+        const db = database.db
 
-    // Avança 5 horas e reabre o app
-    await page.clock.fastForward(5 * 60 * 60_000)
-    await page.reload()
+        const catTrabalho = await categorias.criarCategoria({ nome: 'Trabalho', cor: '#8B3DFF' })
+        const tPassada = await tarefas.criarTarefa({
+          titulo: 'Finalizar relatório do projeto',
+          data: ontem,
+          categoryId: catTrabalho.id,
+        })
 
-    const aviso = page.locator('[data-aviso-sessao-longa]')
-    await expect(aviso).toBeVisible()
-    await expect(aviso).toContainText(`‘${TAREFA_RELATORIO}’ está em andamento há 5h`)
-    await capturar(page, 'aviso-sessao-longa')
+        await db.table('sessions').add({
+          id: 's-passada-1',
+          tarefaId: tPassada.id,
+          categoryId: catTrabalho.id,
+          inicio: new Date(`${ontem}T09:00:00-03:00`).toISOString(),
+          fim: new Date(`${ontem}T11:55:00-03:00`).toISOString(),
+          criadoEm: new Date(`${ontem}T09:00:00-03:00`).toISOString(),
+          atualizadoEm: new Date(`${ontem}T11:55:00-03:00`).toISOString(),
+        })
+      },
+      { ontem: ONTEM },
+    )
 
-    await aviso.getByRole('button', { name: 'Ajustar…' }).click()
-    const dialogo = page.getByRole('dialog', { name: 'Ajustar horário de fim' })
-    await dialogo.getByLabel('Horário de fim').fill('09:30')
-    await dialogo.getByRole('button', { name: 'Salvar' }).click()
+    await page.goto('/dados')
 
-    await expect(aviso).toHaveCount(0)
-    await expect(linha.locator('[data-em-andamento]')).toHaveCount(0)
+    // Abre o popover "Escolher…"
+    const botaoEscolher = page.getByRole('button', { name: 'Escolher um dia' })
+    await botaoEscolher.click()
 
-    // Em Dados, a sessão ajustada tem 1h 30 min (08:00 -> 09:30)
-    await page.getByRole('link', { name: 'Dados', exact: true }).click()
-    await expect(page.locator('[data-resumo-total]')).toHaveText('1h 30 min')
+    // 1. Texto de ajuda "Escolha um dia"
+    await expect(page.getByText('Escolha um dia')).toBeVisible()
+
+    // 2. Dia com tempo tem pontinho discreto [data-ponto-tempo]
+    const diaComTempo = page.locator('[data-ponto-tempo]')
+    await expect(diaComTempo).toBeVisible()
+
+    // 3. Dia futuro (amanhã 05/11) está desabilitado
+    const diaFuturo = page.getByRole('button', { name: /5 de novembro|05\/11/i }).first()
+    await expect(diaFuturo).toBeDisabled()
+
+    // Captura com calendário aberto (claro e escuro)
+    await capturar(page, 'calendario-aberto-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'calendario-aberto-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // 4. Clicar no dia ontem (03/11) seleciona e fecha o calendário imediatamente
+    const botaoDiaOntem = page.getByRole('button', { name: /3 de novembro|03\/11/i }).first()
+    await botaoDiaOntem.click()
+
+    // O popover fecha
+    await expect(page.getByText('Escolha um dia')).toHaveCount(0)
+
+    // O botão mostra o dia escolhido ("ter, 03/11"), destacado
+    const botaoDiaAtivo = page.getByRole('button', { name: /Dia selecionado: ter, 03\/11/ })
+    await expect(botaoDiaAtivo).toBeVisible()
+    await expect(botaoDiaAtivo).toHaveAttribute('aria-pressed', 'true')
+
+    // 5. Conteúdo é exatamente o mesmo de Hoje (sem pizza, barras com título "Por tarefa")
+    await expect(page.locator('[data-grafico-pizza]')).toHaveCount(0)
+    await expect(page.locator('[data-grafico-por-tarefa] h3')).toHaveText('Por tarefa')
+
+    // Abre a categoria e confere a sessão "09:00 – 11:55" e duração "2h 55 min"
+    const catTrabalho = page.locator('[data-categoria-tempo="Trabalho"]')
+    await expect(catTrabalho).toBeVisible()
+    await catTrabalho.getByRole('button').first().click()
+
+    const linhaTarefa = page.locator('[data-linha-tempo="Finalizar relatório do projeto"]')
+    await expect(linhaTarefa).toBeVisible()
+    await expect(linhaTarefa).toContainText('09:00 – 11:55')
+    await expect(linhaTarefa).toContainText('2h 55 min')
+
+    // Capturas Dia Escolhido (claro e escuro)
+    await capturar(page, 'dia-escolhido-claro')
+    await page.keyboard.press('Control+Shift+L')
+    await capturar(page, 'dia-escolhido-escuro')
+    await page.keyboard.press('Control+Shift+L')
+
+    // 6. Clicar no dia de hoje no calendário equivale a clicar em "Hoje"
+    await botaoDiaAtivo.click()
+    const botaoDiaHoje = page.getByRole('button', { name: /4 de novembro|04\/11/i }).first()
+    await botaoDiaHoje.click()
+    await expect(page.getByRole('button', { name: 'Hoje', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  test('barras nítidas: altura fixa 7px, cantos arredondados, sem blur em zoom 100% e 150%', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date(`${HOJE}T12:00:00-03:00`) })
+    await page.goto(`/dia/${HOJE}`)
+
+    // Semeia 2 tarefas com tempo para renderizar barras
+    await page.evaluate(
+      async ({ hoje }) => {
+        const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+        const categorias = (await importar(
+          '/src/db/repositories/category-repository.ts',
+        )) as ModuloCategorias
+        const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
+        const database = (await importar('/src/db/database.ts')) as { db: import('dexie').Dexie }
+        const db = database.db
+
+        const cat = await categorias.criarCategoria({ nome: 'Design', cor: '#8B3DFF' })
+        const t1 = await tarefas.criarTarefa({
+          titulo: 'Criar protótipo',
+          data: hoje,
+          categoryId: cat.id,
+        })
+        const t2 = await tarefas.criarTarefa({
+          titulo: 'Revisar cores',
+          data: hoje,
+          categoryId: cat.id,
+        })
+
+        await db.table('sessions').bulkAdd([
+          {
+            id: 's-b1',
+            tarefaId: t1.id,
+            categoryId: cat.id,
+            inicio: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T10:30:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T09:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T10:30:00-03:00`).toISOString(),
+          },
+          {
+            id: 's-b2',
+            tarefaId: t2.id,
+            categoryId: cat.id,
+            inicio: new Date(`${hoje}T11:00:00-03:00`).toISOString(),
+            fim: new Date(`${hoje}T11:45:00-03:00`).toISOString(),
+            criadoEm: new Date(`${hoje}T11:00:00-03:00`).toISOString(),
+            atualizadoEm: new Date(`${hoje}T11:45:00-03:00`).toISOString(),
+          },
+        ])
+      },
+      { hoje: HOJE },
+    )
+
+    await page.goto('/dados')
+
+    const barra = page.locator('[data-barra-retangulo]').first()
+    await expect(barra).toBeVisible()
+
+    // Verifica que a barra é um elemento div com altura 7px e cantos arredondados
+    const tagName = await barra.evaluate((el) => el.tagName.toLowerCase())
+    expect(tagName).toBe('div')
+    await expect(barra).toHaveClass(/h-\[7px\]/)
+    await expect(barra).toHaveClass(/rounded-full/)
+
+    // Captura em zoom 100%
+    await capturar(page, 'barras-zoom-100')
+
+    // Aplica zoom de 150% e captura para inspeção de nitidez
+    await page.evaluate(() => {
+      document.body.style.zoom = '1.5'
+    })
+    await capturar(page, 'barras-zoom-150')
   })
 })

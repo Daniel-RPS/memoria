@@ -1,29 +1,30 @@
 import { useState } from 'react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { formatarDuracao, type DadosGraficoPorTarefa, type TempoPorDia } from '@/domain/tempo'
+import { cn } from 'cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatarDuracao, type DadosGraficoPorTarefa, type FatiaGraficoPizza } from '@/domain/tempo'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
-import { deDataLocal } from '@/lib/datas'
 
 interface GraficoPorTarefaProps {
   dados: DadosGraficoPorTarefa
+  titulo?: string
 }
 
 /**
- * Gráfico 1 — tempo por tarefa: uma barra por tarefa na cor da categoria (ou neutra),
+ * Gráfico — tempo por tarefa: uma barra nítida por tarefa na cor da categoria (ou neutra),
  * ordenada do maior para o menor tempo no período, com comprimento proporcional à maior tarefa.
- * Exibe até 8 tarefas; excedentes são somados na linha "+N outras".
- * Logo acima das barras, uma legenda compacta de categorias presentes no período.
+ * Bordas nítidas, altura fixa (7px), cantos arredondados e cor sólida.
+ * Em Hoje/Dia: até 8 tarefas + "+N outras".
+ * Em Semana/Mês: Top 5 tarefas.
  */
-export function GraficoPorTarefa({ dados }: GraficoPorTarefaProps) {
+export function GraficoPorTarefa({ dados, titulo = 'Por tarefa' }: GraficoPorTarefaProps) {
   const corNaTela = useCorNaTela()
   const { itens, categoriasLegenda } = dados
   if (itens.length === 0) return null
 
   return (
-    <section aria-label="Tempo por tarefa" className="grid gap-2.5">
+    <section aria-label={titulo} data-grafico-por-tarefa="" className="grid gap-2.5">
       <div className="flex flex-col gap-1.5">
-        <h3 className="text-xs font-semibold tracking-tight text-grafite">Por tarefa</h3>
+        <h3 className="text-xs font-semibold tracking-tight text-grafite">{titulo}</h3>
         {categoriasLegenda.length > 0 && (
           <div
             data-legenda-categorias=""
@@ -50,7 +51,7 @@ export function GraficoPorTarefa({ dados }: GraficoPorTarefaProps) {
         )}
       </div>
 
-      <ul className="grid gap-2">
+      <ul className="grid gap-2.5">
         {itens.map((item) => {
           const cor = item.cor ? corNaTela(item.cor) : 'var(--grafite)'
           const larguraPct = Math.max(3, Math.min(100, item.proporcao))
@@ -72,24 +73,18 @@ export function GraficoPorTarefa({ dados }: GraficoPorTarefaProps) {
                   <span className="shrink-0 text-xs text-grafite">{item.nomeGrupo}</span>
                 )}
               </span>
-              <div className="flex min-w-0 items-center gap-2.5">
-                <svg
-                  aria-hidden
-                  viewBox="0 0 100 8"
-                  preserveAspectRatio="none"
-                  className="h-2 rounded-full"
-                  style={{ width: `${larguraPct}%`, minWidth: '0.5rem' }}
-                >
-                  <rect
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <div className="relative flex-1 min-w-0 max-w-full">
+                  <div
                     data-barra-retangulo=""
-                    x={0}
-                    y={0}
-                    width={100}
-                    height={8}
-                    rx={4}
-                    style={{ fill: cor }}
+                    className="h-[7px] rounded-full transition-all duration-300"
+                    style={{
+                      width: `${larguraPct}%`,
+                      backgroundColor: cor,
+                      minWidth: '7px',
+                    }}
                   />
-                </svg>
+                </div>
                 <span className="shrink-0 text-xs font-medium whitespace-nowrap text-grafite tabular-nums">
                   {formatarDuracao(item.tempoMs)}
                 </span>
@@ -102,118 +97,134 @@ export function GraficoPorTarefa({ dados }: GraficoPorTarefaProps) {
   )
 }
 
-interface GraficoPorDiaProps {
-  dias: TempoPorDia[]
+interface GraficoPizzaCategoriaProps {
+  fatias: FatiaGraficoPizza[]
+}
+
+function calcularFatiasComOffset(fatias: FatiaGraficoPizza[], circ: number) {
+  let acumulado = 0
+  return fatias.map((fatia) => {
+    const offset = -(acumulado / 100) * circ
+    acumulado += fatia.percentual
+    return { ...fatia, offset }
+  })
 }
 
 /**
- * Gráfico 2 — tempo por dia (semana, mês ou intervalo): colunas finas em SVG, uma por dia, na cor
- * de destaque do tema (`var(--caneta)`); passar o mouse ou focar mostra o total do dia.
+ * Gráfico de pizza / rosca minimalista por categoria (exibido em Semana e Mês):
+ * - Rosca fina em SVG com fatias nas cores das categorias
+ * - Legenda ao lado com bolinha, nome, tempo e % ordenada decrescente
+ * - Centro da rosca com o total de categorias ou detalhe no hover
+ * - Hover sincronizado entre fatias e itens da legenda
  */
-export function GraficoPorDia({ dias }: GraficoPorDiaProps) {
-  const [indiceAtivo, setIndiceAtivo] = useState<number | null>(null)
-  if (dias.length <= 1) return null
+export function GraficoPizzaCategoria({ fatias }: GraficoPizzaCategoriaProps) {
+  const corNaTela = useCorNaTela()
+  const [fatiaHoverId, setFatiaHoverId] = useState<string | null>(null)
 
-  const maiorMs = Math.max(1, ...dias.map((d) => d.tempoMs))
-  const diaAtivo = indiceAtivo !== null ? dias[indiceAtivo] : undefined
-  const mostrarTodosOsRotulos = dias.length <= 10
-  const passoRotulo = dias.length <= 16 ? 2 : 5
-  const passoX = dias.length <= 7 ? 44 : dias.length <= 16 ? 26 : 16
-  const larguraColuna = dias.length <= 7 ? 12 : dias.length <= 16 ? 8 : 6
+  if (fatias.length === 0) return null
+
+  const fatiaHover = fatiaHoverId
+    ? fatias.find((f) => (f.id ?? 'sem-categoria') === fatiaHoverId)
+    : undefined
+  const circ = 2 * Math.PI * 58
+  const fatiasComOffset = calcularFatiasComOffset(fatias, circ)
 
   return (
-    <section aria-label="Tempo por dia" className="grid gap-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-xs font-semibold tracking-tight text-grafite">Por dia</h3>
-        <span
-          data-resumo-dia-grafico=""
-          className="min-h-4 text-xs font-medium text-tinta tabular-nums"
-        >
-          {diaAtivo ? (
-            <>
-              {format(deDataLocal(diaAtivo.data), 'EEE, dd/MM', { locale: ptBR })} ·{' '}
-              <span className="text-violeta-profundo">{formatarDuracao(diaAtivo.tempoMs)}</span>
-            </>
-          ) : (
-            <span className="text-grafite">Passe o mouse numa coluna para ver o dia</span>
-          )}
-        </span>
-      </div>
+    <section aria-label="Tempo por categoria" data-grafico-pizza="" className="grid gap-2.5">
+      <h3 className="text-xs font-semibold tracking-tight text-grafite">Por categoria</h3>
 
-      <div
-        className="rounded-md border border-pauta bg-papel px-3 pt-3 pb-2"
-        onMouseLeave={() => setIndiceAtivo(null)}
-      >
-        <svg
-          role="img"
-          aria-label="Colunas de tempo por dia"
-          viewBox={`0 0 ${dias.length * passoX} 76`}
-          className="h-24 w-full overflow-visible"
-        >
-          {dias.map((dia, indice) => {
-            const xCentro = indice * passoX + passoX / 2
-            const xColuna = xCentro - larguraColuna / 2
-            const alturaMax = 52
-            const yBase = 56
-            const altura =
-              dia.tempoMs > 0 ? Math.max(4, Math.round((dia.tempoMs / maiorMs) * alturaMax)) : 2
-            const yTopo = yBase - altura
-            const isAtivo = indiceAtivo === indice
-            const rotuloData =
-              dias.length <= 7
-                ? format(deDataLocal(dia.data), 'EEE', { locale: ptBR }).slice(0, 3)
-                : format(deDataLocal(dia.data), 'dd/MM', { locale: ptBR })
-            const deveMostrarRotulo =
-              mostrarTodosOsRotulos ||
-              indice === 0 ||
-              indice === dias.length - 1 ||
-              indice % passoRotulo === 0
-            const descricaoAcessivel = `${format(deDataLocal(dia.data), 'dd/MM/yyyy')}: ${formatarDuracao(dia.tempoMs)}`
+      <div className="flex flex-col sm:flex-row items-center gap-6 rounded-md border border-pauta bg-papel p-4">
+        {/* Rosca SVG */}
+        <div className="relative size-36 shrink-0">
+          <svg viewBox="0 0 160 160" className="size-full">
+            {fatiasComOffset.map((fatia) => {
+              const chave = fatia.id ?? 'sem-categoria'
+              const cor = fatia.cor ? corNaTela(fatia.cor) : 'var(--grafite)'
+              const pct = fatia.percentual
+              const dash = (pct / 100) * circ
+              const isHovered = fatiaHoverId === chave
+
+              return (
+                <Tooltip key={chave}>
+                  <TooltipTrigger asChild>
+                    <circle
+                      cx="80"
+                      cy="80"
+                      r="58"
+                      fill="none"
+                      stroke={cor}
+                      strokeWidth={isHovered ? 17 : 13}
+                      strokeDasharray={`${dash} ${circ - dash}`}
+                      strokeDashoffset={fatia.offset}
+                      transform="rotate(-90 80 80)"
+                      data-fatia-pizza={fatia.nome}
+                      className="cursor-pointer transition-all duration-150 outline-none"
+                      style={{
+                        opacity: fatiaHoverId && !isHovered ? 0.45 : 1,
+                        pointerEvents: 'stroke',
+                      }}
+                      onMouseEnter={() => setFatiaHoverId(chave)}
+                      onMouseLeave={() => setFatiaHoverId(null)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {fatia.nome}: {formatarDuracao(fatia.tempoMs)} ({Math.round(fatia.percentual)}
+                      %)
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
+          </svg>
+
+          {/* Centro da rosca */}
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-xl font-bold tracking-tight text-tinta tabular-nums">
+              {fatiaHover ? `${Math.round(fatiaHover.percentual)}%` : fatias.length}
+            </span>
+            <span className="max-w-[84px] truncate text-[11px] text-grafite">
+              {fatiaHover ? fatiaHover.nome : fatias.length === 1 ? 'categoria' : 'categorias'}
+            </span>
+          </div>
+        </div>
+
+        {/* Legenda ao lado */}
+        <ul className="flex min-w-0 flex-1 flex-col gap-1 w-full text-xs">
+          {fatias.map((fatia) => {
+            const chave = fatia.id ?? 'sem-categoria'
+            const cor = fatia.cor ? corNaTela(fatia.cor) : 'var(--grafite)'
+            const isHovered = fatiaHoverId === chave
 
             return (
-              <g
-                key={dia.data}
-                data-coluna-dia={dia.data}
-                tabIndex={0}
-                role="graphics-symbol"
-                aria-label={descricaoAcessivel}
-                onMouseEnter={() => setIndiceAtivo(indice)}
-                onFocus={() => setIndiceAtivo(indice)}
-                onBlur={() => setIndiceAtivo(null)}
-                className="cursor-pointer outline-none"
-              >
-                <title>{descricaoAcessivel}</title>
-                {/* Área invisível mais larga para facilitar o hover em colunas finas */}
-                <rect x={indice * passoX} y={0} width={passoX} height={76} fill="transparent" />
-                <rect
-                  x={xColuna}
-                  y={yTopo}
-                  width={larguraColuna}
-                  height={altura}
-                  rx={2}
-                  style={{
-                    fill:
-                      dia.tempoMs > 0
-                        ? isAtivo
-                          ? 'var(--violeta-profundo)'
-                          : 'var(--caneta)'
-                        : 'var(--pauta)',
-                  }}
-                />
-                {deveMostrarRotulo && (
-                  <text
-                    x={xCentro}
-                    y={71}
-                    textAnchor="middle"
-                    className="fill-grafite text-[8px] tabular-nums select-none"
-                  >
-                    {rotuloData}
-                  </text>
+              <li
+                key={chave}
+                data-legenda-pizza={fatia.nome}
+                onMouseEnter={() => setFatiaHoverId(chave)}
+                onMouseLeave={() => setFatiaHoverId(null)}
+                className={cn(
+                  'flex items-center justify-between gap-3 rounded-md px-2 py-1 transition-colors cursor-pointer',
+                  isHovered ? 'bg-accent text-tinta font-medium' : 'text-grafite hover:text-tinta',
                 )}
-              </g>
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: cor }}
+                  />
+                  <span className="truncate text-tinta">{fatia.nome}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 tabular-nums">
+                  <span className="text-grafite">{formatarDuracao(fatia.tempoMs)}</span>
+                  <span className="w-8 text-right font-semibold text-tinta">
+                    {Math.round(fatia.percentual)}%
+                  </span>
+                </div>
+              </li>
             )
           })}
-        </svg>
+        </ul>
       </div>
     </section>
   )

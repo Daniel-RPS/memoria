@@ -30,21 +30,27 @@ import {
   soltarTarefaNoDia,
 } from '@/db/repositories/task-repository'
 import {
+  agruparTarefasPorCategoria,
   ajustarFimDaSessao,
   calcularFimAjustado,
+  calcularResumoTempo,
   carregarDadosDeTempo,
   cortarSessaoNoIntervalo,
   editarSessao,
   encontrarSessoesLongas,
   excluirSessao,
   fatiarSessaoPorDiaLocal,
+  filtrarCategoriasDeTempo,
   filtrarTarefasDeTempo,
   formatarDuracao,
   formatarTempoAgora,
   gerarCsvDeTempo,
   lerPeriodoDeDados,
+  listarDiasComTempo,
   montarGraficoPorTarefa,
+  montarPizzaPorCategoria,
   montarRelatorioDeTempo,
+  rotuloDoDiaEscolhido,
   somarTempoDoAlvo,
 } from '@/domain/tempo'
 import { lerBackup } from '@/lib/backup'
@@ -73,6 +79,10 @@ describe('tempo: formatação e leitura de período (puro)', () => {
     expect(lerPeriodoDeDados(null)).toEqual({ tipo: 'semana' })
     expect(lerPeriodoDeDados('invalido')).toEqual({ tipo: 'semana' })
     expect(lerPeriodoDeDados(JSON.stringify({ tipo: 'hoje' }))).toEqual({ tipo: 'hoje' })
+    expect(lerPeriodoDeDados(JSON.stringify({ tipo: 'dia', dia: '2026-11-04' }))).toEqual({
+      tipo: 'dia',
+      dia: '2026-11-04',
+    })
     expect(
       lerPeriodoDeDados(
         JSON.stringify({ tipo: 'intervalo', inicio: '2026-11-01', fim: '2026-11-04' }),
@@ -634,5 +644,277 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
       proporcao: 30,
       isOutras: true,
     })
+
+    // Modo Top 5: exatamente 5 tarefas sem "+N outras"
+    const graficoTop5 = montarGraficoPorTarefa(tarefas10, 5, false)
+    expect(graficoTop5.itens).toHaveLength(5)
+    expect(graficoTop5.itens.map((i) => i.titulo)).toEqual([
+      'Tarefa 1',
+      'Tarefa 2',
+      'Tarefa 3',
+      'Tarefa 4',
+      'Tarefa 5',
+    ])
+    expect(graficoTop5.itens.some((i) => i.isOutras)).toBe(false)
+  })
+
+  it('calcularResumoTempo: tempo médio, tarefas realizadas e mais/menos tempo ignorando <1 min', () => {
+    // Exemplo do prompt: 2h 10 + 1h 45 + 1h 45 + 17 min ÷ 4 = 1h 29 min
+    const t1Ms = (2 * 60 + 10) * 60_000 // 130 min = 7_800_000
+    const t2Ms = (1 * 60 + 45) * 60_000 // 105 min = 6_300_000
+    const t3Ms = (1 * 60 + 45) * 60_000 // 105 min = 6_300_000
+    const t4Ms = 17 * 60_000 // 17 min = 1_020_000
+    const totalMs = t1Ms + t2Ms + t3Ms + t4Ms // 357 min = 21_420_000
+
+    const tarefas4 = [
+      {
+        chave: 't-1',
+        tipo: 'tarefa' as const,
+        titulo: 'Fazer curso',
+        isArquivada: false,
+        tempoTotalMs: t1Ms,
+        diasTrabalhados: ['2026-11-04'],
+        sessoes: [
+          {
+            id: 's1',
+            inicio: '2026-11-04T09:00:00.000Z',
+            fim: '2026-11-04T11:10:00.000Z',
+            dataLocal: '2026-11-04',
+            duracaoTotalMs: t1Ms,
+            duracaoNoPeriodoMs: t1Ms,
+            isAberta: false,
+          },
+        ],
+      },
+      {
+        chave: 't-2',
+        tipo: 'tarefa' as const,
+        titulo: 'Revisar PR',
+        isArquivada: false,
+        tempoTotalMs: t2Ms,
+        diasTrabalhados: ['2026-11-04'],
+        sessoes: [
+          {
+            id: 's2',
+            inicio: '2026-11-04T13:00:00.000Z',
+            fim: '2026-11-04T14:45:00.000Z',
+            dataLocal: '2026-11-04',
+            duracaoTotalMs: t2Ms,
+            duracaoNoPeriodoMs: t2Ms,
+            isAberta: false,
+          },
+        ],
+      },
+      {
+        chave: 't-3',
+        tipo: 'tarefa' as const,
+        titulo: 'Organizar notas',
+        isArquivada: false,
+        tempoTotalMs: t3Ms,
+        diasTrabalhados: ['2026-11-04'],
+        sessoes: [
+          {
+            id: 's3',
+            inicio: '2026-11-04T15:00:00.000Z',
+            fim: '2026-11-04T16:45:00.000Z',
+            dataLocal: '2026-11-04',
+            duracaoTotalMs: t3Ms,
+            duracaoNoPeriodoMs: t3Ms,
+            isAberta: false,
+          },
+        ],
+      },
+      {
+        chave: 't-4',
+        tipo: 'tarefa' as const,
+        titulo: 'Fazer o resumo do livro abc',
+        isArquivada: false,
+        tempoTotalMs: t4Ms,
+        diasTrabalhados: ['2026-11-04'],
+        sessoes: [
+          {
+            id: 's4',
+            inicio: '2026-11-04T17:00:00.000Z',
+            fim: '2026-11-04T17:17:00.000Z',
+            dataLocal: '2026-11-04',
+            duracaoTotalMs: t4Ms,
+            duracaoNoPeriodoMs: t4Ms,
+            isAberta: false,
+          },
+        ],
+      },
+    ]
+
+    const resumo = calcularResumoTempo(tarefas4, totalMs)
+    expect(resumo.tarefasMedidas).toBe(4)
+    expect(formatarDuracao(resumo.tempoMedioMs)).toBe('1h 29 min')
+    expect(resumo.tarefaComMaisTempo).toEqual({ titulo: 'Fazer curso', tempoMs: t1Ms })
+    expect(resumo.tarefaComMenosTempo).toEqual({
+      titulo: 'Fazer o resumo do livro abc',
+      tempoMs: t4Ms,
+    })
+
+    // Adiciona uma 5ª tarefa com sessão curta (30 segundos < 1 min)
+    const tarefaCurta = {
+      chave: 't-5',
+      tipo: 'tarefa' as const,
+      titulo: 'Tarefa relâmpago',
+      isArquivada: false,
+      tempoTotalMs: 30_000,
+      diasTrabalhados: ['2026-11-04'],
+      sessoes: [
+        {
+          id: 's5',
+          inicio: '2026-11-04T18:00:00.000Z',
+          fim: '2026-11-04T18:00:30.000Z',
+          dataLocal: '2026-11-04',
+          duracaoTotalMs: 30_000,
+          duracaoNoPeriodoMs: 30_000,
+          isAberta: false,
+        },
+      ],
+    }
+
+    const resumoComCurta = calcularResumoTempo([...tarefas4, tarefaCurta], totalMs + 30_000)
+    expect(resumoComCurta.tarefasMedidas).toBe(5)
+    // Menos tempo deve IGNORAR a tarefa com sessão < 1 min para não exibir <1 min
+    expect(resumoComCurta.tarefaComMenosTempo).toEqual({
+      titulo: 'Fazer o resumo do livro abc',
+      tempoMs: t4Ms,
+    })
+  })
+
+  it('montarPizzaPorCategoria: fatias por categoria, percentuais e grupo "Outras" para > 6 categorias', () => {
+    const cats3 = [
+      { categoryId: 'c1', nome: 'Trabalho', cor: '#8B3DFF', tempoMs: 60 * 60_000, percentual: 60 },
+      { categoryId: 'c2', nome: 'Estudos', cor: '#10B981', tempoMs: 30 * 60_000, percentual: 30 },
+      { categoryId: null, nome: 'Sem categoria', cor: null, tempoMs: 10 * 60_000, percentual: 10 },
+    ]
+    const total3Ms = 100 * 60_000
+    const pizza3 = montarPizzaPorCategoria(cats3, total3Ms)
+    expect(pizza3).toHaveLength(3)
+    expect(pizza3.map((f) => ({ nome: f.nome, pct: f.percentual }))).toEqual([
+      { nome: 'Trabalho', pct: 60 },
+      { nome: 'Estudos', pct: 30 },
+      { nome: 'Sem categoria', pct: 10 },
+    ])
+
+    // Mais de 6 categorias -> top 5 + "Outras"
+    const cats8 = Array.from({ length: 8 }, (_, i) => ({
+      categoryId: `cat-${i + 1}`,
+      nome: `Categoria ${i + 1}`,
+      cor: '#8B3DFF',
+      tempoMs: (10 - i) * 10 * 60_000, // 100, 90, 80, 70, 60, 50, 40, 30 min
+      percentual: 0,
+    }))
+    const total8Ms = cats8.reduce((acc, c) => acc + c.tempoMs, 0)
+    const pizza8 = montarPizzaPorCategoria(cats8, total8Ms)
+
+    expect(pizza8).toHaveLength(6)
+    expect(pizza8.slice(0, 5).map((f) => f.nome)).toEqual([
+      'Categoria 1',
+      'Categoria 2',
+      'Categoria 3',
+      'Categoria 4',
+      'Categoria 5',
+    ])
+    // Categorias 6 (50 min), 7 (40 min) e 8 (30 min) somam 120 min
+    const outrasFatia = pizza8[5]
+    expect(outrasFatia.nome).toBe('Outras')
+    expect(outrasFatia.tempoMs).toBe(120 * 60_000)
+    expect(outrasFatia.isOutras).toBe(true)
+    const somaPercentuais = pizza8.reduce((acc, f) => acc + f.percentual, 0)
+    expect(Math.round(somaPercentuais)).toBe(100)
+  })
+
+  it('agruparTarefasPorCategoria: categorias ordenadas, tarefas e sessões decrescentes, desempate de Sem categoria', () => {
+    const tarefas = [
+      {
+        chave: 't-sem-cat',
+        tipo: 'tarefa' as const,
+        titulo: 'Tarefa avulsa',
+        tempoTotalMs: 50 * 60_000,
+        diasTrabalhados: ['2026-11-04'],
+        isArquivada: false,
+        sessoes: [
+          {
+            id: 's-antiga',
+            inicio: '2026-11-04T08:00:00.000Z',
+            dataLocal: '2026-11-04',
+            duracaoTotalMs: 20 * 60_000,
+            duracaoNoPeriodoMs: 20 * 60_000,
+            isAberta: false,
+          },
+          {
+            id: 's-recente',
+            inicio: '2026-11-04T10:00:00.000Z',
+            dataLocal: '2026-11-04',
+            duracaoTotalMs: 30 * 60_000,
+            duracaoNoPeriodoMs: 30 * 60_000,
+            isAberta: false,
+          },
+        ],
+      },
+      {
+        chave: 't-trabalho',
+        tipo: 'tarefa' as const,
+        titulo: 'Desenvolver feature',
+        categoria: { id: 'c-trab', nome: 'Trabalho', cor: '#8B3DFF' },
+        tempoTotalMs: 50 * 60_000, // mesmo tempo da avulsa para testar desempate
+        diasTrabalhados: ['2026-11-04'],
+        isArquivada: false,
+        sessoes: [
+          {
+            id: 's-trab',
+            inicio: '2026-11-04T14:00:00.000Z',
+            dataLocal: '2026-11-04',
+            duracaoTotalMs: 50 * 60_000,
+            duracaoNoPeriodoMs: 50 * 60_000,
+            isAberta: false,
+          },
+        ],
+      },
+      {
+        chave: 't-estudo',
+        tipo: 'tarefa' as const,
+        titulo: 'Ler livro',
+        categoria: { id: 'c-est', nome: 'Estudos', cor: '#10B981' },
+        tempoTotalMs: 80 * 60_000,
+        diasTrabalhados: ['2026-11-04'],
+        isArquivada: false,
+        sessoes: [],
+      },
+    ]
+
+    const agrupado = agruparTarefasPorCategoria(tarefas)
+    // Estudos (80 min) em primeiro; Trabalho (50 min) e Sem categoria (50 min) empatados -> Sem categoria por último
+    expect(agrupado.map((c) => c.nome)).toEqual(['Estudos', 'Trabalho', 'Sem categoria'])
+
+    // Confere que as sessões da tarefa avulsa ficaram da mais recente para a mais antiga
+    const semCat = agrupado.find((c) => c.id === null)
+    expect(semCat?.tarefas[0].sessoes.map((s) => s.id)).toEqual(['s-recente', 's-antiga'])
+
+    // Busca filtra por categoria ou título
+    const buscaTrabalho = filtrarCategoriasDeTempo(agrupado, 'trab')
+    expect(buscaTrabalho.map((c) => c.nome)).toEqual(['Trabalho'])
+
+    const buscaLivro = filtrarCategoriasDeTempo(agrupado, 'livro')
+    expect(buscaLivro.map((c) => c.nome)).toEqual(['Estudos'])
+    expect(buscaLivro[0].tarefas[0].titulo).toBe('Ler livro')
+  })
+
+  it('listarDiasComTempo e rotuloDoDiaEscolhido', () => {
+    const sessoes = [
+      { inicio: '2026-11-02T10:00:00.000Z', fim: '2026-11-02T11:00:00.000Z' },
+      { inicio: '2026-11-04T14:00:00.000Z', fim: '2026-11-04T15:00:00.000Z' },
+    ]
+    const dias = listarDiasComTempo(sessoes)
+    expect(dias.has('2026-11-02')).toBe(true)
+    expect(dias.has('2026-11-04')).toBe(true)
+    expect(dias.has('2026-11-03')).toBe(false)
+
+    expect(rotuloDoDiaEscolhido({ tipo: 'hoje' })).toBeUndefined()
+    expect(rotuloDoDiaEscolhido({ tipo: 'dia', dia: '2026-11-04' })).toBe('qua, 04/11')
+    expect(rotuloDoDiaEscolhido({ tipo: 'dia', dia: '2026-11-12' })).toBe('qui, 12/11')
   })
 })
