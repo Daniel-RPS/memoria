@@ -168,25 +168,31 @@ test('Ícones no tema escuro: MemorIA usa o recorte do tema', async ({ page }) =
   await capturar(page, 'seletor-marcas-escuro')
 })
 
-test('Semana: cards abrem recolhidos; recolhido ele arrasta e recebe item', async ({ page }) => {
+test('Semana: cards abrem recolhidos; aberto ele arrasta e recebe item; recolhido, arrasta inteiro', async ({
+  page,
+}) => {
   await page.goto(`/semana/${SEGUNDA}`)
   await semearCasa(page, [
     { data: SEGUNDA, itens: [TEXTO_LONGO, 'Lavar roupa'] },
     { data: TERCA, itens: ['Varrer'] },
   ])
-  // Ao abrir a Semana, todos recolhidos; abre só o de segunda.
+  // Ao abrir a Semana, todos recolhidos (grupo sem estado salvo).
   await page.reload()
   const casaSegunda = coluna(page, COLUNA_SEGUNDA)
-  await casaSegunda.getByRole('button', { name: 'Expandir Casa' }).click()
-  await expect(casaSegunda.getByRole('list', { name: 'Itens de Casa' })).toBeVisible()
-  await capturar(page, 'semana-aberta')
-
   const expandirTerca = coluna(page, COLUNA_TERCA).getByRole('button', { name: 'Expandir Casa' })
   await expect(expandirTerca).toHaveAttribute('aria-expanded', 'false')
   await expect(coluna(page, COLUNA_TERCA).getByText('Varrer')).toBeHidden()
   await capturar(page, 'semana-recolhida')
 
-  // Item de segunda solto em cima do card recolhido de terça: vai para o card da série lá.
+  // Os dois cards são da mesma série (Casa): abrir um abre o outro.
+  await casaSegunda.getByRole('button', { name: 'Expandir Casa' }).click()
+  await expect(casaSegunda.getByRole('list', { name: 'Itens de Casa' })).toBeVisible()
+  await expect(
+    coluna(page, COLUNA_TERCA).getByRole('button', { name: 'Recolher Casa' }),
+  ).toHaveAttribute('aria-expanded', 'true')
+  await capturar(page, 'semana-aberta')
+
+  // Item de segunda solto em cima do card de terça: vai para o card da série lá.
   const linha = casaSegunda
     .getByRole('list', { name: 'Itens de Casa' })
     .getByRole('listitem')
@@ -195,15 +201,14 @@ test('Semana: cards abrem recolhidos; recolhido ele arrasta e recebe item', asyn
   const alca = casaSegunda.getByRole('button', { name: /^Arrastar Lavar roupa/ })
   const cardTerca = coluna(page, COLUNA_TERCA)
     .getByRole('listitem')
-    .filter({ has: page.getByRole('button', { name: 'Expandir Casa' }) })
+    .filter({ has: page.getByRole('button', { name: 'Recolher Casa' }) })
   await arrastar(page, alca, cardTerca)
   await expect(page.getByText('1 item levado para amanhã')).toBeVisible()
-  await expandirTerca.click()
   await expect(
     coluna(page, COLUNA_TERCA).getByRole('list', { name: 'Itens de Casa' }).getByRole('listitem'),
   ).toHaveText(['Varrer', /^Lavar roupa/])
 
-  // Card de segunda recolhido e arrastado inteiro para quarta: leva o pendente que sobrou.
+  // Card de segunda recolhido (a série toda) e arrastado inteiro para quarta: leva o pendente que sobrou.
   await casaSegunda.getByRole('button', { name: 'Recolher Casa' }).click()
   await expect(casaSegunda.getByRole('button', { name: 'Expandir Casa' })).toBeVisible()
   await arrastar(

@@ -338,7 +338,8 @@ test('capturas: Lista e Colunas, claro e escuro, cheio e vazio', async ({ page }
   await page.evaluate(() => localStorage.setItem('memoria:tema', 'escuro'))
   await page.reload()
   await expect(page.getByText('Fazer curso')).toBeVisible()
-  await page.getByRole('button', { name: 'Abrir Casa' }).click()
+  // O grupo aberto antes continua aberto: o layout do Dia é lembrado.
+  await expect(page.getByRole('button', { name: 'Recolher Casa' })).toBeVisible()
   await capturar(page, `${etapa}-colunas-escuro`)
   await escolherModo(page, 'Lista')
   await capturar(page, `${etapa}-cheio-escuro`)

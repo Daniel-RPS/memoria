@@ -221,7 +221,7 @@ test('Atrasadas: frase com o mais antigo, contagem e "Ver atrasadas" abre o dia 
   await expect(page.getByText('Renovar CNH')).toBeVisible()
 })
 
-test('Dia e Semana abrem com todos os grupos recolhidos, inclusive ao voltar', async ({ page }) => {
+test('Dia e Semana abrem com os grupos recolhidos e lembram o que foi aberto', async ({ page }) => {
   await page.goto('/inicio')
   await semearHoje(page)
 
@@ -238,25 +238,31 @@ test('Dia e Semana abrem com todos os grupos recolhidos, inclusive ao voltar', a
   // Espera o dia seguinte desenhar: clicar antes usa o link do dia que ainda está na tela.
   await expect(page.getByRole('heading', { level: 1 })).toContainText('amanhã')
   await page.getByRole('link', { name: 'Dia anterior' }).click()
-  await expect(page.getByRole('button', { name: 'Abrir MemorIA' })).toHaveAttribute(
+  // O que foi aberto continua aberto ao voltar; os outros seguem recolhidos.
+  await expect(page.getByRole('button', { name: 'Recolher MemorIA' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  )
+  await expect(page.getByRole('checkbox', { name: 'Concluir Resumo do Início' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Abrir Site Poose' })).toHaveAttribute(
     'aria-expanded',
     'false',
   )
-  await expect(page.getByRole('checkbox', { name: 'Concluir Resumo do Início' })).toBeHidden()
 
+  // A Semana usa os mesmos grupos (pela série): MemorIA já abre aberto, os outros recolhidos.
   await page.goto(`/semana/${HOJE}`)
-  for (const titulo of ['Simulador POOSE', 'Site Poose', 'MemorIA']) {
+  for (const titulo of ['Simulador POOSE', 'Site Poose']) {
     await expect(page.getByRole('button', { name: `Expandir ${titulo}` })).toBeVisible()
   }
-  await page.getByRole('button', { name: 'Expandir MemorIA' }).click()
   await expect(page.getByRole('button', { name: 'Recolher MemorIA' })).toBeVisible()
+  await page.getByRole('button', { name: 'Recolher MemorIA' }).click()
   await page.getByRole('link', { name: 'Próxima semana' }).click()
   await page.getByRole('link', { name: 'Semana anterior' }).click()
   await expect(page.getByRole('button', { name: 'Expandir MemorIA' })).toBeVisible()
-  // Sair e voltar também recolhe.
+  // Sair e voltar também lembra.
   await page.getByRole('button', { name: 'Expandir MemorIA' }).click()
   await page.getByRole('link', { name: 'Início' }).first().click()
   await bloco(page, 'Hoje').waitFor()
   await page.goBack()
-  await expect(page.getByRole('button', { name: 'Expandir MemorIA' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Recolher MemorIA' })).toBeVisible()
 })

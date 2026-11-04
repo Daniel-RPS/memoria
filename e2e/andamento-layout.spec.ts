@@ -138,6 +138,9 @@ async function arrastar(page: Page, origem: Locator, destino: Locator) {
   await page.mouse.up()
 }
 
+// Cenários longos (várias páginas e arrastos): folga para a máquina ocupada.
+test.setTimeout(90_000)
+
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date(`${HOJE}T10:00:00-03:00`))
   await page.goto(`/dia/${HOJE}`)

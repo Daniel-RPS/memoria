@@ -149,6 +149,8 @@ test('Dia: nota no item "Fazer Deploy" aparece no item e na aba Notas sem recarr
 }) => {
   await page.goto(`/dia/${HOJE}`)
   await semear(page)
+  // Grupo sem estado salvo abre recolhido: abre para chegar ao item.
+  await expandirGrupos(page)
   await capturar(page, '1-dia-antes')
 
   const gaveta = await adicionarNotaPeloMenu(
@@ -202,6 +204,7 @@ test('levar o item com nota para amanhã: a nota continua no dia seguinte', asyn
   await page.goto(`/dia/${HOJE}`)
   const semeado = await semear(page)
   await semearNotas(page, semeado)
+  await expandirGrupos(page)
 
   await page.getByRole('button', { name: 'Mais ações para Fazer Deploy' }).click()
   await page.getByRole('menuitem', { name: 'Adiar para amanhã' }).click()
