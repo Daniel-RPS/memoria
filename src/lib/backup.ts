@@ -53,8 +53,10 @@ const tarefa = z.object({
   // Formato 11; backups anteriores entram como "não está em andamento".
   emAndamento: z.boolean().optional(),
   emAndamentoDesde: texto.optional(),
-  // Formato 13; backups anteriores entram como "concluída direto".
+  // Formato 13; backups anteriores entram como "concluída direto" e sem prioridade.
   concluidaPelasSubetapas: z.boolean().optional(),
+  prioridade: z.boolean().optional(),
+  prioridadeDesde: texto.optional(),
   // Formato 2: item de grupo era tarefa com card.
   groupInstanceId: texto.optional(),
 })
@@ -95,6 +97,8 @@ const itemDeGrupo = z.object({
   emAndamentoDesde: texto.optional(),
   // Formato 13.
   concluidaPelasSubetapas: z.boolean().optional(),
+  prioridade: z.boolean().optional(),
+  prioridadeDesde: texto.optional(),
 })
 
 const subtarefa = z.object({

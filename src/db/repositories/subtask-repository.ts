@@ -3,6 +3,7 @@ import type { GroupItem, Subtask, Task, TimeSession } from '@/db/types'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 import { fecharSessoesAbertasDe, restaurarSessoes } from '@/domain/tempo'
 import { efeitoNoDono, proximaOrdemDeSubetapa } from '@/domain/subetapas'
+import { SEM_PRIORIDADE } from '@/domain/prioridade'
 import { SEM_ANDAMENTO } from '@/lib/andamento'
 
 /**
@@ -127,6 +128,7 @@ export async function definirConclusaoSubtarefa(
             concluidaPelasSubetapas: true,
             atualizadoEm: momento,
             ...SEM_ANDAMENTO,
+            ...SEM_PRIORIDADE,
           })
           sessoesFechadas = await fecharSessoesAbertasDe({ tarefas: [dono.registro.id] }, momento)
         } else {
@@ -136,6 +138,7 @@ export async function definirConclusaoSubtarefa(
             concluidaPelasSubetapas: true,
             atualizadoEm: momento,
             ...SEM_ANDAMENTO,
+            ...SEM_PRIORIDADE,
           })
           sessoesFechadas = await fecharSessoesAbertasDe(
             { itens: [dono.registro.id], cadeias: [dono.registro.cadeiaId] },

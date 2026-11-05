@@ -3,6 +3,8 @@ import { CornerDownRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
+import { ComBandeira } from '@/components/indicador-prioridade'
+import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -51,6 +53,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
   const isSelecionado = isSelecionavel && selecionados.has(item.id)
   const isAtrasado = isPendenteDeAntes(item, data, hoje)
   const isEmAndamento = isPendente && item.emAndamento === true
+  const isPrioritario = isPendente && item.prioridade === true
 
   function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -71,6 +74,8 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
     <div className="border-b border-pauta">
       <div
         data-em-andamento={isEmAndamento || undefined}
+        data-prioridade={isPrioritario || undefined}
+        {...alvoDePrioridade('item', item.id, isPendente)}
         className={cn(
           'group/linha relative flex min-h-11 items-center gap-2 pr-2 pl-1',
           isSelecionado && 'bg-accent',
@@ -96,18 +101,20 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
           />
         )}
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pl-1">
-          {isTransferido ? (
-            <span className="min-w-0 break-words text-grafite">{item.titulo}</span>
-          ) : (
-            <TituloEditavel
-              titulo={item.titulo}
-              isEditando={isEditando}
-              onIniciarEdicao={() => setIsEditando(true)}
-              onSalvar={handleSalvarTitulo}
-              onCancelar={() => setIsEditando(false)}
-              className={cn(isConcluido && 'text-grafite line-through decoration-tinta/50')}
-            />
-          )}
+          <ComBandeira isPrioritario={isPrioritario && !isEditando}>
+            {isTransferido ? (
+              <span className="min-w-0 break-words text-grafite">{item.titulo}</span>
+            ) : (
+              <TituloEditavel
+                titulo={item.titulo}
+                isEditando={isEditando}
+                onIniciarEdicao={() => setIsEditando(true)}
+                onSalvar={handleSalvarTitulo}
+                onCancelar={() => setIsEditando(false)}
+                className={cn(isConcluido && 'text-grafite line-through decoration-tinta/50')}
+              />
+            )}
+          </ComBandeira>
           {isEmAndamento && !isEditando && <IndicadorAndamento desde={item.emAndamentoDesde} />}
           {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
           {isAtrasado && !isEditando && (

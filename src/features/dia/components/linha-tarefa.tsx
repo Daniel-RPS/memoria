@@ -3,6 +3,8 @@ import { Paperclip } from 'lucide-react'
 import { cn } from 'cn'
 import { PainelAnexos } from '@/components/anexos/painel-anexos'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
+import { ComBandeira } from '@/components/indicador-prioridade'
+import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, Subtask, Task } from '@/db/types'
@@ -39,6 +41,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const { quantidadeAnexos } = useExtrasDaTarefa(tarefa.id)
   const isConcluida = tarefa.status === 'concluida'
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
+  const isPrioritaria = tarefa.status === 'pendente' && tarefa.prioridade === true
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
   const classificacao = classificarTarefa(tarefa, useCategoriasDoContexto())
@@ -73,6 +76,8 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
     <div className="relative border-b border-pauta">
       <div
         data-em-andamento={isEmAndamento || undefined}
+        data-prioridade={isPrioritaria || undefined}
+        {...alvoDePrioridade('tarefa', tarefa.id, tarefa.status === 'pendente')}
         className={cn(
           'group/linha relative flex min-h-12 items-center gap-2 pr-2 pl-1',
           isSelecionada && 'bg-accent',
@@ -96,25 +101,27 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
           />
         )}
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-1">
-          {isSelecionavel ? (
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={() => alternar(tarefa.id)}
-              className="min-w-0 text-left text-base break-words"
-            >
-              {tarefa.titulo}
-            </button>
-          ) : (
-            <TituloEditavel
-              titulo={tarefa.titulo}
-              isEditando={isEditando}
-              onIniciarEdicao={() => setIsEditando(true)}
-              onSalvar={handleSalvarTitulo}
-              onCancelar={() => setIsEditando(false)}
-              className={cn(isConcluida && 'text-grafite line-through decoration-tinta/50')}
-            />
-          )}
+          <ComBandeira isPrioritario={isPrioritaria && !isEditando}>
+            {isSelecionavel ? (
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => alternar(tarefa.id)}
+                className="min-w-0 text-left text-base break-words"
+              >
+                {tarefa.titulo}
+              </button>
+            ) : (
+              <TituloEditavel
+                titulo={tarefa.titulo}
+                isEditando={isEditando}
+                onIniciarEdicao={() => setIsEditando(true)}
+                onSalvar={handleSalvarTitulo}
+                onCancelar={() => setIsEditando(false)}
+                className={cn(isConcluida && 'text-grafite line-through decoration-tinta/50')}
+              />
+            )}
+          </ComBandeira>
           {isEmAndamento && !isEditando && <IndicadorAndamento desde={tarefa.emAndamentoDesde} />}
           {!isEditando && (
             <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />

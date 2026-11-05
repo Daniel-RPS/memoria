@@ -18,6 +18,7 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { reordenarItem } from '@/db/repositories/group-repository'
 import { reordenarTarefa, soltarTarefaNoDia } from '@/db/repositories/task-repository'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
+import { useAtalhoPrioridade } from '@/hooks/use-atalho-prioridade'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { ContextoGruposSemana } from '@/features/semana/hooks/use-grupos-semana'
 import { idDaEntrada, pendentesDo, textoPreviaLevar, type GrupoDoDia } from '@/lib/grupos'
@@ -77,6 +78,7 @@ function colunasDe(semana: DiaDaSemana[]): Colunas {
  */
 export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemanaProps) {
   const { mover } = useMoverTarefas()
+  useAtalhoPrioridade()
   const gruposSemana = useContext(ContextoGruposSemana)
   // Com rolagem lateral, abre mostrando o dia de hoje (um pouco do anterior à esquerda).
   const rolagem = useRef<HTMLDivElement>(null)

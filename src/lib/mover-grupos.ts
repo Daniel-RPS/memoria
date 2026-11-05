@@ -1,4 +1,5 @@
 import type { DataLocal, GroupCard, GroupItem, GroupSeries, Subtask } from '@/db/types'
+import { prioridadeDe } from '@/domain/prioridade'
 import { copiarSubetapas } from '@/domain/subetapas'
 
 /**
@@ -211,6 +212,7 @@ export function planejarLevarItens(
       origemItemId: item.id,
       cadeiaId: item.cadeiaId,
       dataOriginal: item.dataOriginal,
+      ...prioridadeDe(item),
       criadoEm: momento,
       atualizadoEm: momento,
     }
@@ -225,6 +227,9 @@ export function planejarLevarItens(
     mudarItem(item, { status: 'transferido', transferidoParaCardId: alvo.id })
     delete item.emAndamento
     delete item.emAndamentoDesde
+    // A prioridade vai com a cópia, que é o que ainda está por fazer.
+    delete item.prioridade
+    delete item.prioridadeDesde
     itensLevados += 1
   }
 

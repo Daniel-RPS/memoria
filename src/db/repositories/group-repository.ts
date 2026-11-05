@@ -29,6 +29,7 @@ import {
   fecharSessoesAbertasDe,
   restaurarSessoes,
 } from '@/domain/tempo'
+import { prioridadeDe, SEM_PRIORIDADE } from '@/domain/prioridade'
 import { marcaDe, SEM_ANDAMENTO } from '@/lib/andamento'
 import { somarDias } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -335,6 +336,7 @@ export async function definirConclusaoItem(id: string, concluido: boolean) {
             concluidaPelasSubetapas: undefined,
             atualizadoEm: momento,
             ...SEM_ANDAMENTO,
+            ...SEM_PRIORIDADE,
           }
         : {
             status: 'pendente',
@@ -736,6 +738,7 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
         ...(tarefa.concluidaEm && { concluidoEm: tarefa.concluidaEm }),
         ...marcaDe(tarefa),
         ...(tarefa.concluidaPelasSubetapas && { concluidaPelasSubetapas: true }),
+        ...prioridadeDe(tarefa),
         dataOriginal: tarefa.dataOriginal,
         criadoEm: tarefa.criadoEm,
         atualizadoEm: momento,
@@ -778,6 +781,7 @@ export async function tirarDoGrupo(itemId: string, idsEmOrdemNoDia?: string[]) {
         ...(item.concluidoEm && { concluidaEm: item.concluidoEm }),
         ...marcaDe(item),
         ...(item.concluidaPelasSubetapas && { concluidaPelasSubetapas: true }),
+        ...prioridadeDe(item),
         criadoEm: item.criadoEm,
         atualizadoEm: momento,
       }

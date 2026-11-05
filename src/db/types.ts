@@ -64,6 +64,10 @@ export interface Task extends EntidadeBase {
    * tarefa. Marcar ou desmarcar a tarefa direto apaga a marca. Ausente = não.
    */
   concluidaPelasSubetapas?: boolean
+  /** Prioridade (bandeira), só de tarefa pendente. Ausente = não; regras em `domain/prioridade`. */
+  prioridade?: boolean
+  /** Momento em que foi marcada como prioridade (junto com `prioridade`). */
+  prioridadeDesde?: string
 }
 
 /**
@@ -125,6 +129,10 @@ export interface GroupItem extends EntidadeBase {
   emAndamentoDesde?: string
   /** Concluído sozinho pela última subetapa (ver `Task.concluidaPelasSubetapas`). */
   concluidaPelasSubetapas?: boolean
+  /** Prioridade (bandeira), só de item pendente. Ausente = não. */
+  prioridade?: boolean
+  /** Momento em que foi marcado como prioridade (junto com `prioridade`). */
+  prioridadeDesde?: string
 }
 
 /**

@@ -33,6 +33,7 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Tarefas concluídas riscadas, agrupadas em "Concluídas" (recolhível) no fim do dia
 - ✅ Reordenar tarefas arrastando (com mouse ou teclado)
 - ✅ Indicação de há quantos dias uma tarefa está pendente
+- ✅ **Prioridade** (05/11/2026): bandeira discreta em tarefa solta e item de grupo (menu **⋯ › Marcar como prioridade**, tecla **P** com a linha em foco ou várias selecionadas, ou **Prioridade** na barra de Selecionar). Aparece no Dia e na Semana e, com o grupo recolhido, ao lado da contagem. É mantida ao adiar, mover, arrastar e duplicar o grupo (a cópia do item leva a bandeira) e some ao concluir. Backup formato 13
 - ✅ Subetapas com progresso (ex.: "1/3"), reordenáveis e abertas logo abaixo da tarefa ou do item de grupo (05/11/2026)
 - ✅ Categorias e subcategorias com cores (subcategoria sem cor usa um tom da categoria)
 - ✅ Criar e aplicar categoria ou subcategoria ali mesmo, no seletor de categoria (menu ⋯ do card e da tarefa, "+ Novo grupo" e editor de procedimento)

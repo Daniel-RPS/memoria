@@ -9,6 +9,7 @@ import {
   fecharSessoesAbertasDe,
   restaurarSessoes,
 } from '@/domain/tempo'
+import { SEM_PRIORIDADE } from '@/domain/prioridade'
 import { SEM_ANDAMENTO, type CamposDeAndamento } from '@/lib/andamento'
 import { somarDias } from '@/lib/datas'
 import { destinoDoAdiamento, pendenciasDeOntem, planejarMovimento } from '@/lib/mover'
@@ -75,6 +76,7 @@ export async function definirConclusao(id: string, concluida: boolean) {
             concluidaPelasSubetapas: undefined,
             atualizadoEm: momento,
             ...SEM_ANDAMENTO,
+            ...SEM_PRIORIDADE,
           }
         : {
             status: 'pendente',

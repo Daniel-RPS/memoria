@@ -9,6 +9,8 @@ import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal } from '@/db/types'
 import { PontoDeAndamento } from '@/components/indicador-andamento'
+import { IndicadorPrioridade } from '@/components/indicador-prioridade'
+import { contarPrioritarios } from '@/domain/prioridade'
 import { useGrupoLembrado } from '@/hooks/use-grupos-lembrados'
 import { contarEmAndamento } from '@/lib/andamento'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
@@ -47,6 +49,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
   const { isAberto, handleAlternar } = useGrupoLembrado(serie.id)
   const isRecolhido = !isAberto
   const emAndamento = contarEmAndamento(grupo.itens)
+  const prioritarios = contarPrioritarios(grupo.itens)
   const [isEditando, setIsEditando] = useState(false)
   const { renomearGrupo, criarItem } = useAcoesGrupo()
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
@@ -138,6 +141,14 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
             <span className="flex items-center gap-1.5 text-sm text-grafite tabular-nums">
               {textoProgressoGrupo(progresso)}
               {/* Recolhido, o ponto avisa que há item em andamento lá dentro. */}
+              {/* Recolhido, a bandeira avisa que há item prioritário lá dentro. */}
+              {isRecolhido && prioritarios > 0 && (
+                <IndicadorPrioridade
+                  rotulo={
+                    prioritarios === 1 ? '1 item prioritário' : `${prioritarios} itens prioritários`
+                  }
+                />
+              )}
               {isRecolhido && emAndamento > 0 && (
                 <PontoDeAndamento
                   rotulo={

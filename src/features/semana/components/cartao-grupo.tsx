@@ -6,7 +6,10 @@ import { useId, useState, type ReactNode } from 'react'
 import { CornerDownRight, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
+import { IndicadorPrioridade } from '@/components/indicador-prioridade'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
+import { contarPrioritarios } from '@/domain/prioridade'
+import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { ChevronRecolher, ConteudoRecolhivel } from '@/components/secao-recolhivel'
 import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
@@ -91,6 +94,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
   const { isAberto, handleAlternar, isRecolhivel } = useGrupoNaSemana(serie.id, card.data)
   const idConteudo = useId()
   const emAndamento = contarEmAndamento(grupo.itens)
+  const prioritarios = contarPrioritarios(grupo.itens)
 
   async function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -198,7 +202,15 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
           {!isEditando && textoProgresso && (
             <span className="flex items-center gap-1 text-xs text-grafite tabular-nums">
               {isEncerrado && !isSobreposto ? `${textoProgresso} · encerrado` : textoProgresso}
-              {/* Recolhido, o ponto avisa que há item em andamento lá dentro. */}
+              {/* Recolhido, a bandeira e o ponto avisam o que há lá dentro. */}
+              {!isAberto && prioritarios > 0 && (
+                <IndicadorPrioridade
+                  isCompacto
+                  rotulo={
+                    prioritarios === 1 ? '1 item prioritário' : `${prioritarios} itens prioritários`
+                  }
+                />
+              )}
               {!isAberto && emAndamento > 0 && (
                 <PontoDeAndamento
                   className="size-1"
@@ -343,6 +355,7 @@ function LinhaItem({
   const isAtrasado = isPendenteDeAntes(item, data, hoje)
   const isEditavel = !isTransferido && !isSobreposto
   const isEmAndamento = item.status === 'pendente' && item.emAndamento === true
+  const isPrioritario = item.status === 'pendente' && item.prioridade === true
 
   function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -358,6 +371,8 @@ function LinhaItem({
     <>
       <div
         data-em-andamento={isEmAndamento || undefined}
+        data-prioridade={isPrioritario || undefined}
+        {...alvoDePrioridade('item', item.id, item.status === 'pendente')}
         className="relative flex items-start gap-1 py-1 pr-0.5 pl-1"
       >
         {isEmAndamento && <FileteDeAndamento />}
@@ -379,6 +394,9 @@ function LinhaItem({
             isTransferido && 'text-grafite',
           )}
         >
+          {isPrioritario && !isEditando && (
+            <IndicadorPrioridade isCompacto className="mr-1 align-[-0.125rem]" />
+          )}
           {isEditavel ? (
             <TituloEditavel
               titulo={item.titulo}

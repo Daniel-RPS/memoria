@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
+import { IndicadorPrioridade } from '@/components/indicador-prioridade'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import { definirConclusao } from '@/db/repositories/task-repository'
@@ -32,10 +33,12 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
   const idPainel = useId()
 
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
+  const isPrioritaria = tarefa.status === 'pendente' && tarefa.prioridade === true
 
   return (
     <div
       data-em-andamento={isEmAndamento || undefined}
+      data-prioridade={isPrioritaria || undefined}
       className={cn(
         'group/linha relative flex items-start gap-1.5 border-b border-pauta py-1 pr-1 pl-1 text-[0.8125rem] leading-snug hover:bg-accent/60',
         isSobreposto && 'rotate-1 rounded-sm border bg-papel shadow-lg ring-2 ring-caneta/40',
@@ -49,6 +52,7 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
         className="mt-px size-3.5 rounded-[3px] border-[1.5px] border-tinta/45 bg-papel"
       />
       <div className="min-w-0 flex-1">
+        {isPrioritaria && <IndicadorPrioridade isCompacto className="mr-1 align-[-0.125rem]" />}
         <Link
           to={`/dia/${tarefa.data}`}
           className="break-words hover:underline focus-visible:outline-2 focus-visible:outline-caneta"

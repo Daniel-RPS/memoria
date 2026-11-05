@@ -3,6 +3,7 @@ import {
   Archive,
   CalendarArrowUp,
   CalendarDays,
+  Flag,
   FolderOutput,
   ListPlus,
   MoreHorizontal,
@@ -37,6 +38,7 @@ import type { DataLocal, GroupItem } from '@/db/types'
 import { contarNotasQueFicamAvulsas } from '@/db/repositories/note-repository'
 import { useAndamento } from '@/hooks/use-andamento'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
+import { usePrioridade } from '@/hooks/use-prioridade'
 import { avisoNotasAvulsas, vinculoDoItem } from '@/lib/notas'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 
@@ -67,6 +69,7 @@ export function MenuItemGrupo({
   const { tirarDoGrupo, arquivarItem, excluirItem } = useAcoesGrupo()
   const { mover, adiar } = useMoverTarefas()
   const { marcarEmAndamento, pararAndamento } = useAndamento()
+  const { marcarPrioridade, tirarPrioridade } = usePrioridade()
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   /** Notas que ficariam avulsas: só com elas o excluir pede confirmação. */
   const [notasAoExcluir, setNotasAoExcluir] = useState(0)
@@ -116,6 +119,15 @@ export function MenuItemGrupo({
               ) : (
                 <DropdownMenuItem onSelect={() => void marcarEmAndamento({ itens: [item.id] })}>
                   <Play /> Marcar como em andamento
+                </DropdownMenuItem>
+              )}
+              {item.prioridade ? (
+                <DropdownMenuItem onSelect={() => void tirarPrioridade({ itens: [item.id] })}>
+                  <Flag /> Tirar prioridade
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => void marcarPrioridade({ itens: [item.id] })}>
+                  <Flag /> Marcar como prioridade
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

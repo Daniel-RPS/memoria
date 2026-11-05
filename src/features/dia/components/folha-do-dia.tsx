@@ -1,6 +1,7 @@
 import { cn } from 'cn'
 import type { DataLocal } from '@/db/types'
 import { ContextoSubetapas } from '@/hooks/contexto-subetapas'
+import { useAtalhoPrioridade } from '@/hooks/use-atalho-prioridade'
 import { ContextoGruposLembrados, useGruposLembrados } from '@/hooks/use-grupos-lembrados'
 import { useLayoutDoDia } from '@/hooks/use-layout-do-dia'
 import { usePreferenciasDoDia } from '@/hooks/use-preferencias-do-dia'
@@ -54,6 +55,12 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
         : [],
   )
   const selecao = useSelecao()
+  // Tecla P: a linha em foco ou, sem foco numa linha, o que está selecionado.
+  const selecionadas = idsSelecionaveis.filter((id) => selecao.selecionados.has(id))
+  useAtalhoPrioridade({
+    tarefas: selecionadas.filter((id) => !idsGrupos.includes(id) && !idsItens.includes(id)),
+    itens: selecionadas.filter((id) => idsItens.includes(id)),
+  })
   const gruposLembrados = useGruposLembrados()
   const isColunas = modo === 'colunas'
   const [primeira, segunda] = secoesNaOrdem(ordem)

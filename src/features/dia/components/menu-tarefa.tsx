@@ -3,6 +3,7 @@ import {
   Archive,
   CalendarArrowUp,
   CalendarDays,
+  Flag,
   FolderInput,
   ListPlus,
   MoreHorizontal,
@@ -42,6 +43,7 @@ import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useAndamento } from '@/hooks/use-andamento'
 import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
+import { usePrioridade } from '@/hooks/use-prioridade'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { useGruposDoDia } from '@/features/dia/hooks/contexto-extras'
 
@@ -69,6 +71,7 @@ export function MenuTarefa({
   const gruposDoDia = useGruposDoDia()
   const { mover, adiar } = useMoverTarefas()
   const { marcarEmAndamento, pararAndamento } = useAndamento()
+  const { marcarPrioridade, tirarPrioridade } = usePrioridade()
   const [isMenuAberto, setIsMenuAberto] = useState(false)
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
@@ -117,6 +120,15 @@ export function MenuTarefa({
               ) : (
                 <DropdownMenuItem onSelect={() => void marcarEmAndamento({ tarefas: [tarefa.id] })}>
                   <Play /> Marcar como em andamento
+                </DropdownMenuItem>
+              )}
+              {tarefa.prioridade ? (
+                <DropdownMenuItem onSelect={() => void tirarPrioridade({ tarefas: [tarefa.id] })}>
+                  <Flag /> Tirar prioridade
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => void marcarPrioridade({ tarefas: [tarefa.id] })}>
+                  <Flag /> Marcar como prioridade
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
