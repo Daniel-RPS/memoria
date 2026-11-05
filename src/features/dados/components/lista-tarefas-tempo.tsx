@@ -177,9 +177,6 @@ export function ListaTarefasTempo({ categorias, isFiltrando = false }: ListaTare
                     {cat.tarefas.length} {cat.tarefas.length === 1 ? 'tarefa' : 'tarefas'}
                   </span>
                 </div>
-                <span className="shrink-0 text-sm font-semibold whitespace-nowrap text-tinta tabular-nums">
-                  {formatarDuracao(cat.tempoTotalMs)}
-                </span>
               </button>
 
               {isAberta && (

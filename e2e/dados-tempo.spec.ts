@@ -166,7 +166,17 @@ test.describe('Dados › Tempo nas tarefas', () => {
     await page.getByRole('link', { name: 'Dados', exact: true }).click()
     await expect(page.locator('[data-resumo-media]')).toHaveText('12 min')
     await expect(page.locator('[data-resumo-realizadas]')).toHaveText('1')
-    await expect(page.locator('[data-categoria-tempo="Trabalho"]')).toContainText('12 min')
+    // A linha da categoria não mostra soma (enganaria com tarefas simultâneas); o tempo fica na tarefa
+    const linhaCategoria = page
+      .locator('[data-categoria-tempo="Trabalho"]')
+      .getByRole('button')
+      .first()
+    await expect(linhaCategoria).toContainText('1 tarefa')
+    await expect(linhaCategoria).not.toContainText('12 min')
+    await linhaCategoria.click()
+    await expect(
+      page.locator(`[data-linha-tempo="${TAREFA_RELATORIO}"]`).getByText('12 min').first(),
+    ).toBeVisible()
   })
 
   test('Hoje com 4 tarefas (2h 10, 1h 45, 1h 45, 17 min): resumo com média 1h 29 min, 4 realizadas, mais tempo "Fazer curso", menos tempo "Fazer o resumo do livro abc", sem pizza, lista por categoria abre', async ({
