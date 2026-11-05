@@ -540,3 +540,180 @@ test('cartões de vidro (GlassCard): 4 blocos separados, brilhos accent/warning 
     expect(await textosCortados(page)).toEqual([])
   }
 })
+
+test('cartões recolhíveis do Início: alternância, persistência, teclado e barra fina', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await page.goto('/inicio')
+  await semearHoje(page)
+  await semearAtrasadas(page)
+
+  // Ativa tarefa e item em andamento
+  await page.evaluate(async (hoje: string) => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const andamento = (await importar('/src/db/repositories/andamento-repository.ts')) as {
+      definirAndamento: (
+        alvos: { tarefas?: string[]; itens?: string[] },
+        isMarcar: boolean,
+      ) => Promise<unknown>
+    }
+    const db = banco.db
+    const serie = await db.groupSeries
+      .filter((s: { titulo: string }) => s.titulo === 'Simulador POOSE')
+      .first()
+    const card = await db.groupCards.where('[seriesId+data]').equals([serie.id, hoje]).first()
+    const item = await db.groupItems
+      .where('cardId')
+      .equals(card.id)
+      .filter((i: { status: string }) => i.status === 'pendente')
+      .first()
+    const tarefa = await db.tasks.where('data').equals(hoje).first()
+
+    await andamento.definirAndamento({ tarefas: [tarefa.id], itens: [item.id] }, true)
+  }, HOJE)
+
+  const aside = page.getByRole('complementary', { name: 'Hoje, atrasadas e próximos dias' })
+  const cartaoAndamento = aside.getByRole('region', { name: 'Em andamento' })
+  const cartaoHoje = aside.getByRole('region', { name: 'Hoje' })
+  const cartaoAtrasadas = aside.getByRole('region', { name: 'Atrasadas' })
+  const cartaoProximos = aside.getByRole('region', { name: 'Próximos 7 dias' })
+
+  // Padrão: os três abertos (aria-expanded="true")
+  const botaoAndamento = cartaoAndamento.getByRole('button', { name: /Em andamento/ })
+  const botaoHoje = cartaoHoje.getByRole('button', { name: /Hoje/ })
+  const botaoAtrasadas = cartaoAtrasadas.getByRole('button', { name: /Atrasadas/ })
+
+  await expect(botaoAndamento).toHaveAttribute('aria-expanded', 'true')
+  await expect(botaoHoje).toHaveAttribute('aria-expanded', 'true')
+  await expect(botaoAtrasadas).toHaveAttribute('aria-expanded', 'true')
+  // Próximos 7 dias não tem botão de recolher
+  await expect(cartaoProximos.getByRole('button')).toHaveCount(0)
+
+  // Captura: tudo aberto (claro e escuro)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-recolhivel-tudo-aberto-${tema}`)
+  }
+
+  // 1. Clicar em "Ver o dia" com o cartão aberto navega e não recolhe
+  await cartaoHoje.getByRole('link', { name: 'Ver o dia' }).click()
+  await expect(page).toHaveURL(new RegExp(`/dia/${HOJE}$`))
+  await page.getByRole('link', { name: 'Início' }).first().click()
+  await expect(botaoHoje).toHaveAttribute('aria-expanded', 'true')
+
+  // 2. Recolher Hoje: só a linha do título com "16 pendentes" e a barra fina de 2px
+  await botaoHoje.click()
+  await expect(botaoHoje).toHaveAttribute('aria-expanded', 'false')
+  // Conteúdo interno recolhido (inert)
+  const idConteudoHoje = await botaoHoje.getAttribute('aria-controls')
+  await expect(cartaoHoje.locator(`#${idConteudoHoje}`)).toHaveAttribute('inert', '')
+  // Barra fina visível
+  const barraFina = cartaoHoje.locator('div[aria-hidden].absolute.bottom-0')
+  await expect(barraFina).toBeVisible()
+
+  // Captura: misto (Hoje recolhido, outros abertos)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-recolhivel-misto-${tema}`)
+  }
+
+  // Expandir com Enter no botão
+  await botaoHoje.focus()
+  await page.keyboard.press('Enter')
+  await expect(botaoHoje).toHaveAttribute('aria-expanded', 'true')
+  await expect(cartaoHoje.getByText('Faltam 16 de 17.')).toBeVisible()
+
+  // Alternar com Espaço no botão
+  await page.keyboard.press('Space')
+  await expect(botaoHoje).toHaveAttribute('aria-expanded', 'false')
+
+  // 3. Recolher os três cartões
+  await botaoAndamento.click()
+  await expect(botaoAndamento).toHaveAttribute('aria-expanded', 'false')
+  await botaoAtrasadas.click()
+  await expect(botaoAtrasadas).toHaveAttribute('aria-expanded', 'false')
+
+  // Brilhos continuam ativos quando recolhidos!
+  await expect(cartaoAndamento).toHaveAttribute('data-glow', 'accent')
+  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'warning')
+
+  // Captura: tudo recolhido (claro e escuro)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-recolhivel-tudo-recolhido-${tema}`)
+  }
+
+  // Ir para Notas, voltar e recarregar → continuam recolhidos
+  await page.getByRole('link', { name: 'Notas' }).click()
+  await expect(page).toHaveURL(/\/notas$/)
+  await page.getByRole('link', { name: 'Início' }).first().click()
+  await page.reload()
+
+  const botaoAndamentoRecarregado = page
+    .getByRole('region', { name: 'Em andamento' })
+    .getByRole('button', { name: /Em andamento/ })
+  const botaoHojeRecarregado = page
+    .getByRole('region', { name: 'Hoje' })
+    .getByRole('button', { name: /Hoje/ })
+  const botaoAtrasadasRecarregado = page
+    .getByRole('region', { name: 'Atrasadas' })
+    .getByRole('button', { name: /Atrasadas/ })
+
+  await expect(botaoAndamentoRecarregado).toHaveAttribute('aria-expanded', 'false')
+  await expect(botaoHojeRecarregado).toHaveAttribute('aria-expanded', 'false')
+  await expect(botaoAtrasadasRecarregado).toHaveAttribute('aria-expanded', 'false')
+
+  // 4. "Em andamento": concluir tarefas (some), marcar outra → reaparece recolhido
+  await page.evaluate(async () => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const andamento = (await importar('/src/db/repositories/andamento-repository.ts')) as {
+      definirAndamento: (
+        alvos: { tarefas?: string[]; itens?: string[] },
+        isMarcar: boolean,
+      ) => Promise<unknown>
+    }
+    const db = banco.db
+    const tarefas = await db.tasks.toArray()
+    const itens = await db.groupItems.toArray()
+    await andamento.definirAndamento(
+      {
+        tarefas: tarefas.map((t: { id: string }) => t.id),
+        itens: itens.map((i: { id: string }) => i.id),
+      },
+      false,
+    )
+  })
+
+  await expect(page.getByRole('region', { name: 'Em andamento' })).toHaveCount(0)
+
+  // Marca nova tarefa em andamento
+  await page.evaluate(async (hoje: string) => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const andamento = (await importar('/src/db/repositories/andamento-repository.ts')) as {
+      definirAndamento: (
+        alvos: { tarefas?: string[]; itens?: string[] },
+        isMarcar: boolean,
+      ) => Promise<unknown>
+    }
+    const db = banco.db
+    const tarefa = await db.tasks.where('data').equals(hoje).first()
+    await andamento.definirAndamento({ tarefas: [tarefa.id] }, true)
+  }, HOJE)
+
+  const cartaoAndamentoNovo = page.getByRole('region', { name: 'Em andamento' })
+  await expect(cartaoAndamentoNovo).toBeVisible()
+  await expect(cartaoAndamentoNovo.getByRole('button', { name: /Em andamento/ })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  )
+
+  // 5. Sem reticências recolhido e aberto em largura normal e estreita
+  for (const largura of [1680, 900]) {
+    await page.setViewportSize({ width: largura, height: 1000 })
+    expect(await textosCortados(page)).toEqual([])
+  }
+})

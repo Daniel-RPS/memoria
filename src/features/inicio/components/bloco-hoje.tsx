@@ -19,12 +19,26 @@ export function BlocoHoje({ numeros, hoje }: BlocoHojeProps) {
 
   return (
     <ResumoLateral
+      idCartao="hoje"
       titulo="Hoje"
       extra={
-        pendentes > 0 && (
+        pendentes > 0 ? (
           <span className="text-xs text-grafite tabular-nums">
             {pendentes} {pendentes === 1 ? 'pendente' : 'pendentes'}
           </span>
+        ) : null
+      }
+      barraRecolhido={
+        total > 0 && (
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden rounded-b-[inherit] bg-pauta/50"
+          >
+            <div
+              className="h-full bg-caneta transition-[width] duration-300 motion-reduce:transition-none"
+              style={{ width: `${(feitos / total) * 100}%` }}
+            />
+          </div>
         )
       }
     >

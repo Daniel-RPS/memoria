@@ -22,20 +22,25 @@ export function BlocoAtrasadas({ numeros, idsDasTarefas, idsDosCards }: BlocoAtr
   const { hoje, mover } = useMoverTarefas()
   const { itens, diaMaisAntigo } = numeros
 
+  const temAtrasadas = diaMaisAntigo !== null && itens > 0
+
   function handleTrazerTodas() {
     void mover(idsDasTarefas, hoje, { grupos: idsDosCards })
   }
 
   return (
     <ResumoLateral
+      idCartao="atrasadas"
       titulo="Atrasadas"
-      tom="alerta"
-      glow={itens > 0 ? 'warning' : 'none'}
+      tom={temAtrasadas ? 'alerta' : 'normal'}
+      glow={temAtrasadas ? 'warning' : 'none'}
       extra={
-        itens > 0 && (
+        temAtrasadas ? (
           <span className="text-xs text-alerta tabular-nums">
             {itens} {itens === 1 ? 'pendente' : 'pendentes'}
           </span>
+        ) : (
+          <span className="text-xs text-grafite">em dia</span>
         )
       }
     >

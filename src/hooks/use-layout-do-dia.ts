@@ -1,13 +1,16 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import { gravarPreferencia, lerPreferencia } from '@/app/preferencia-local'
 import {
+  alternarCartaoDoInicio,
   alternarSecao,
   definirGruposAbertos,
+  isCartaoDoInicioRecolhido,
   isGrupoAberto,
   isSecaoRecolhida,
   lerLayoutDoDia,
   podarGrupos,
   serializarLayoutDoDia,
+  type CartaoDoInicio,
   type LayoutDoDia,
 } from '@/lib/layout-do-dia'
 import type { SecaoDoDia } from '@/lib/visao-do-dia'
@@ -63,8 +66,11 @@ export function useLayoutDoDia() {
     layout,
     isSecaoRecolhida: (secao: SecaoDoDia) => isSecaoRecolhida(layout, secao),
     isGrupoAberto: (seriesId: string) => isGrupoAberto(layout, seriesId),
+    isCartaoRecolhido: (cartao: CartaoDoInicio) => isCartaoDoInicioRecolhido(layout, cartao),
     handleAlternarSecao: (secao: SecaoDoDia) => atualizar((atual) => alternarSecao(atual, secao)),
     handleDefinirGrupos: (seriesIds: string[], isAbrir: boolean) =>
       atualizar((atual) => definirGruposAbertos(atual, seriesIds, isAbrir)),
+    handleAlternarCartao: (cartao: CartaoDoInicio) =>
+      atualizar((atual) => alternarCartaoDoInicio(atual, cartao)),
   }
 }

@@ -20,6 +20,7 @@ export function BlocoEmAndamento({ resumo }: BlocoEmAndamentoProps) {
 
   return (
     <ResumoLateral
+      idCartao="andamento"
       rotuloAria="Em andamento"
       glow="accent"
       titulo={

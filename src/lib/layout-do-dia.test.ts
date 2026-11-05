@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  alternarCartaoDoInicio,
   alternarSecao,
   definirGruposAbertos,
+  isCartaoDoInicioRecolhido,
   isGrupoAberto,
   isSecaoRecolhida,
   LAYOUT_VAZIO,
@@ -54,5 +56,19 @@ describe('layout do dia (regras puras)', () => {
     expect(podarGrupos(layout, ['a', 'c', 'x']).gruposAbertos).toEqual(['a', 'c'])
     expect(podarGrupos(layout, ['a', 'b', 'c'])).toBe(layout)
     expect(podarGrupos(layout, []).gruposAbertos).toEqual([])
+  })
+
+  it('cartões da lateral do Início: padrão todos expandidos; alternar recolhe e abre', () => {
+    const layout = lerLayoutDoDia(null)
+    expect(isCartaoDoInicioRecolhido(layout, 'andamento')).toBe(false)
+    expect(isCartaoDoInicioRecolhido(layout, 'hoje')).toBe(false)
+    expect(isCartaoDoInicioRecolhido(layout, 'atrasadas')).toBe(false)
+
+    const recolhido = alternarCartaoDoInicio(layout, 'hoje')
+    expect(isCartaoDoInicioRecolhido(recolhido, 'hoje')).toBe(true)
+    expect(isCartaoDoInicioRecolhido(recolhido, 'andamento')).toBe(false)
+
+    const reaberto = alternarCartaoDoInicio(recolhido, 'hoje')
+    expect(isCartaoDoInicioRecolhido(reaberto, 'hoje')).toBe(false)
   })
 })
