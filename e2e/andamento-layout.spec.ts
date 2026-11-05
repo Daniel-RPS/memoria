@@ -183,6 +183,8 @@ test.describe('em andamento', () => {
     // Semana: o mesmo indicador, menor (recolhido e aberto).
     await page.goto(`/semana/${HOJE}`)
     const coluna = page.getByRole('region', { name: COLUNA_HOJE })
+    // Hoje o card abre aberto (só os cards de hoje); recolhe para ver só o ponto.
+    await coluna.getByRole('button', { name: `Recolher ${GRUPO}` }).click()
     await expect(coluna.getByText('7/14').locator('[data-ponto-andamento]')).toBeVisible()
     await capturar(page, 'semana-grupo-recolhido')
     await coluna.getByRole('button', { name: `Expandir ${GRUPO}` }).click()
@@ -312,7 +314,8 @@ test.describe('em andamento', () => {
     await page.goto(`/semana/${HOJE}`)
     const hoje = page.getByRole('region', { name: COLUNA_HOJE })
     const amanha = page.getByRole('region', { name: COLUNA_AMANHA })
-    await hoje.getByRole('button', { name: `Expandir ${GRUPO}` }).click()
+    // Hoje o card já abre aberto.
+    await expect(hoje.getByRole('button', { name: `Recolher ${GRUPO}` })).toBeVisible()
 
     // Marca um item (menu do item na Semana); a tarefa solta é marcada pelo Dia.
     const linhaItem = hoje.getByRole('listitem').filter({ hasText: ITEM })
@@ -464,7 +467,8 @@ test.describe('Semana compacta', () => {
     await semear(page)
     await page.goto(`/semana/${HOJE}`)
     const coluna = page.getByRole('region', { name: COLUNA_HOJE })
-    await coluna.getByRole('button', { name: `Expandir ${GRUPO}` }).click()
+    // Hoje o card já abre aberto.
+    await expect(coluna.getByRole('button', { name: `Recolher ${GRUPO}` })).toBeVisible()
 
     const itens = coluna.getByRole('list', { name: `Itens de ${GRUPO}` }).getByRole('listitem')
     await expect(itens).toHaveCount(14)
