@@ -4,6 +4,7 @@ import {
   CalendarArrowUp,
   CalendarDays,
   FolderOutput,
+  ListPlus,
   MoreHorizontal,
   Pencil,
   Play,
@@ -45,6 +46,8 @@ interface MenuItemGrupoProps {
   data: DataLocal
   hoje: DataLocal
   onRenomear: () => void
+  /** Abre as subetapas do item com a linha nova focada (ausente = o menu não oferece). */
+  onAdicionarSubetapa?: () => void
   /** Botão ⋯ menor, para a Semana (linhas mais baixas). */
   isCompacto?: boolean
 }
@@ -58,6 +61,7 @@ export function MenuItemGrupo({
   data,
   hoje,
   onRenomear,
+  onAdicionarSubetapa,
   isCompacto = false,
 }: MenuItemGrupoProps) {
   const { tirarDoGrupo, arquivarItem, excluirItem } = useAcoesGrupo()
@@ -134,6 +138,16 @@ export function MenuItemGrupo({
               >
                 <Pencil /> Renomear
               </DropdownMenuItem>
+              {onAdicionarSubetapa && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    isAbrindoCampoRef.current = true
+                    onAdicionarSubetapa()
+                  }}
+                >
+                  <ListPlus /> Adicionar subetapa
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onSelect={() => void tirarDoGrupo(item.id)}>
                 <FolderOutput /> Tirar do grupo
               </DropdownMenuItem>

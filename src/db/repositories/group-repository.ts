@@ -1,5 +1,13 @@
 import { db } from '@/db/database'
-import type { DataLocal, GroupCard, GroupItem, GroupSeries, Task, TimeSession } from '@/db/types'
+import type {
+  DataLocal,
+  GroupCard,
+  GroupItem,
+  GroupSeries,
+  Subtask,
+  Task,
+  TimeSession,
+} from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
 import { soltarNotasSemAlvo, trocarVinculoDasNotas } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
@@ -90,6 +98,7 @@ export async function listarGruposAtrasados(hoje: DataLocal) {
 /** Tabelas que excluir item ou card toca (as notas sem alvo viram avulsas). */
 const TABELAS_DE_EXCLUSAO = [
   db.tasks,
+  db.subtasks,
   db.groupSeries,
   db.groupCards,
   db.groupItems,
@@ -320,8 +329,19 @@ export async function definirConclusaoItem(id: string, concluido: boolean) {
     await db.groupItems.update(
       id,
       concluido
-        ? { status: 'concluido', concluidoEm: momento, atualizadoEm: momento, ...SEM_ANDAMENTO }
-        : { status: 'pendente', concluidoEm: undefined, atualizadoEm: momento },
+        ? {
+            status: 'concluido',
+            concluidoEm: momento,
+            concluidaPelasSubetapas: undefined,
+            atualizadoEm: momento,
+            ...SEM_ANDAMENTO,
+          }
+        : {
+            status: 'pendente',
+            concluidoEm: undefined,
+            concluidaPelasSubetapas: undefined,
+            atualizadoEm: momento,
+          },
     )
     if (concluido) {
       await fecharSessoesAbertasDe({ itens: [id], cadeias: [item.cadeiaId] }, momento)
@@ -359,6 +379,7 @@ export async function excluirItem(id: string) {
     const item = await db.groupItems.get(id)
     if (!item) return
     await db.groupItems.delete(id)
+    await db.subtasks.where('taskId').equals(id).delete()
     await excluirOuFecharSessoesDosItens([item], agora())
     await soltarNotasSemAlvo([{ tipo: 'item', id: item.cadeiaId }])
   })
@@ -409,6 +430,10 @@ export async function excluirGrupo(cardId: string) {
     if (!card) return
     const itens = await db.groupItems.where('cardId').equals(cardId).toArray()
     await db.groupItems.where('cardId').equals(cardId).delete()
+    await db.subtasks
+      .where('taskId')
+      .anyOf(itens.map((item) => item.id))
+      .delete()
     await db.groupCards.delete(cardId)
     const restantes = await db.groupCards.where('seriesId').equals(card.seriesId).count()
     if (restantes === 0) await db.groupSeries.delete(card.seriesId)
@@ -437,7 +462,14 @@ function acaoVazia(): ResultadoAcao {
   return { tarefasMovidas: 0, itensLevados: 0, anteriores: [], desfazer: [] }
 }
 
-const TABELAS_DA_ACAO = [db.tasks, db.groupSeries, db.groupCards, db.groupItems, db.sessions]
+const TABELAS_DA_ACAO = [
+  db.tasks,
+  db.subtasks,
+  db.groupSeries,
+  db.groupCards,
+  db.groupItems,
+  db.sessions,
+]
 
 /**
  * Lê os registros que levar `ids` para `destino` pode tocar (ver `EstadoDosGrupos`): todos os
@@ -489,20 +521,27 @@ async function carregarEstado(ids: string[], destino: DataLocal): Promise<Estado
     if (isFechado && seriesNovas.length === 0) break
   }
   const series = await db.groupSeries.bulkGet([...seriesLidas])
+  const subtarefas: Subtask[] = await db.subtasks
+    .where('taskId')
+    .anyOf([...itens.keys()])
+    .toArray()
   return {
     series: series.filter((serie): serie is GroupSeries => serie !== undefined),
     cards: [...cards.values()],
     itens: [...itens.values()],
+    subtarefas,
   }
 }
 
 async function gravarMudancas({ gravar, apagar }: MudancasDosGrupos) {
+  await db.subtasks.bulkDelete(apagar.subtarefas)
   await db.groupItems.bulkDelete(apagar.itens)
   await db.groupCards.bulkDelete(apagar.cards)
   await db.groupSeries.bulkDelete(apagar.series)
   await db.groupSeries.bulkPut(gravar.series)
   await db.groupCards.bulkPut(gravar.cards)
   await db.groupItems.bulkPut(gravar.itens)
+  await db.subtasks.bulkPut(gravar.subtarefas)
 }
 
 /**
@@ -666,8 +705,8 @@ export async function desfazerAcao(resultado: ResultadoAcao) {
 
 /**
  * Converte a tarefa solta em item do card (mesmo id, começa uma cadeia nova), na posição de
- * `idsEmOrdem` (itens do card já com ela) ou no fim. As notas passam para o item; subtarefas e
- * anexos da tarefa não passam.
+ * `idsEmOrdem` (itens do card já com ela) ou no fim. As notas e as subetapas passam para o item
+ * (o id é o mesmo); os anexos da tarefa não passam.
  */
 export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrdem?: string[]) {
   await db.transaction(
@@ -696,6 +735,7 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
         status: tarefa.status === 'concluida' ? 'concluido' : 'pendente',
         ...(tarefa.concluidaEm && { concluidoEm: tarefa.concluidaEm }),
         ...marcaDe(tarefa),
+        ...(tarefa.concluidaPelasSubetapas && { concluidaPelasSubetapas: true }),
         dataOriginal: tarefa.dataOriginal,
         criadoEm: tarefa.criadoEm,
         atualizadoEm: momento,
@@ -706,7 +746,6 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
         { tipo: 'item', id: tarefa.id },
       )
       await converterSessoesParaItem(tarefa.id, card, serie, momento)
-      await db.subtasks.where('taskId').equals(tarefa.id).delete()
       await db.tasks.delete(tarefa.id)
       await db.groupItems.add(item)
       if (idsEmOrdem) await gravarNovaPosicao(db.groupItems, idsEmOrdem, item.id)
@@ -738,6 +777,7 @@ export async function tirarDoGrupo(itemId: string, idsEmOrdemNoDia?: string[]) {
         status: item.status === 'concluido' ? 'concluida' : 'pendente',
         ...(item.concluidoEm && { concluidaEm: item.concluidoEm }),
         ...marcaDe(item),
+        ...(item.concluidaPelasSubetapas && { concluidaPelasSubetapas: true }),
         criadoEm: item.criadoEm,
         atualizadoEm: momento,
       }

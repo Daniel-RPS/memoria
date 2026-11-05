@@ -59,6 +59,11 @@ export interface Task extends EntidadeBase {
   emAndamento?: boolean
   /** Momento em que foi marcada em andamento (junto com `emAndamento`). */
   emAndamentoDesde?: string
+  /**
+   * Concluída sozinha ao marcar a última subetapa pendente: desmarcar uma subetapa reabre a
+   * tarefa. Marcar ou desmarcar a tarefa direto apaga a marca. Ausente = não.
+   */
+  concluidaPelasSubetapas?: boolean
 }
 
 /**
@@ -118,8 +123,16 @@ export interface GroupItem extends EntidadeBase {
   emAndamento?: boolean
   /** Momento em que foi marcado em andamento (junto com `emAndamento`). */
   emAndamentoDesde?: string
+  /** Concluído sozinho pela última subetapa (ver `Task.concluidaPelasSubetapas`). */
+  concluidaPelasSubetapas?: boolean
 }
 
+/**
+ * Subetapa de uma tarefa solta OU de um item de grupo. `taskId` guarda o id do dono (nome mantido
+ * para não exigir migração): os ids são UUIDs, não colidem, e `colocarNoGrupo`/`tirarDoGrupo`
+ * preservam o id, então as subetapas acompanham a conversão. Levar o item a outro dia COPIA as
+ * subetapas para o item novo (`planejarLevarItens`).
+ */
 export interface Subtask extends EntidadeBase {
   taskId: string
   titulo: string

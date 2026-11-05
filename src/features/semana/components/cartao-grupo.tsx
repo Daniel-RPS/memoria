@@ -21,7 +21,11 @@ import {
 import { useGrupoNaSemana } from '@/features/semana/hooks/use-grupos-semana'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { contarEmAndamento } from '@/lib/andamento'
+import { useSubetapasDe } from '@/hooks/contexto-subetapas'
 import { vinculoDoItem } from '@/lib/notas'
+import { progressoSubtarefas } from '@/lib/tarefas'
+import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
+import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
 import { classificarTarefa } from '@/lib/categorias'
 import { ErroDeValidacao } from '@/lib/erros'
 import {
@@ -328,6 +332,12 @@ function LinhaItem({
 }: ItemProps & { alca?: ReactNode; isSobreposto?: boolean }) {
   const { definirConclusaoItem, renomearItem } = useAcoesGrupo()
   const [isEditando, setIsEditando] = useState(false)
+  // Na Semana as subetapas começam recolhidas: só o "1/3".
+  const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
+  const [isFocandoNovaSubetapa, setIsFocandoNovaSubetapa] = useState(false)
+  const subetapas = useSubetapasDe(item.id)
+  const progresso = progressoSubtarefas(subetapas)
+  const idPainel = useId()
   const isConcluido = item.status === 'concluido'
   const isTransferido = item.status === 'transferido'
   const isAtrasado = isPendenteDeAntes(item, data, hoje)
@@ -339,70 +349,104 @@ function LinhaItem({
     if (titulo !== item.titulo) void renomearItem(item.id, titulo)
   }
 
+  function handleAdicionarSubetapa() {
+    setIsSubetapasAbertas(true)
+    setIsFocandoNovaSubetapa(true)
+  }
+
   return (
-    <div
-      data-em-andamento={isEmAndamento || undefined}
-      className="relative flex items-start gap-1 py-1 pr-0.5 pl-1"
-    >
-      {isEmAndamento && <FileteDeAndamento />}
-      <span className="mt-0.5 flex w-4 shrink-0 justify-center">{alca}</span>
-      {isTransferido ? (
-        <CornerDownRight aria-hidden className="mt-0.5 size-3.5 shrink-0 text-grafite" />
-      ) : (
-        <Checkbox
-          checked={isConcluido}
-          onCheckedChange={(marcada) => void definirConclusaoItem(item.id, marcada === true)}
-          aria-label={isConcluido ? `Desmarcar ${item.titulo}` : `Concluir ${item.titulo}`}
-          className="mt-0.5 size-3.5 rounded-[3px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
-        />
-      )}
-      <span
-        className={cn(
-          'min-w-0 flex-1 pl-1 wrap-break-word',
-          isConcluido && 'text-grafite',
-          isTransferido && 'text-grafite',
-        )}
+    <>
+      <div
+        data-em-andamento={isEmAndamento || undefined}
+        className="relative flex items-start gap-1 py-1 pr-0.5 pl-1"
       >
-        {isEditavel ? (
-          <TituloEditavel
-            titulo={item.titulo}
-            isEditando={isEditando}
-            onIniciarEdicao={() => setIsEditando(true)}
-            onSalvar={handleSalvarTitulo}
-            onCancelar={() => setIsEditando(false)}
-            className={cn(
-              'text-[0.8125rem]',
-              isConcluido && 'text-grafite line-through decoration-tinta/50',
-            )}
-          />
+        {isEmAndamento && <FileteDeAndamento />}
+        <span className="mt-0.5 flex w-4 shrink-0 justify-center">{alca}</span>
+        {isTransferido ? (
+          <CornerDownRight aria-hidden className="mt-0.5 size-3.5 shrink-0 text-grafite" />
         ) : (
-          item.titulo
-        )}
-        {isEmAndamento && !isEditando && <IndicadorAndamento isCompacto className="ml-1.5" />}
-        {isAtrasado && !isEditando && (
-          <span className="ml-1.5 rounded-[3px] bg-marca-texto px-1 text-xs font-medium whitespace-nowrap text-violeta-profundo no-underline">
-            desde {diaCurto(item.dataOriginal)}
-          </span>
-        )}
-        {isTransferido && <span className="ml-1.5 text-xs whitespace-nowrap">transferido</span>}
-        {/* No fluxo do texto: só desce de linha se não couber (não tira largura do título). */}
-        {!isEditando && !isSobreposto && (
-          <IndicadorNotas
-            vinculo={vinculoDoItem(item)}
-            titulo={item.titulo}
-            className="my-0 ml-1 inline-flex h-4 px-0 align-[-0.125rem]"
+          <Checkbox
+            checked={isConcluido}
+            onCheckedChange={(marcada) => void definirConclusaoItem(item.id, marcada === true)}
+            aria-label={isConcluido ? `Desmarcar ${item.titulo}` : `Concluir ${item.titulo}`}
+            className="mt-0.5 size-3.5 rounded-[3px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
           />
         )}
-      </span>
-      {!isSobreposto && (
-        <MenuItemGrupo
-          item={item}
-          data={data}
-          hoje={hoje}
-          onRenomear={() => setIsEditando(true)}
-          isCompacto
-        />
+        <span
+          className={cn(
+            'min-w-0 flex-1 pl-1 wrap-break-word',
+            isConcluido && 'text-grafite',
+            isTransferido && 'text-grafite',
+          )}
+        >
+          {isEditavel ? (
+            <TituloEditavel
+              titulo={item.titulo}
+              isEditando={isEditando}
+              onIniciarEdicao={() => setIsEditando(true)}
+              onSalvar={handleSalvarTitulo}
+              onCancelar={() => setIsEditando(false)}
+              className={cn(
+                'text-[0.8125rem]',
+                isConcluido && 'text-grafite line-through decoration-tinta/50',
+              )}
+            />
+          ) : (
+            item.titulo
+          )}
+          {isEmAndamento && !isEditando && <IndicadorAndamento isCompacto className="ml-1.5" />}
+          {isAtrasado && !isEditando && (
+            <span className="ml-1.5 rounded-[3px] bg-marca-texto px-1 text-xs font-medium whitespace-nowrap text-violeta-profundo no-underline">
+              desde {diaCurto(item.dataOriginal)}
+            </span>
+          )}
+          {isTransferido && <span className="ml-1.5 text-xs whitespace-nowrap">transferido</span>}
+          {/* No fluxo do texto: só desce de linha se não couber (não tira largura do título). */}
+          {!isEditando && !isSobreposto && (
+            <IndicadorNotas
+              vinculo={vinculoDoItem(item)}
+              titulo={item.titulo}
+              className="my-0 ml-1 inline-flex h-4 px-0 align-[-0.125rem]"
+            />
+          )}
+          {progresso && !isEditando && !isSobreposto && (
+            <span className="ml-1.5 inline-block align-baseline">
+              <BotaoProgresso
+                isCompacto
+                progresso={progresso}
+                tituloTarefa={item.titulo}
+                isAberto={isSubetapasAbertas}
+                idPainel={idPainel}
+                onAlternar={() => {
+                  setIsSubetapasAbertas((atual) => !atual)
+                  setIsFocandoNovaSubetapa(false)
+                }}
+              />
+            </span>
+          )}
+        </span>
+        {!isSobreposto && (
+          <MenuItemGrupo
+            item={item}
+            data={data}
+            hoje={hoje}
+            onRenomear={() => setIsEditando(true)}
+            onAdicionarSubetapa={handleAdicionarSubetapa}
+            isCompacto
+          />
+        )}
+      </div>
+      {isSubetapasAbertas && !isSobreposto && (
+        <div id={idPainel} className="pb-1 pl-[2.625rem]">
+          <ListaSubtarefas
+            isCompacto
+            dono={item}
+            subtarefas={subetapas}
+            isFocandoNovaSubtarefa={isFocandoNovaSubetapa}
+            onFechar={() => setIsSubetapasAbertas(false)}
+          />
+        </div>
       )}
-    </div>
+    </>
   )
 }

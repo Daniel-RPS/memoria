@@ -81,7 +81,7 @@ describe('Visão do dia', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/dia/${hoje()}`))
   })
 
-  it('adiciona subtarefas pelo menu e mostra o progresso', async () => {
+  it('adiciona subetapas pelo menu e mostra o progresso', async () => {
     const usuario = userEvent.setup()
     await criarTarefa({ titulo: 'Mudar de casa', data: hoje() })
     renderizarDia(hoje())
@@ -89,20 +89,20 @@ describe('Visão do dia', () => {
     await usuario.click(
       await screen.findByRole('button', { name: 'Mais ações para Mudar de casa' }),
     )
-    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar subtarefa' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar subetapa' }))
 
-    const campo = await screen.findByRole('textbox', { name: 'Nova subtarefa' })
+    const campo = await screen.findByRole('textbox', { name: 'Nova subetapa' })
     await waitFor(() => expect(campo).toHaveFocus())
     await usuario.type(campo, 'Caixas{Enter}Fita{Enter}')
 
     const progresso = await screen.findByRole('button', {
-      name: 'Subtarefas de Mudar de casa: 0 de 2 concluídas',
+      name: 'Subetapas de Mudar de casa: 0 de 2 concluídas',
     })
-    expect(progresso).toHaveTextContent('0 de 2')
+    expect(progresso).toHaveTextContent('0/2')
     expect(progresso).toHaveAttribute('aria-expanded', 'true')
   })
 
-  it('marcar subtarefas atualiza o progresso e não conclui a tarefa', async () => {
+  it('marcar subetapas atualiza o progresso; a última conclui a tarefa com aviso e Desfazer', async () => {
     const usuario = userEvent.setup()
     const tarefa = await criarTarefa({ titulo: 'Viajar', data: hoje() })
     await criarSubtarefa({ taskId: tarefa.id, titulo: 'Passagem' })
@@ -110,16 +110,21 @@ describe('Visão do dia', () => {
     renderizarDia(hoje())
 
     await usuario.click(
-      await screen.findByRole('button', { name: 'Subtarefas de Viajar: 0 de 2 concluídas' }),
+      await screen.findByRole('button', { name: 'Subetapas de Viajar: 0 de 2 concluídas' }),
     )
-    const subtarefas = screen.getByRole('list', { name: 'Subtarefas de Viajar' })
-    await usuario.click(within(subtarefas).getByRole('checkbox', { name: 'Concluir Passagem' }))
-    await usuario.click(within(subtarefas).getByRole('checkbox', { name: 'Concluir Hotel' }))
-
+    const subetapas = screen.getByRole('list', { name: 'Subetapas de Viajar' })
+    await usuario.click(within(subetapas).getByRole('checkbox', { name: 'Concluir Passagem' }))
     expect(
-      await screen.findByRole('button', { name: 'Subtarefas de Viajar: 2 de 2 concluídas' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Concluir Viajar' })).not.toBeChecked()
+      await screen.findByRole('button', { name: 'Subetapas de Viajar: 1 de 2 concluídas' }),
+    ).toHaveTextContent('1/2')
+    expect((await db.tasks.get(tarefa.id))?.status).toBe('pendente')
+
+    await usuario.click(within(subetapas).getByRole('checkbox', { name: 'Concluir Hotel' }))
+    await waitFor(async () => expect((await db.tasks.get(tarefa.id))?.status).toBe('concluida'))
+    expect(await screen.findByText('Tarefa concluída')).toBeInTheDocument()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Desfazer' }))
+    await waitFor(async () => expect((await db.tasks.get(tarefa.id))?.status).toBe('pendente'))
   })
 
   it('mostra tarefas de todas as categorias, sem filtro na barra', async () => {
@@ -161,13 +166,13 @@ describe('Visão do dia', () => {
     renderizarDia(hoje())
 
     await usuario.click(await screen.findByRole('button', { name: 'Mais ações para Ler livro' }))
-    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar subtarefa' }))
-    const campo = await screen.findByRole('textbox', { name: 'Nova subtarefa' })
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Adicionar subetapa' }))
+    const campo = await screen.findByRole('textbox', { name: 'Nova subetapa' })
     await waitFor(() => expect(campo).toHaveFocus())
 
     await usuario.click(screen.getByRole('button', { name: 'Nova tarefa' }))
     await waitFor(() =>
-      expect(screen.queryByRole('textbox', { name: 'Nova subtarefa' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('textbox', { name: 'Nova subetapa' })).not.toBeInTheDocument(),
     )
   })
 })

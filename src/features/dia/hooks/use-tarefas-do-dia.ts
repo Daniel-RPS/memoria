@@ -25,8 +25,10 @@ export function useTarefasDoDia(data: DataLocal) {
       listarGruposEntre(data, data),
     ])
     const ids = tarefas.map((tarefa) => tarefa.id)
+    // Subetapas de tarefas soltas e de itens de grupo (mesma tabela, `taskId` = id do dono).
+    const idsDosItens = grupos.itens.map((item) => item.id)
     const [subtarefas, anexosPorTarefa] = await Promise.all([
-      listarSubtarefas(ids),
+      listarSubtarefas([...ids, ...idsDosItens]),
       contarAnexos('task', ids),
     ])
     return { tarefas, grupos, subtarefas, anexosPorTarefa }

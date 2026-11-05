@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
@@ -7,7 +8,9 @@ import { definirConclusao } from '@/db/repositories/task-repository'
 import type { DataLocal, Subtask, Task } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
-import { diasPendente, progressoSubtarefas, textoProgresso } from '@/lib/tarefas'
+import { diasPendente, progressoSubtarefas } from '@/lib/tarefas'
+import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
+import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 interface CartaoTarefaProps {
@@ -24,6 +27,9 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
   const corNaTela = useCorNaTela()
   const dias = diasPendente(tarefa, hoje)
   const progresso = progressoSubtarefas(subtarefas)
+  // Na Semana (coluna estreita) as subetapas começam recolhidas: só o "1/3".
+  const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
+  const idPainel = useId()
 
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
 
@@ -66,7 +72,16 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
                 há {dias} {dias === 1 ? 'dia' : 'dias'}
               </span>
             )}
-            {progresso && <span className="tabular-nums">{textoProgresso(progresso)}</span>}
+            {progresso && !isSobreposto && (
+              <BotaoProgresso
+                isCompacto
+                progresso={progresso}
+                tituloTarefa={tarefa.titulo}
+                isAberto={isSubetapasAbertas}
+                idPainel={idPainel}
+                onAlternar={() => setIsSubetapasAbertas((atual) => !atual)}
+              />
+            )}
             {classificacao && (
               <span className="flex items-center gap-1">
                 <span
@@ -78,6 +93,17 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
               </span>
             )}
           </p>
+        )}
+        {progresso && isSubetapasAbertas && !isSobreposto && (
+          <div id={idPainel} data-sem-arrasto="" className="cursor-auto pt-0.5">
+            <ListaSubtarefas
+              isCompacto
+              dono={tarefa}
+              subtarefas={subtarefas}
+              isFocandoNovaSubtarefa={false}
+              onFechar={() => setIsSubetapasAbertas(false)}
+            />
+          </div>
         )}
       </div>
     </div>

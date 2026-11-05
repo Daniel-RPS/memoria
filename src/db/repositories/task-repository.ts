@@ -69,8 +69,19 @@ export async function definirConclusao(id: string, concluida: boolean) {
     await db.tasks.update(
       id,
       concluida
-        ? { status: 'concluida', concluidaEm: momento, atualizadoEm: momento, ...SEM_ANDAMENTO }
-        : { status: 'pendente', concluidaEm: undefined, atualizadoEm: momento },
+        ? {
+            status: 'concluida',
+            concluidaEm: momento,
+            concluidaPelasSubetapas: undefined,
+            atualizadoEm: momento,
+            ...SEM_ANDAMENTO,
+          }
+        : {
+            status: 'pendente',
+            concluidaEm: undefined,
+            concluidaPelasSubetapas: undefined,
+            atualizadoEm: momento,
+          },
     )
     if (concluida) {
       await fecharSessoesAbertasDe({ tarefas: [id] }, momento)

@@ -54,7 +54,7 @@ interface MenuTarefaProps {
 }
 
 /**
- * Ações secundárias da tarefa: adiar, mover, renomear, subtarefa, categoria, grupo, arquivar e
+ * Ações secundárias da tarefa: adiar, mover, renomear, subetapa, categoria, grupo, arquivar e
  * excluir. Item de grupo usa a categoria do grupo e pode sair dele.
  */
 export function MenuTarefa({
@@ -133,7 +133,7 @@ export function MenuTarefa({
             <Pencil /> Renomear
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => abrirCampo(onAdicionarSubtarefa)}>
-            <ListPlus /> Adicionar subtarefa
+            <ListPlus /> Adicionar subetapa
           </DropdownMenuItem>
           <ItensDeNotaDoMenu vinculo={{ tipo: 'tarefa', id: tarefa.id }} />
           <DropdownMenuItem onSelect={() => abrirCampo(onAbrirAnexos)}>
@@ -190,7 +190,7 @@ export function MenuTarefa({
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir “{tarefa.titulo}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              A tarefa e as subtarefas dela serão apagadas de vez. Para só tirar do calendário, use
+              A tarefa e as subetapas dela serão apagadas de vez. Para só tirar do calendário, use
               Arquivar.
               {avisoNotas && (
                 <span className="mt-2 block font-medium text-tinta">{avisoNotas}</span>

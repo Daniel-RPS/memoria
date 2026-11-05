@@ -26,7 +26,10 @@ export function useTarefasDaSemana(inicio: DataLocal) {
       listarTarefasEntre(primeiro, ultimo),
       listarGruposEntre(primeiro, ultimo),
     ])
-    const subtarefas = await listarSubtarefas(tarefas.map((tarefa) => tarefa.id))
+    const subtarefas = await listarSubtarefas([
+      ...tarefas.map((tarefa) => tarefa.id),
+      ...grupos.itens.map((item) => item.id),
+    ])
     return { tarefas, grupos, subtarefas }
   }, [dias])
 

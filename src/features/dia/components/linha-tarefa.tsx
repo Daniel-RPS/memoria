@@ -179,7 +179,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
       {isSubtarefasAbertas && (
         <div id={idPainel} className="pb-2 pl-[3.25rem]">
           <ListaSubtarefas
-            tarefa={tarefa}
+            dono={tarefa}
             subtarefas={subtarefas}
             isFocandoNovaSubtarefa={isFocandoNovaSubtarefa}
             onFechar={() => setIsSubtarefasAbertas(false)}

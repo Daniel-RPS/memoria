@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus } from 'lucide-react'
 import { cn } from 'cn'
+import { titulosDoTextoColado } from '@/domain/subetapas'
 import { ErroDeValidacao } from '@/lib/erros'
 import { esquemaNovoItem, TAMANHO_MAXIMO_TITULO, type NovoItemInput } from '@/lib/esquemas'
 
@@ -17,6 +18,12 @@ interface CampoNovoItemProps {
   autoFocus?: boolean
   /** Chamado quando o campo perde o foco vazio (ex.: fechar um painel que só tem o campo). */
   onSairVazio?: () => void
+  /** Texto colado com várias linhas: uma chamada com um título por linha, em vez de um só campo. */
+  onColarVarias?: (titulos: string[]) => Promise<unknown>
+  /** Backspace com o campo vazio (ex.: voltar para editar o item anterior). */
+  onApagarVazio?: () => void
+  /** Esc com o campo já vazio (ex.: sair da lista). */
+  onSairComEsc?: () => void
 }
 
 /** Linha em branco que cria um item com Enter e continua pronta para o próximo. Esc limpa. */
@@ -27,6 +34,9 @@ export function CampoNovoItem({
   tamanho = 'normal',
   autoFocus,
   onSairVazio,
+  onColarVarias,
+  onApagarVazio,
+  onSairComEsc,
 }: CampoNovoItemProps) {
   const idErro = useId()
   const {
@@ -80,10 +90,22 @@ export function CampoNovoItem({
           maxLength={TAMANHO_MAXIMO_TITULO}
           autoComplete="off"
           autoFocus={autoFocus}
+          onPaste={(evento) => {
+            if (!onColarVarias) return
+            const titulos = titulosDoTextoColado(evento.clipboardData.getData('text'))
+            if (titulos.length < 2) return
+            evento.preventDefault()
+            void onColarVarias(titulos)
+          }}
           onKeyDown={(evento) => {
+            const isVazio = evento.currentTarget.value === ''
             if (evento.key === 'Escape') {
               reset()
               clearErrors()
+              if (isVazio) onSairComEsc?.()
+            } else if (evento.key === 'Backspace' && isVazio && onApagarVazio) {
+              evento.preventDefault()
+              onApagarVazio()
             }
           }}
           className={cn(

@@ -20,7 +20,7 @@ describe('progressoSubtarefas', () => {
       { concluida: false },
     ])
     expect(progresso).toEqual({ concluidas: 2, total: 5 })
-    expect(textoProgresso(progresso!)).toBe('2 de 5')
+    expect(textoProgresso(progresso!)).toBe('2/5')
   })
 
   it('não mostra progresso para tarefa sem subtarefas', () => {

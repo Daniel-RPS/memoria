@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
 import type { DataLocal, Subtask, Task } from '@/db/types'
+import { isCampoDeTexto } from '@/lib/teclado'
 import { CartaoTarefa } from '@/features/semana/components/cartao-tarefa'
 
 interface ItemTarefaSemanaProps {
@@ -22,6 +23,16 @@ export function ItemTarefaSemana({ tarefa, subtarefas, hoje }: ItemTarefaSemanaP
       style={{ transform: CSS.Translate.toString(transform), transition }}
       {...attributes}
       {...listeners}
+      // As subetapas abertas ficam dentro do cartão: o ponteiro nelas e o espaço num campo de
+      // texto não podem arrastar a tarefa.
+      onPointerDown={(evento) => {
+        const isSubetapa =
+          evento.target instanceof Element && evento.target.closest('[data-sem-arrasto]')
+        if (!isSubetapa) listeners?.onPointerDown?.(evento)
+      }}
+      onKeyDown={(evento) => {
+        if (!isCampoDeTexto(evento.target)) listeners?.onKeyDown?.(evento)
+      }}
       // Mantém o papel de item de lista: um "botão" não pode conter a caixa e o link.
       role={undefined}
       aria-roledescription="tarefa arrastável"

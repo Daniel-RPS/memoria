@@ -53,7 +53,7 @@ export function progressoSubtarefas(subtarefas: Pick<Subtask, 'concluida'>[]): P
 }
 
 export function textoProgresso({ concluidas, total }: Progresso) {
-  return `${concluidas} de ${total}`
+  return `${concluidas}/${total}`
 }
 
 /** Agrupa subtarefas por tarefa, cada grupo em ordem. */

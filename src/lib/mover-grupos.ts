@@ -1,4 +1,5 @@
-import type { DataLocal, GroupCard, GroupItem, GroupSeries } from '@/db/types'
+import type { DataLocal, GroupCard, GroupItem, GroupSeries, Subtask } from '@/db/types'
+import { copiarSubetapas } from '@/domain/subetapas'
 
 /**
  * Regras de levar itens de grupo para outro dia, sem banco: recebem o estado dos registros
@@ -8,18 +9,20 @@ import type { DataLocal, GroupCard, GroupItem, GroupSeries } from '@/db/types'
 
 /**
  * Registros que a movimentação pode ler ou mudar: TODOS os cards das séries envolvidas (para
- * saber se uma série esvaziou), os itens deles e os das cadeias `origemItemId` dos levados.
+ * saber se uma série esvaziou), os itens deles e os das cadeias `origemItemId` dos levados, mais
+ * as subetapas desses itens (sem elas, a cópia sai sem subetapas).
  */
 export interface EstadoDosGrupos {
   series: GroupSeries[]
   cards: GroupCard[]
   itens: GroupItem[]
+  subtarefas?: Subtask[]
 }
 
 /** O que gravar (`put`) e o que apagar, por tabela. */
 export interface MudancasDosGrupos {
-  gravar: { cards: GroupCard[]; itens: GroupItem[]; series: GroupSeries[] }
-  apagar: { cards: string[]; itens: string[]; series: string[] }
+  gravar: { cards: GroupCard[]; itens: GroupItem[]; series: GroupSeries[]; subtarefas: Subtask[] }
+  apagar: { cards: string[]; itens: string[]; series: string[]; subtarefas: string[] }
 }
 
 export interface PlanoDeLevar {
@@ -45,8 +48,8 @@ function isItemReal(item: GroupItem) {
 /** Mudanças vazias. */
 export function semMudancas(): MudancasDosGrupos {
   return {
-    gravar: { cards: [], itens: [], series: [] },
-    apagar: { cards: [], itens: [], series: [] },
+    gravar: { cards: [], itens: [], series: [], subtarefas: [] },
+    apagar: { cards: [], itens: [], series: [], subtarefas: [] },
   }
 }
 
@@ -72,6 +75,13 @@ export function planejarLevarItens(
   const cardsMudados = new Set<string>()
   const itensMudados = new Set<string>()
   const itensApagados = new Set<string>()
+  const subtarefasDoItem = new Map<string, Subtask[]>()
+  for (const subtarefa of estado.subtarefas ?? []) {
+    const lista = subtarefasDoItem.get(subtarefa.taskId) ?? []
+    lista.push(subtarefa)
+    subtarefasDoItem.set(subtarefa.taskId, lista)
+  }
+  const subtarefasCriadas: Subtask[] = []
   /** Cards que perderam itens apagados: candidatos a card fantasma. */
   const cardsQuePerderam = new Set<string>()
   let maiorOrdemDoDia = contexto.maiorOrdemDoDestino
@@ -101,6 +111,7 @@ export function planejarLevarItens(
     itens.delete(item.id)
     itensApagados.add(item.id)
     itensMudados.delete(item.id)
+    // As subetapas somem com o item (a cópia desfeita ou o card fantasma).
     cardsQuePerderam.add(item.cardId)
   }
 
@@ -205,6 +216,10 @@ export function planejarLevarItens(
     }
     itens.set(copia.id, copia)
     itensMudados.add(copia.id)
+    // A cópia leva TODAS as subetapas, as concluídas ainda marcadas; o original fica como está.
+    subtarefasCriadas.push(
+      ...copiarSubetapas(subtarefasDoItem.get(item.id) ?? [], copia.id, novoId, momento),
+    )
     // O original vira registro do dia: não é mais o que se está fazendo agora. A cópia nasce
     // sem a marca.
     mudarItem(item, { status: 'transferido', transferidoParaCardId: alvo.id })
@@ -247,11 +262,15 @@ export function planejarLevarItens(
         cards: [...cardsMudados].map((id) => cards.get(id)!),
         itens: [...itensMudados].filter((id) => itens.has(id)).map((id) => itens.get(id)!),
         series: [],
+        subtarefas: subtarefasCriadas,
       },
       apagar: {
         cards: [...cardsApagados].filter((id) => estado.cards.some((card) => card.id === id)),
         itens: [...itensApagados].filter((id) => estado.itens.some((item) => item.id === id)),
         series: seriesApagadas,
+        subtarefas: [...itensApagados]
+          .filter((id) => estado.itens.some((item) => item.id === id))
+          .flatMap((id) => (subtarefasDoItem.get(id) ?? []).map((subtarefa) => subtarefa.id)),
       },
     },
   }
@@ -305,6 +324,13 @@ export function inverterMudancas(
     inverso.gravar.series,
     inverso.apagar.series,
   )
+  reverter(
+    estado.subtarefas ?? [],
+    mudancas.gravar.subtarefas,
+    mudancas.apagar.subtarefas,
+    inverso.gravar.subtarefas,
+    inverso.apagar.subtarefas,
+  )
   return inverso
 }
 
@@ -323,5 +349,10 @@ export function aplicarMudancas(
     series: aplicar(estado.series, mudancas.gravar.series, mudancas.apagar.series),
     cards: aplicar(estado.cards, mudancas.gravar.cards, mudancas.apagar.cards),
     itens: aplicar(estado.itens, mudancas.gravar.itens, mudancas.apagar.itens),
+    subtarefas: aplicar(
+      estado.subtarefas ?? [],
+      mudancas.gravar.subtarefas,
+      mudancas.apagar.subtarefas,
+    ),
   }
 }

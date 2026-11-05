@@ -13,7 +13,7 @@ import {
 import { criarNota, excluirNota } from '@/db/repositories/note-repository'
 import { agora } from '@/db/repositories/ordenacao'
 import { criarProcedimento, excluirProcedimento } from '@/db/repositories/procedure-repository'
-import { criarSubtarefa, definirConclusaoSubtarefa } from '@/db/repositories/subtask-repository'
+import { criarSubtarefa } from '@/db/repositories/subtask-repository'
 import { criarTarefa, definirConclusao, excluirTarefa } from '@/db/repositories/task-repository'
 import { categoriasDoTipo, isMesmoNome } from '@/lib/categorias'
 import { mesmoTituloDeSerie } from '@/lib/grupos'
@@ -153,8 +153,11 @@ export async function importarRascunho(
       }
       await definirConclusao(id, entrada.isConcluida)
       for (const subtarefa of entrada.subtarefas) {
-        const criada = await criarSubtarefa({ taskId: id, titulo: subtarefa.titulo })
-        if (subtarefa.isConcluida) await definirConclusaoSubtarefa(criada.id, true)
+        await criarSubtarefa({
+          taskId: id,
+          titulo: subtarefa.titulo,
+          concluida: subtarefa.isConcluida,
+        })
       }
     }
 

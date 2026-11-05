@@ -8,6 +8,8 @@ interface TituloEditavelProps {
   onIniciarEdicao: () => void
   onSalvar: (titulo: string) => void
   onCancelar: () => void
+  /** Backspace com o campo já vazio (ex.: apagar a linha e voltar para a anterior). */
+  onApagarVazio?: () => void
   className?: string
 }
 
@@ -18,10 +20,18 @@ export function TituloEditavel({
   onIniciarEdicao,
   onSalvar,
   onCancelar,
+  onApagarVazio,
   className,
 }: TituloEditavelProps) {
   if (isEditando) {
-    return <CampoTitulo titulo={titulo} onSalvar={onSalvar} onCancelar={onCancelar} />
+    return (
+      <CampoTitulo
+        titulo={titulo}
+        onSalvar={onSalvar}
+        onCancelar={onCancelar}
+        onApagarVazio={onApagarVazio}
+      />
+    )
   }
 
   return (
@@ -38,10 +48,13 @@ export function TituloEditavel({
   )
 }
 
-type CampoTituloProps = Pick<TituloEditavelProps, 'titulo' | 'onSalvar' | 'onCancelar'>
+type CampoTituloProps = Pick<
+  TituloEditavelProps,
+  'titulo' | 'onSalvar' | 'onCancelar' | 'onApagarVazio'
+>
 
 /** Montado a cada edição, então o rascunho sempre parte do título atual. */
-function CampoTitulo({ titulo, onSalvar, onCancelar }: CampoTituloProps) {
+function CampoTitulo({ titulo, onSalvar, onCancelar, onApagarVazio }: CampoTituloProps) {
   const [rascunho, setRascunho] = useState(titulo)
 
   function handleSalvar() {
@@ -53,6 +66,10 @@ function CampoTitulo({ titulo, onSalvar, onCancelar }: CampoTituloProps) {
   function handleKeyDown(evento: KeyboardEvent<HTMLInputElement>) {
     if (evento.key === 'Enter') handleSalvar()
     if (evento.key === 'Escape') onCancelar()
+    if (evento.key === 'Backspace' && rascunho === '' && onApagarVazio) {
+      evento.preventDefault()
+      onApagarVazio()
+    }
   }
 
   return (

@@ -1,5 +1,6 @@
 import { cn } from 'cn'
 import type { DataLocal } from '@/db/types'
+import { ContextoSubetapas } from '@/hooks/contexto-subetapas'
 import { ContextoGruposLembrados, useGruposLembrados } from '@/hooks/use-grupos-lembrados'
 import { useLayoutDoDia } from '@/hooks/use-layout-do-dia'
 import { usePreferenciasDoDia } from '@/hooks/use-preferencias-do-dia'
@@ -69,102 +70,104 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
 
   return (
     <ContextoSelecao.Provider value={selecao}>
-      <ContextoExtras.Provider value={extras}>
-        <ContextoGruposLembrados.Provider value={gruposLembrados}>
-          <section aria-label="Tarefas do dia" className="@container">
-            {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
-            {!selecao.isSelecionando && (
-              <FerramentasDoDia
-                modo={modo}
-                ordem={ordem}
-                onEscolherModo={handleEscolherModo}
-                onEscolherOrdem={handleEscolherOrdem}
-                onSelecionar={entradas.length > 0 ? selecao.iniciar : undefined}
-              />
-            )}
-            <ListaDoDia
-              data={data}
-              entradas={entradas}
-              subtarefasPorTarefa={subtarefasPorTarefa}
-              hoje={hoje}
-            >
-              {(listas) => {
-                const secoes = {
-                  grupos: (
-                    <SecaoDoDia
-                      key="grupos"
-                      titulo="Grupos"
-                      contagem={{
-                        texto: String(cards.length),
-                        rotulo: cards.length === 1 ? '1 grupo' : `${cards.length} grupos`,
-                      }}
-                      rotuloAdicionar="Novo grupo"
-                      isRecolhida={isSecaoRecolhida('grupos')}
-                      onAlternar={() => handleAlternarSecao('grupos')}
-                      isFaixa={isColunas}
-                      isSemAdicionar={selecao.isSelecionando}
-                      textoVazio={
-                        !isCarregando && cards.length === 0 ? 'Nenhum grupo neste dia' : undefined
-                      }
-                      campo={(fechar) => <NovoGrupo data={data} onCriado={fechar} />}
-                    >
-                      {listas.grupos}
-                    </SecaoDoDia>
-                  ),
-                  soltas: (
-                    <SecaoDoDia
-                      key="soltas"
-                      titulo="Tarefas soltas"
-                      contagem={contagemSoltas}
-                      rotuloAdicionar="Nova tarefa"
-                      isRecolhida={isSecaoRecolhida('soltas')}
-                      onAlternar={() => handleAlternarSecao('soltas')}
-                      isFaixa={isColunas}
-                      isSemAdicionar={selecao.isSelecionando}
-                      textoVazio={
-                        !isCarregando && soltas.length === 0
-                          ? concluidas.length > 0
-                            ? 'Nenhuma tarefa solta pendente'
-                            : 'Nenhuma tarefa solta'
-                          : undefined
-                      }
-                      campo={(fechar) => <NovaTarefa data={data} onFechar={fechar} />}
-                    >
-                      {listas.soltas}
-                      <GrupoConcluidas
-                        concluidas={concluidas}
-                        subtarefasPorTarefa={subtarefasPorTarefa}
-                        hoje={hoje}
-                      />
-                    </SecaoDoDia>
-                  ),
-                }
-                return (
-                  <div
-                    data-modo={modo}
-                    className={cn(
-                      'mt-2 flex flex-col gap-6',
-                      isColunas && ['@min-[48rem]:grid @min-[48rem]:gap-8', colunasDaGrade()],
-                    )}
-                  >
-                    {secoes[primeira]}
-                    {secoes[segunda]}
-                  </div>
-                )
-              }}
-            </ListaDoDia>
-            {selecao.isSelecionando && (
-              <BarraSelecao
+      <ContextoSubetapas.Provider value={subtarefasPorTarefa}>
+        <ContextoExtras.Provider value={extras}>
+          <ContextoGruposLembrados.Provider value={gruposLembrados}>
+            <section aria-label="Tarefas do dia" className="@container">
+              {data === hoje && <AvisoPendenciasOntem hoje={hoje} />}
+              {!selecao.isSelecionando && (
+                <FerramentasDoDia
+                  modo={modo}
+                  ordem={ordem}
+                  onEscolherModo={handleEscolherModo}
+                  onEscolherOrdem={handleEscolherOrdem}
+                  onSelecionar={entradas.length > 0 ? selecao.iniciar : undefined}
+                />
+              )}
+              <ListaDoDia
                 data={data}
+                entradas={entradas}
+                subtarefasPorTarefa={subtarefasPorTarefa}
                 hoje={hoje}
-                idsPendentes={idsSelecionaveis}
-                idsGrupos={idsGrupos}
-                idsItens={idsItens}
-              />
-            )}
-          </section>
-        </ContextoGruposLembrados.Provider>
-      </ContextoExtras.Provider>
+              >
+                {(listas) => {
+                  const secoes = {
+                    grupos: (
+                      <SecaoDoDia
+                        key="grupos"
+                        titulo="Grupos"
+                        contagem={{
+                          texto: String(cards.length),
+                          rotulo: cards.length === 1 ? '1 grupo' : `${cards.length} grupos`,
+                        }}
+                        rotuloAdicionar="Novo grupo"
+                        isRecolhida={isSecaoRecolhida('grupos')}
+                        onAlternar={() => handleAlternarSecao('grupos')}
+                        isFaixa={isColunas}
+                        isSemAdicionar={selecao.isSelecionando}
+                        textoVazio={
+                          !isCarregando && cards.length === 0 ? 'Nenhum grupo neste dia' : undefined
+                        }
+                        campo={(fechar) => <NovoGrupo data={data} onCriado={fechar} />}
+                      >
+                        {listas.grupos}
+                      </SecaoDoDia>
+                    ),
+                    soltas: (
+                      <SecaoDoDia
+                        key="soltas"
+                        titulo="Tarefas soltas"
+                        contagem={contagemSoltas}
+                        rotuloAdicionar="Nova tarefa"
+                        isRecolhida={isSecaoRecolhida('soltas')}
+                        onAlternar={() => handleAlternarSecao('soltas')}
+                        isFaixa={isColunas}
+                        isSemAdicionar={selecao.isSelecionando}
+                        textoVazio={
+                          !isCarregando && soltas.length === 0
+                            ? concluidas.length > 0
+                              ? 'Nenhuma tarefa solta pendente'
+                              : 'Nenhuma tarefa solta'
+                            : undefined
+                        }
+                        campo={(fechar) => <NovaTarefa data={data} onFechar={fechar} />}
+                      >
+                        {listas.soltas}
+                        <GrupoConcluidas
+                          concluidas={concluidas}
+                          subtarefasPorTarefa={subtarefasPorTarefa}
+                          hoje={hoje}
+                        />
+                      </SecaoDoDia>
+                    ),
+                  }
+                  return (
+                    <div
+                      data-modo={modo}
+                      className={cn(
+                        'mt-2 flex flex-col gap-6',
+                        isColunas && ['@min-[48rem]:grid @min-[48rem]:gap-8', colunasDaGrade()],
+                      )}
+                    >
+                      {secoes[primeira]}
+                      {secoes[segunda]}
+                    </div>
+                  )
+                }}
+              </ListaDoDia>
+              {selecao.isSelecionando && (
+                <BarraSelecao
+                  data={data}
+                  hoje={hoje}
+                  idsPendentes={idsSelecionaveis}
+                  idsGrupos={idsGrupos}
+                  idsItens={idsItens}
+                />
+              )}
+            </section>
+          </ContextoGruposLembrados.Provider>
+        </ContextoExtras.Provider>
+      </ContextoSubetapas.Provider>
     </ContextoSelecao.Provider>
   )
 }
