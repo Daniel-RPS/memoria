@@ -52,7 +52,7 @@ export function InicioPage() {
         </div>
         <aside
           aria-label="Hoje, atrasadas e próximos dias"
-          className="flex flex-col gap-10 lg:pt-1"
+          className="flex flex-col gap-3.5 lg:pt-0"
         >
           <BlocoEmAndamento resumo={emAndamento} />
           <BlocoHoje numeros={resumoDeHoje} hoje={hoje} />

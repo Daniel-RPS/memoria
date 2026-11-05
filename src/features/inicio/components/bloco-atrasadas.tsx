@@ -30,6 +30,7 @@ export function BlocoAtrasadas({ numeros, idsDasTarefas, idsDosCards }: BlocoAtr
     <ResumoLateral
       titulo="Atrasadas"
       tom="alerta"
+      glow={itens > 0 ? 'warning' : 'none'}
       extra={
         itens > 0 && (
           <span className="text-xs text-alerta tabular-nums">

@@ -372,3 +372,96 @@
     animation: none;
   }
 }
+
+/*
+ * Cartão de vidro (GlassCard) e brilhos suaves:
+ * Translúcido com backdrop-blur médio e reflexo superior;
+ * Brilhos difusos coloridos para chamar atenção (accent/warning).
+ */
+.glass-surface {
+  background-color: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+:root[data-tema='escuro'] .glass-surface {
+  background-color: rgb(255 255 255 / 0.05);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass-surface {
+    background-color: rgb(255 255 255 / 0.95);
+  }
+  :root[data-tema='escuro'] .glass-surface {
+    background-color: var(--papel);
+  }
+}
+
+.glow-none {
+  box-shadow: 0 2px 10px -2px color-mix(in oklab, var(--tinta) 6%, transparent);
+}
+:root[data-tema='escuro'] .glow-none {
+  box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.4);
+}
+
+.glow-warning {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--alerta) 25%, transparent),
+    0 0 20px -2px color-mix(in oklab, var(--alerta) 35%, transparent),
+    0 0 45px -4px color-mix(in oklab, var(--alerta) 16%, transparent);
+}
+:root[data-tema='escuro'] .glow-warning {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--alerta) 30%, transparent),
+    0 0 24px -2px color-mix(in oklab, var(--alerta) 45%, transparent),
+    0 0 55px -4px color-mix(in oklab, var(--alerta) 22%, transparent);
+}
+
+@keyframes respiracao-glow-accent {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--caneta) 18%, transparent),
+      0 0 18px -2px color-mix(in oklab, var(--caneta) 30%, transparent),
+      0 0 40px -4px color-mix(in oklab, var(--caneta) 15%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--caneta) 28%, transparent),
+      0 0 28px 0px color-mix(in oklab, var(--caneta) 48%, transparent),
+      0 0 60px -2px color-mix(in oklab, var(--caneta) 25%, transparent);
+  }
+}
+
+@keyframes respiracao-glow-accent-escuro {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--caneta) 25%, transparent),
+      0 0 24px -2px color-mix(in oklab, var(--caneta) 42%, transparent),
+      0 0 50px -4px color-mix(in oklab, var(--caneta) 20%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--caneta) 38%, transparent),
+      0 0 36px 0px color-mix(in oklab, var(--caneta) 60%, transparent),
+      0 0 70px -2px color-mix(in oklab, var(--caneta) 30%, transparent);
+  }
+}
+
+.glow-accent {
+  animation: respiracao-glow-accent 5s ease-in-out infinite;
+}
+:root[data-tema='escuro'] .glow-accent {
+  animation: respiracao-glow-accent-escuro 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-accent,
+  :root[data-tema='escuro'] .glow-accent {
+    animation: none;
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--caneta) 22%, transparent),
+      0 0 22px -2px color-mix(in oklab, var(--caneta) 35%, transparent),
+      0 0 45px -4px color-mix(in oklab, var(--caneta) 18%, transparent);
+  }
+}

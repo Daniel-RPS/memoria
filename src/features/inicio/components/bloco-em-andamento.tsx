@@ -21,6 +21,7 @@ export function BlocoEmAndamento({ resumo }: BlocoEmAndamentoProps) {
   return (
     <ResumoLateral
       rotuloAria="Em andamento"
+      glow="accent"
       titulo={
         <span className="flex items-center gap-1.5">
           <PontoDeAndamento />

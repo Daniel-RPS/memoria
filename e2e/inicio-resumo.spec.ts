@@ -385,3 +385,158 @@ test('bloco Em andamento: ausente sem andamento, exibe grupos/soltas e números 
 
   await expect(page.getByRole('region', { name: 'Em andamento' })).toHaveCount(0)
 })
+
+test('cartões de vidro (GlassCard): 4 blocos separados, brilhos accent/warning e ausência de brilho no neutro', async ({
+  page,
+}) => {
+  test.setTimeout(90_000)
+  await page.goto('/inicio')
+  await semearHoje(page)
+  await semearAtrasadas(page)
+
+  // 1. Ativa tarefa e item em andamento
+  await page.evaluate(async (hoje: string) => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const andamento = (await importar('/src/db/repositories/andamento-repository.ts')) as {
+      definirAndamento: (
+        alvos: { tarefas?: string[]; itens?: string[] },
+        isMarcar: boolean,
+      ) => Promise<unknown>
+    }
+    const db = banco.db
+    const serie = await db.groupSeries
+      .filter((s: { titulo: string }) => s.titulo === 'Simulador POOSE')
+      .first()
+    const card = await db.groupCards.where('[seriesId+data]').equals([serie.id, hoje]).first()
+    const item = await db.groupItems
+      .where('cardId')
+      .equals(card.id)
+      .filter((i: { status: string }) => i.status === 'pendente')
+      .first()
+    const tarefa = await db.tasks.where('data').equals(hoje).first()
+
+    await andamento.definirAndamento({ tarefas: [tarefa.id], itens: [item.id] }, true)
+  }, HOJE)
+
+  const aside = page.getByRole('complementary', { name: 'Hoje, atrasadas e próximos dias' })
+  const cartaoAndamento = aside.getByRole('region', { name: 'Em andamento' })
+  const cartaoHoje = aside.getByRole('region', { name: 'Hoje' })
+  const cartaoAtrasadas = aside.getByRole('region', { name: 'Atrasadas' })
+  const cartaoProximos = aside.getByRole('region', { name: 'Próximos 7 dias' })
+
+  // Todos os 4 cartões visíveis
+  await expect(cartaoAndamento).toBeVisible()
+  await expect(cartaoHoje).toBeVisible()
+  await expect(cartaoAtrasadas).toBeVisible()
+  await expect(cartaoProximos).toBeVisible()
+
+  // Brilhos corretos nos cartões
+  await expect(cartaoAndamento).toHaveAttribute('data-glow', 'accent')
+  await expect(cartaoAndamento).toHaveClass(/glow-accent/)
+  await expect(cartaoHoje).toHaveAttribute('data-glow', 'none')
+  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'warning')
+  await expect(cartaoAtrasadas).toHaveClass(/glow-warning/)
+  await expect(cartaoProximos).toHaveAttribute('data-glow', 'none')
+
+  // Estrutura de vidro e separação entre cartões
+  for (const cartao of [cartaoAndamento, cartaoHoje, cartaoAtrasadas, cartaoProximos]) {
+    await expect(cartao).toHaveClass(/glass-surface/)
+    await expect(cartao).toHaveClass(/rounded-lg/)
+  }
+
+  // Verifica distâncias verticais entre os cartões (entre 12px e 16px)
+  const boxAndamento = await cartaoAndamento.boundingBox()
+  const boxHoje = await cartaoHoje.boundingBox()
+  const boxAtrasadas = await cartaoAtrasadas.boundingBox()
+  const boxProximos = await cartaoProximos.boundingBox()
+
+  expect(boxAndamento).not.toBeNull()
+  expect(boxHoje).not.toBeNull()
+  expect(boxAtrasadas).not.toBeNull()
+  expect(boxProximos).not.toBeNull()
+
+  const espaco1 = boxHoje!.y - (boxAndamento!.y + boxAndamento!.height)
+  const espaco2 = boxAtrasadas!.y - (boxHoje!.y + boxHoje!.height)
+  const espaco3 = boxProximos!.y - (boxAtrasadas!.y + boxAtrasadas!.height)
+
+  expect(espaco1).toBeGreaterThanOrEqual(12)
+  expect(espaco1).toBeLessThanOrEqual(16)
+  expect(espaco2).toBeGreaterThanOrEqual(12)
+  expect(espaco2).toBeLessThanOrEqual(16)
+  expect(espaco3).toBeGreaterThanOrEqual(12)
+  expect(espaco3).toBeLessThanOrEqual(16)
+
+  // Capturas com andamento + com atrasadas (claro e escuro)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-com-andamento-e-atrasadas-${tema}`)
+  }
+
+  // "Tudo em dia": Trazer todas para hoje desliga o brilho de Atrasadas
+  await cartaoAtrasadas.getByRole('button', { name: 'Trazer todas para hoje' }).click()
+  await expect(cartaoAtrasadas.getByText('Tudo em dia')).toBeVisible()
+  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'none')
+  await expect(cartaoAtrasadas).toHaveClass(/glow-none/)
+
+  // Capturas com andamento + sem atrasadas (claro e escuro)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-com-andamento-sem-atrasadas-${tema}`)
+  }
+
+  // Desativa andamento: o cartão some e os outros sobem sem buraco
+  const yHojeComAndamento = boxHoje!.y
+  await page.evaluate(async () => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const andamento = (await importar('/src/db/repositories/andamento-repository.ts')) as {
+      definirAndamento: (
+        alvos: { tarefas?: string[]; itens?: string[] },
+        isMarcar: boolean,
+      ) => Promise<unknown>
+    }
+    const db = banco.db
+    const tarefas = await db.tasks.toArray()
+    const itens = await db.groupItems.toArray()
+    await andamento.definirAndamento(
+      {
+        tarefas: tarefas.map((t: { id: string }) => t.id),
+        itens: itens.map((i: { id: string }) => i.id),
+      },
+      false,
+    )
+  })
+
+  await expect(cartaoAndamento).toHaveCount(0)
+  const boxHojeSemAndamento = await cartaoHoje.boundingBox()
+  expect(boxHojeSemAndamento!.y).toBeLessThan(yHojeComAndamento)
+  // Topo do cartão Hoje sem andamento alinhado ao topo do aside
+  const boxAside = await aside.boundingBox()
+  expect(Math.abs(boxHojeSemAndamento!.y - boxAside!.y)).toBeLessThanOrEqual(2)
+
+  // Capturas sem andamento + sem atrasadas (claro e escuro)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-sem-andamento-sem-atrasadas-${tema}`)
+  }
+
+  // Sem andamento + com atrasadas
+  await page.evaluate(async () => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const tarefas = (await importar('/src/db/repositories/task-repository.ts')) as ModuloTarefas
+    await tarefas.criarTarefa({ titulo: 'Renovar passaporte', data: '2026-10-25' })
+  })
+  await expect(cartaoAtrasadas.getByText('1 pendente')).toBeVisible()
+  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'warning')
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-sem-andamento-com-atrasadas-${tema}`)
+  }
+
+  // Sem reticências em largura normal e estreita
+  for (const largura of [1680, 900]) {
+    await page.setViewportSize({ width: largura, height: 1000 })
+    expect(await textosCortados(page)).toEqual([])
+  }
+})
