@@ -22,6 +22,7 @@ describe('useLayoutDoDia', () => {
     expect(JSON.parse(localStorage.getItem(CHAVE_LAYOUT_DO_DIA)!)).toEqual({
       secoesRecolhidas: ['soltas'],
       gruposAbertos: ['simulador-poose'],
+      cartoesRecolhidosNoInicio: [],
     })
     const segunda = renderHook(() => useLayoutDoDia())
     expect(segunda.result.current.isSecaoRecolhida('soltas')).toBe(true)

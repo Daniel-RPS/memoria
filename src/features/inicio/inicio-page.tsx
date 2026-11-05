@@ -56,11 +56,7 @@ export function InicioPage() {
         >
           <BlocoEmAndamento resumo={emAndamento} />
           <BlocoHoje numeros={resumoDeHoje} hoje={hoje} />
-          <BlocoAtrasadas
-            numeros={atrasadas.numeros}
-            idsDasTarefas={atrasadas.idsDasTarefas}
-            idsDosCards={atrasadas.idsDosCards}
-          />
+          <BlocoAtrasadas numeros={atrasadas.numeros} />
           <ProximosDias dias={proximos} />
         </aside>
       </div>

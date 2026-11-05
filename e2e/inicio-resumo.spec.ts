@@ -431,13 +431,17 @@ test('cartões de vidro (GlassCard): 4 blocos separados, brilhos accent/warning 
   await expect(cartaoAtrasadas).toBeVisible()
   await expect(cartaoProximos).toBeVisible()
 
-  // Brilhos corretos nos cartões
-  await expect(cartaoAndamento).toHaveAttribute('data-glow', 'accent')
-  await expect(cartaoAndamento).toHaveClass(/glow-accent/)
-  await expect(cartaoHoje).toHaveAttribute('data-glow', 'none')
-  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'warning')
-  await expect(cartaoAtrasadas).toHaveClass(/glow-warning/)
-  await expect(cartaoProximos).toHaveAttribute('data-glow', 'none')
+  // Superfície de vidro neutra sem brilho difuso; bordas finas coloridas
+  await expect(cartaoAndamento).toHaveAttribute('data-borda', 'accent')
+  await expect(cartaoAndamento).toHaveClass(/border-caneta/)
+  await expect(cartaoHoje).toHaveAttribute('data-borda', 'padrao')
+  await expect(cartaoAtrasadas).toHaveAttribute('data-borda', 'warning')
+  await expect(cartaoAtrasadas).toHaveClass(/border-alerta/)
+  await expect(cartaoProximos).toHaveAttribute('data-borda', 'padrao')
+  for (const cartao of [cartaoAndamento, cartaoHoje, cartaoAtrasadas, cartaoProximos]) {
+    await expect(cartao).not.toHaveAttribute('data-glow')
+    await expect(cartao).not.toHaveClass(/glow-/)
+  }
 
   // Estrutura de vidro e separação entre cartões
   for (const cartao of [cartaoAndamento, cartaoHoje, cartaoAtrasadas, cartaoProximos]) {
@@ -473,11 +477,33 @@ test('cartões de vidro (GlassCard): 4 blocos separados, brilhos accent/warning 
     await capturar(page, `inicio-com-andamento-e-atrasadas-${tema}`)
   }
 
-  // "Tudo em dia": Trazer todas para hoje desliga o brilho de Atrasadas
-  await cartaoAtrasadas.getByRole('button', { name: 'Trazer todas para hoje' }).click()
+  // Atrasadas aberto: exibe só "Ver atrasadas →", sem o botão "Trazer todas para hoje"
+  await expect(cartaoAtrasadas.getByRole('link', { name: 'Ver atrasadas' })).toBeVisible()
+  await expect(cartaoAtrasadas.getByRole('button', { name: 'Trazer todas para hoje' })).toHaveCount(
+    0,
+  )
+
+  // Ao resolver as atrasadas, o cartão exibe "Tudo em dia" com borda neutra (sem alerta)
+  await page.evaluate(async () => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const tarefasRepo = (await importar('/src/db/repositories/task-repository.ts')) as {
+      definirConclusao: (id: string, concluida: boolean) => Promise<unknown>
+    }
+    const gruposRepo = (await importar('/src/db/repositories/group-repository.ts')) as {
+      definirConclusaoItem: (id: string, concluido: boolean) => Promise<unknown>
+    }
+    const db = banco.db
+    const tarefas = await db.tasks.where('data').below('2026-11-03').toArray()
+    for (const t of tarefas) await tarefasRepo.definirConclusao(t.id, true)
+    const cards = await db.groupCards.where('data').below('2026-11-03').toArray()
+    for (const c of cards) {
+      const itens = await db.groupItems.where('cardId').equals(c.id).toArray()
+      for (const i of itens) await gruposRepo.definirConclusaoItem(i.id, true)
+    }
+  })
   await expect(cartaoAtrasadas.getByText('Tudo em dia')).toBeVisible()
-  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'none')
-  await expect(cartaoAtrasadas).toHaveClass(/glow-none/)
+  await expect(cartaoAtrasadas).toHaveAttribute('data-borda', 'padrao')
 
   // Capturas com andamento + sem atrasadas (claro e escuro)
   for (const tema of ['light', 'dark'] as const) {
@@ -528,7 +554,8 @@ test('cartões de vidro (GlassCard): 4 blocos separados, brilhos accent/warning 
     await tarefas.criarTarefa({ titulo: 'Renovar passaporte', data: '2026-10-25' })
   })
   await expect(cartaoAtrasadas.getByText('1 pendente')).toBeVisible()
-  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'warning')
+  await expect(cartaoAtrasadas).toHaveAttribute('data-borda', 'warning')
+  await expect(cartaoAtrasadas).not.toHaveAttribute('data-glow')
   for (const tema of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: tema })
     await capturar(page, `inicio-sem-andamento-com-atrasadas-${tema}`)
@@ -635,9 +662,11 @@ test('cartões recolhíveis do Início: alternância, persistência, teclado e b
   await botaoAtrasadas.click()
   await expect(botaoAtrasadas).toHaveAttribute('aria-expanded', 'false')
 
-  // Brilhos continuam ativos quando recolhidos!
-  await expect(cartaoAndamento).toHaveAttribute('data-glow', 'accent')
-  await expect(cartaoAtrasadas).toHaveAttribute('data-glow', 'warning')
+  // Bordas finas continuam ativas quando recolhidos (sem brilho difuso)
+  await expect(cartaoAndamento).toHaveAttribute('data-borda', 'accent')
+  await expect(cartaoAtrasadas).toHaveAttribute('data-borda', 'warning')
+  await expect(cartaoAndamento).not.toHaveAttribute('data-glow')
+  await expect(cartaoAtrasadas).not.toHaveAttribute('data-glow')
 
   // Captura: tudo recolhido (claro e escuro)
   for (const tema of ['light', 'dark'] as const) {

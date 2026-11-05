@@ -22,7 +22,7 @@ export function BlocoEmAndamento({ resumo }: BlocoEmAndamentoProps) {
     <ResumoLateral
       idCartao="andamento"
       rotuloAria="Em andamento"
-      glow="accent"
+      borda="accent"
       titulo={
         <span className="flex items-center gap-1.5">
           <PontoDeAndamento />

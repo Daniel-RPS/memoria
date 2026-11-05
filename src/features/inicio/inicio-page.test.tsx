@@ -74,8 +74,7 @@ describe('Início', () => {
     expect(await db.tasks.count()).toBe(0)
   })
 
-  it('Atrasadas: resumo e "Trazer todas para hoje" move a atrasada para hoje', async () => {
-    const usuario = userEvent.setup()
+  it('Atrasadas: resumo e link "Ver atrasadas" abre o dia atrasado (sem botão de trazer tudo)', async () => {
     await criarTarefa({ titulo: 'Renovar CNH', data: somarDias(hoje(), -3) })
     renderizarApp('/inicio')
 
@@ -85,10 +84,9 @@ describe('Início', () => {
       'href',
       `/dia/${somarDias(hoje(), -3)}`,
     )
-    await usuario.click(within(atrasadas).getByRole('button', { name: 'Trazer todas para hoje' }))
-
-    expect(await within(atrasadas).findByText('Tudo em dia')).toBeInTheDocument()
-    expect((await db.tasks.toArray())[0]).toMatchObject({ data: hoje() })
+    expect(
+      within(atrasadas).queryByRole('button', { name: 'Trazer todas para hoje' }),
+    ).not.toBeInTheDocument()
   })
 
   it('Em andamento: só aparece quando há algo em andamento, não mostra nome de tarefa e some quando para', async () => {

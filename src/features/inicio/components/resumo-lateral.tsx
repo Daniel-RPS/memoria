@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from 'cn'
-import { GlassCard, type GlassCardGlow } from '@/components/ui/glass-card'
+import { GlassCard, type GlassCardBorda } from '@/components/ui/glass-card'
 import { useLayoutDoDia } from '@/hooks/use-layout-do-dia'
 import type { CartaoDoInicio } from '@/lib/layout-do-dia'
 
@@ -13,8 +13,8 @@ interface ResumoLateralProps {
   extra?: ReactNode
   /** `alerta`: título em laranja suave (Atrasadas). */
   tom?: 'normal' | 'alerta'
-  /** Destaque visual com brilho suave ao fundo ('accent', 'warning' ou 'none'). */
-  glow?: GlassCardGlow
+  /** Cor da borda fina de 1px ('accent', 'warning' ou 'padrao'). */
+  borda?: GlassCardBorda
   /** Id para tornar o cartão recolhível e persistir o estado ('andamento' | 'hoje' | 'atrasadas'). */
   idCartao?: CartaoDoInicio
   /** Elemento extra colado na base quando recolhido (ex.: barra fina de 2px de Hoje). */
@@ -29,7 +29,7 @@ export function ResumoLateral({
   rotuloAria,
   extra,
   tom = 'normal',
-  glow = 'none',
+  borda = 'padrao',
   idCartao,
   barraRecolhido,
   className,
@@ -46,7 +46,7 @@ export function ResumoLateral({
     <GlassCard
       as="section"
       aria-label={ariaLabel}
-      glow={glow}
+      borda={borda}
       className={cn(
         'transition-[padding] duration-200',
         isAberto ? 'px-4 pt-3.5 pb-4' : 'px-4 py-3',

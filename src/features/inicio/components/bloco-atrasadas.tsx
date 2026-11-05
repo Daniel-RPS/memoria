@@ -1,5 +1,4 @@
 import { CircleCheck } from 'lucide-react'
-import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { fraseDasAtrasadas, type NumerosDasAtrasadas } from '@/lib/inicio'
 import {
   ContagemDeTipos,
@@ -10,30 +9,23 @@ import { ResumoLateral } from '@/features/inicio/components/resumo-lateral'
 
 interface BlocoAtrasadasProps {
   numeros: NumerosDasAtrasadas
-  idsDasTarefas: string[]
-  idsDosCards: string[]
+  idsDasTarefas?: string[]
+  idsDosCards?: string[]
 }
 
 /**
- * Pendentes de dias que passaram, em números: "Ver atrasadas" abre o dia mais antigo com
- * pendência e "Trazer todas para hoje" move as soltas e leva os pendentes dos cards para hoje.
+ * Pendentes de dias que passaram, em números: "Ver atrasadas" abre o dia mais antigo com pendência.
  */
-export function BlocoAtrasadas({ numeros, idsDasTarefas, idsDosCards }: BlocoAtrasadasProps) {
-  const { hoje, mover } = useMoverTarefas()
+export function BlocoAtrasadas({ numeros }: BlocoAtrasadasProps) {
   const { itens, diaMaisAntigo } = numeros
-
   const temAtrasadas = diaMaisAntigo !== null && itens > 0
-
-  function handleTrazerTodas() {
-    void mover(idsDasTarefas, hoje, { grupos: idsDosCards })
-  }
 
   return (
     <ResumoLateral
       idCartao="atrasadas"
       titulo="Atrasadas"
       tom={temAtrasadas ? 'alerta' : 'normal'}
-      glow={temAtrasadas ? 'warning' : 'none'}
+      borda={temAtrasadas ? 'warning' : 'padrao'}
       extra={
         temAtrasadas ? (
           <span className="text-xs text-alerta tabular-nums">
@@ -53,15 +45,8 @@ export function BlocoAtrasadas({ numeros, idsDasTarefas, idsDosCards }: BlocoAtr
         <>
           <FraseDoResumo>{fraseDasAtrasadas(numeros)}</FraseDoResumo>
           <ContagemDeTipos grupos={numeros.grupos} soltas={numeros.soltas} />
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <div className="mt-2">
             <LinkDoResumo para={`/dia/${diaMaisAntigo}`}>Ver atrasadas</LinkDoResumo>
-            <button
-              type="button"
-              onClick={handleTrazerTodas}
-              className="text-xs text-grafite hover:text-tinta hover:underline"
-            >
-              Trazer todas para hoje
-            </button>
           </div>
         </>
       )}
