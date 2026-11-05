@@ -26,6 +26,7 @@ export function ItemPendente({ tarefa, subtarefas, hoje }: ItemPendenteProps) {
   return (
     <li
       ref={setNodeRef}
+      data-flip-id={tarefa.id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('relative bg-papel', isDragging && 'z-10 rounded-sm ring-2 ring-caneta/40')}
     >

@@ -18,7 +18,11 @@ export function ItemGrupoSemana({ grupo, hoje }: ItemGrupoSemanaProps) {
     useSortable({ id: grupo.card.id })
 
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }}>
+    <li
+      ref={setNodeRef}
+      data-flip-id={grupo.card.id}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+    >
       <CartaoGrupo
         grupo={grupo}
         hoje={hoje}

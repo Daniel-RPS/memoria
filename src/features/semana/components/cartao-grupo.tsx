@@ -9,6 +9,7 @@ import { cn } from 'cn'
 import { IndicadorPrioridade } from '@/components/indicador-prioridade'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { contarPrioritarios } from '@/domain/prioridade'
+import { useAnimarReordenacao } from '@/hooks/use-animar-reordenacao'
 import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { ChevronRecolher, ConteudoRecolhivel } from '@/components/secao-recolhivel'
@@ -95,6 +96,11 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
   const idConteudo = useId()
   const emAndamento = contarEmAndamento(grupo.itens)
   const prioritarios = contarPrioritarios(grupo.itens)
+  const { active: arrastado } = useDndContext()
+  const listaAnimada = useAnimarReordenacao(
+    pendentes.map((item) => item.id).join('|'),
+    arrastado !== null,
+  )
 
   async function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -238,7 +244,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
                 items={isItensOrdenaveis ? pendentes.map((item) => item.id) : []}
                 strategy={verticalListSortingStrategy}
               >
-                <ul aria-label={`Itens de ${serie.titulo}`}>
+                <ul ref={listaAnimada} aria-label={`Itens de ${serie.titulo}`}>
                   {grupo.itens.map((item) =>
                     item.status === 'pendente' && isItensOrdenaveis ? (
                       <ItemArrastavel
@@ -311,6 +317,7 @@ function ItemArrastavel({ item, data, cardId, hoje }: ItemProps & { cardId: stri
   return (
     <li
       ref={setNodeRef}
+      data-flip-id={item.id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('group/linha border-b border-pauta', isDragging && 'opacity-30')}
     >

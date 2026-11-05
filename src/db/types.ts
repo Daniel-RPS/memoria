@@ -40,6 +40,16 @@ export interface Subcategory extends EntidadeBase {
   ordem: number
 }
 
+/**
+ * Posição escolhida arrastando dentro de um bloco do topo (prioridade e/ou em andamento). Só vale
+ * enquanto `chave` for a do bloco com as mesmas marcas (`chaveDoTopo`): marcar de novo ou
+ * trocar de bloco a invalida sozinha. Ver `domain/ordem-de-exibicao`.
+ */
+export interface OrdemNoTopo {
+  chave: string
+  posicao: number
+}
+
 export type TaskStatus = 'pendente' | 'concluida' | 'arquivada'
 
 export interface Task extends EntidadeBase {
@@ -68,6 +78,8 @@ export interface Task extends EntidadeBase {
   prioridade?: boolean
   /** Momento em que foi marcada como prioridade (junto com `prioridade`). */
   prioridadeDesde?: string
+  /** Posição arrastada dentro do bloco do topo; ausente ou velha = pela hora da marcação. */
+  ordemNoTopo?: OrdemNoTopo
 }
 
 /**
@@ -133,6 +145,8 @@ export interface GroupItem extends EntidadeBase {
   prioridade?: boolean
   /** Momento em que foi marcado como prioridade (junto com `prioridade`). */
   prioridadeDesde?: string
+  /** Posição arrastada dentro do bloco do topo; ausente ou velha = pela hora da marcação. */
+  ordemNoTopo?: OrdemNoTopo
 }
 
 /**

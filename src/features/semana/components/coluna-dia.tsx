@@ -4,7 +4,9 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router'
 import { cn } from 'cn'
+import { useDndContext } from '@dnd-kit/core'
 import { CampoNovoGrupo } from '@/components/campo-novo-grupo'
+import { useAnimarReordenacao } from '@/hooks/use-animar-reordenacao'
 import { CirculoHoje } from '@/components/circulo-hoje'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { criarGrupo } from '@/db/repositories/group-repository'
@@ -42,6 +44,8 @@ export function ColunaDia({
   subtarefasPorTarefa,
 }: ColunaDiaProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `${PREFIXO_COLUNA}${data}` })
+  const { active } = useDndContext()
+  const listaAnimada = useAnimarReordenacao(ids.join('|'), active !== null)
   const dia = deDataLocal(data)
   const isHoje = data === hoje
   const nomeCurto = format(dia, 'EEE, d', { locale: ptBR })
@@ -83,7 +87,10 @@ export function ColunaDia({
         strategy={verticalListSortingStrategy}
       >
         <ul
-          ref={setNodeRef}
+          ref={(elemento) => {
+            setNodeRef(elemento)
+            listaAnimada(elemento)
+          }}
           aria-label={`Pendentes de ${nomeCompleto}`}
           className={cn(
             'flex min-h-16 flex-1 flex-col px-1.5 pb-2 transition-colors',

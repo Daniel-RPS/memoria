@@ -21,6 +21,7 @@ export function ItemTarefaSemana({ tarefa, subtarefas, hoje }: ItemTarefaSemanaP
   return (
     <li
       ref={setNodeRef}
+      data-flip-id={tarefa.id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       {...attributes}
       {...listeners}

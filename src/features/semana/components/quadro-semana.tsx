@@ -15,8 +15,15 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { reordenarItem } from '@/db/repositories/group-repository'
-import { reordenarTarefa, soltarTarefaNoDia } from '@/db/repositories/task-repository'
+import { soltarTarefaNoDia } from '@/db/repositories/task-repository'
+import { gravarReordenacao } from '@/db/repositories/topo-repository'
+import {
+  blocoDe,
+  idsParaOrdemComum,
+  manterBlocos,
+  planejarGravacao,
+  type Bloco,
+} from '@/domain/ordem-de-exibicao'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
 import { useAtalhoPrioridade } from '@/hooks/use-atalho-prioridade'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
@@ -138,13 +145,26 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     return colunaDe(colunas, id) ?? itemPorId.get(id)?.data
   }
 
+  /** Bloco de exibição da tarefa solta ou do item (cards não têm: valem como "demais"). */
+  const blocoDoId = (id: string): Bloco | undefined => {
+    const registro = tarefaPorId.get(id) ?? itemPorId.get(id)?.item
+    return registro ? blocoDe(registro) : undefined
+  }
+
+  /** Arrastar não atravessa blocos: o solto fora do próprio bloco para na borda dele. */
+  function manterBlocosDas(proximas: Colunas): Colunas {
+    return Object.fromEntries(
+      Object.entries(proximas).map(([dia, ids]) => [dia, manterBlocos(ids, blocoDoId)]),
+    )
+  }
+
   /** Item solto sobre outro item do mesmo card: só muda a posição dentro do card. */
   function reordenarNoCard(id: string, idAlvo: string, cardId: string) {
     const grupo = grupoPorId.get(cardId)
     if (!grupo || id === idAlvo) return
     const ids = pendentesDo(grupo).map((item) => item.id)
-    const novaOrdem = arrayMove(ids, ids.indexOf(id), ids.indexOf(idAlvo))
-    void reordenarItem(novaOrdem, id)
+    const novaOrdem = manterBlocos(arrayMove(ids, ids.indexOf(id), ids.indexOf(idAlvo)), blocoDoId)
+    void gravarReordenacao(planejarGravacao(novaOrdem, id, blocoDoId), id, 'card')
   }
 
   /** "Casa · 2 pendentes → 03/11" ou "Fazer janta → 03/11"; vazio se nada iria. */
@@ -195,7 +215,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     const indice = String(over.id).startsWith(PREFIXO_COLUNA)
       ? undefined
       : colunas[destino].indexOf(String(over.id))
-    setColunas((anteriores) => moverEntreColunas(anteriores, id, destino, indice))
+    setColunas((anteriores) => manterBlocosDas(moverEntreColunas(anteriores, id, destino, indice)))
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
@@ -230,15 +250,19 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     const indiceFinal = String(over.id).startsWith(PREFIXO_COLUNA)
       ? undefined
       : colunas[destino].indexOf(String(over.id))
-    const proximas = moverEntreColunas(colunas, id, destino, indiceFinal)
+    const proximas = manterBlocosDas(moverEntreColunas(colunas, id, destino, indiceFinal))
     setColunas(proximas)
 
     if (destino === diaDeOrigem) {
       const isMudou = proximas[destino].join() !== colunasDe(semana)[destino].join()
-      if (isMudou) void reordenarTarefa(proximas[destino], id)
+      if (isMudou) {
+        const gravacao = planejarGravacao(proximas[destino], id, blocoDoId)
+        void gravarReordenacao(gravacao, id, 'dia')
+      }
       return
     }
-    void soltarTarefaNoDia(id, destino, proximas[destino])
+    // Em outro dia, só os "demais" servem de vizinhos para gravar a `ordem`.
+    void soltarTarefaNoDia(id, destino, idsParaOrdemComum(proximas[destino], id, blocoDoId))
   }
 
   function handleDragCancel() {

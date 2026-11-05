@@ -38,6 +38,9 @@ const subcategoria = z.object({
   ordem: z.number().optional(),
 })
 
+// Formato 13: posição arrastada dentro do bloco do topo (prioridade/em andamento).
+const ordemNoTopo = z.object({ chave: texto, posicao: z.number() }).optional().catch(undefined)
+
 const tarefa = z.object({
   ...base,
   titulo: texto,
@@ -57,6 +60,7 @@ const tarefa = z.object({
   concluidaPelasSubetapas: z.boolean().optional(),
   prioridade: z.boolean().optional(),
   prioridadeDesde: texto.optional(),
+  ordemNoTopo,
   // Formato 2: item de grupo era tarefa com card.
   groupInstanceId: texto.optional(),
 })
@@ -99,6 +103,7 @@ const itemDeGrupo = z.object({
   concluidaPelasSubetapas: z.boolean().optional(),
   prioridade: z.boolean().optional(),
   prioridadeDesde: texto.optional(),
+  ordemNoTopo,
 })
 
 const subtarefa = z.object({

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import {
   closestCenter,
   DndContext,
+  useDndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
@@ -24,6 +25,15 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
+import { gravarReordenacao } from '@/db/repositories/topo-repository'
+import { useAnimarReordenacao } from '@/hooks/use-animar-reordenacao'
+import {
+  blocoDe,
+  idsParaOrdemComum,
+  manterBlocos,
+  planejarGravacao,
+  type Bloco,
+} from '@/domain/ordem-de-exibicao'
 import { idDaEntrada, pendentesDo, type EntradaDoDia, type GrupoDoDia } from '@/lib/grupos'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
@@ -85,7 +95,7 @@ export function ListaDoDia({
   children,
 }: ListaDoDiaProps) {
   const { reordenarTarefa, colocarNoGrupo } = useAcoesTarefa()
-  const { reordenarItem, tirarDoGrupo, passarItemParaCard } = useAcoesGrupo()
+  const { tirarDoGrupo, passarItemParaCard } = useAcoesGrupo()
   const [colunas, setColunas] = useState(() => colunasDe(entradas))
   const [entradasAnteriores, setEntradasAnteriores] = useState(entradas)
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
@@ -116,6 +126,22 @@ export function ListaDoDia({
     itemPorId.get(String(id))?.titulo ??
     grupoPorId.get(String(id))?.serie.titulo ??
     'item'
+
+  /** Bloco de exibição da tarefa solta ou do item (cards não têm: valem como "demais"). */
+  const blocoDoId = (id: string): Bloco | undefined => {
+    const registro = tarefaPorId.get(id) ?? itemPorId.get(id)
+    return registro ? blocoDe(registro) : undefined
+  }
+
+  /** Arrastar não atravessa blocos: o solto fora do próprio bloco para na borda dele. */
+  function manterBlocosDas(proximas: Colunas): Colunas {
+    return Object.fromEntries(
+      Object.entries(proximas).map(([coluna, ids]) => [
+        coluna,
+        coluna === GRUPOS ? ids : manterBlocos(ids, blocoDoId),
+      ]),
+    )
+  }
 
   /** Coluna para onde vai quem está sobre `id` (um item, uma entrada ou uma área de soltar). */
   function colunaDoAlvo(id: string) {
@@ -185,7 +211,7 @@ export function ListaDoDia({
     const atual = colunaDe(colunas, id)
     if (!destino || !atual || destino === atual) return
     const indice = indiceNoDestino(destino, String(over.id))
-    setColunas((anteriores) => moverEntreColunas(anteriores, id, destino, indice))
+    setColunas((anteriores) => manterBlocosDas(moverEntreColunas(anteriores, id, destino, indice)))
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
@@ -196,11 +222,8 @@ export function ListaDoDia({
     if (!over || !colunaDeOrigem) return
     const destino = colunaDoAlvo(String(over.id))
     if (!destino) return
-    const proximas = moverEntreColunas(
-      colunas,
-      id,
-      destino,
-      indiceNoDestino(destino, String(over.id)),
+    const proximas = manterBlocosDas(
+      moverEntreColunas(colunas, id, destino, indiceNoDestino(destino, String(over.id))),
     )
     setColunas(proximas)
 
@@ -208,14 +231,19 @@ export function ListaDoDia({
       const isMudou = proximas[destino].join() !== colunasDe(entradas)[destino]?.join()
       if (!isMudou) return
       // Cards e soltas dividem a mesma escala de `ordem`: basta a posição entre os vizinhos.
-      if (destino === GRUPOS || destino === SOLTAS) void reordenarTarefa(proximas[destino], id)
-      else void reordenarItem(proximas[destino], id)
-    } else if (destino === SOLTAS) {
-      void tirarDoGrupo(id, proximas[SOLTAS])
-    } else if (colunaDeOrigem === SOLTAS) {
-      void colocarNoGrupo(id, destino, proximas[destino])
+      if (destino === GRUPOS) void reordenarTarefa(proximas[destino], id)
+      // Soltas e itens: dentro de um bloco do topo grava só a posição dele; nos demais, a
+      // `ordem` entre os vizinhos dos demais (a `ordem` do topo não segue a tela).
+      else {
+        const gravacao = planejarGravacao(proximas[destino], id, blocoDoId)
+        void gravarReordenacao(gravacao, id, destino === SOLTAS ? 'dia' : 'card')
+      }
     } else {
-      void passarItemParaCard(id, destino, proximas[destino])
+      // Vindo de outra lista, só os "demais" servem de vizinhos para gravar a `ordem`.
+      const vizinhos = idsParaOrdemComum(proximas[destino], id, blocoDoId)
+      if (destino === SOLTAS) void tirarDoGrupo(id, vizinhos)
+      else if (colunaDeOrigem === SOLTAS) void colocarNoGrupo(id, destino, vizinhos)
+      else void passarItemParaCard(id, destino, vizinhos)
     }
   }
 
@@ -247,7 +275,7 @@ export function ListaDoDia({
   )
   const soltas = (
     <SortableContext id={SOLTAS} items={colunas[SOLTAS]} strategy={verticalListSortingStrategy}>
-      <AreaDasSoltas>
+      <AreaDasSoltas chave={colunas[SOLTAS].join('|')} isArrastando={idAtivo !== null}>
         {colunas[SOLTAS].map((id) => (
           <EntradaSolta
             key={id}
@@ -286,11 +314,23 @@ export function ListaDoDia({
 }
 
 /** Lista das tarefas soltas, também alvo de soltar (item tirado do card cai aqui). */
-function AreaDasSoltas({ children }: { children: ReactNode }) {
+function AreaDasSoltas({
+  chave,
+  isArrastando,
+  children,
+}: {
+  chave: string
+  isArrastando: boolean
+  children: ReactNode
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: AREA_SOLTAS })
+  const listaAnimada = useAnimarReordenacao(chave, isArrastando)
   return (
     <ul
-      ref={setNodeRef}
+      ref={(elemento) => {
+        setNodeRef(elemento)
+        listaAnimada(elemento)
+      }}
       aria-label="Pendentes"
       className={cn('min-h-2 transition-colors', isOver && 'bg-accent')}
     >
@@ -358,6 +398,7 @@ function ItemDeGrupoOrdenavel({
   return (
     <li
       ref={setNodeRef}
+      data-flip-id={item.id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('relative bg-papel', isDragging && 'z-10 opacity-40')}
     >
@@ -408,6 +449,8 @@ function CardOrdenavel({
     isDragging,
   } = useSortable({ id })
   const { setNodeRef: setAreaRef, isOver } = useDroppable({ id: `${PREFIXO_ITENS}${id}` })
+  const { active } = useDndContext()
+  const listaAnimada = useAnimarReordenacao(idsPendentes.join('|'), active !== null)
 
   return (
     <li
@@ -430,7 +473,10 @@ function CardOrdenavel({
         pendentes={
           <SortableContext id={id} items={idsPendentes} strategy={verticalListSortingStrategy}>
             <ul
-              ref={setAreaRef}
+              ref={(elemento) => {
+                setAreaRef(elemento)
+                listaAnimada(elemento)
+              }}
               aria-label={`Itens de ${grupo.serie.titulo}`}
               className={cn('min-h-2 transition-colors', isOver && 'bg-accent')}
             >

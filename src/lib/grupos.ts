@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import type { DataLocal, GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
+import { sortForDisplay } from '@/domain/ordem-de-exibicao'
 import { deDataLocal } from '@/lib/datas'
 import { normalizar } from '@/lib/procedimentos'
 
@@ -18,11 +19,14 @@ export function mesmoTituloDeSerie(a: string, b: string) {
 
 const porOrdem = (a: GroupItem, b: GroupItem) => a.ordem - b.ordem
 
-/** Pendentes no alto; feitos e transferidos ficam embaixo, na posição que tinham. */
+/**
+ * Pendentes no alto, em ordem de exibição (prioridade e em andamento sobem, ver
+ * `sortForDisplay`); feitos e transferidos ficam embaixo, na posição que tinham.
+ */
 export function ordenarItens(itens: GroupItem[]) {
   const visiveis = itens.filter((item) => item.status !== 'arquivado')
   return [
-    ...visiveis.filter((item) => item.status === 'pendente').sort(porOrdem),
+    ...sortForDisplay(visiveis.filter((item) => item.status === 'pendente')),
     ...visiveis.filter((item) => item.status !== 'pendente').sort(porOrdem),
   ]
 }
@@ -130,12 +134,18 @@ function ordemDaEntrada(entrada: EntradaDoDia) {
   return entrada.tipo === 'tarefa' ? entrada.tarefa.ordem : entrada.grupo.card.ordem
 }
 
-/** Junta tarefas soltas e cards numa lista só, pela `ordem` do dia. */
+/**
+ * Junta tarefas soltas e cards numa lista só, pela `ordem` do dia, e põe no alto as tarefas
+ * soltas com prioridade ou em andamento (`sortForDisplay`); os cards ficam entre os demais.
+ */
 export function intercalarNoDia(tarefas: Task[], grupos: GrupoDoDia[]): EntradaDoDia[] {
-  return [
+  const pelaOrdem = [
     ...tarefas.map((tarefa) => ({ tipo: 'tarefa' as const, tarefa })),
     ...grupos.map((grupo) => ({ tipo: 'grupo' as const, grupo })),
   ].sort((a, b) => ordemDaEntrada(a) - ordemDaEntrada(b))
+  return sortForDisplay(pelaOrdem, (entrada) =>
+    entrada.tipo === 'tarefa' ? entrada.tarefa : { ordem: ordemDaEntrada(entrada) },
+  )
 }
 
 /**
