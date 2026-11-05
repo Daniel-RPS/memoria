@@ -51,7 +51,8 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
   // No modo "Selecionar", pendentes viram itens de seleção (sem arrastar, editar nem menu).
   const isSelecionavel = isSelecionando && !isConcluida
-  const isSelecionada = isSelecionavel && selecionados.has(tarefa.id)
+  // Destaque também fora do modo: Shift+clique e Ctrl+clique selecionam sem entrar nele.
+  const isSelecionada = !isConcluida && selecionados.has(tarefa.id)
 
   function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -77,6 +78,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
       <div
         data-em-andamento={isEmAndamento || undefined}
         data-prioridade={isPrioritaria || undefined}
+        data-selecionada={isSelecionada || undefined}
         {...alvoDePrioridade('tarefa', tarefa.id, tarefa.status === 'pendente')}
         className={cn(
           'group/linha relative flex min-h-12 items-center gap-2 pr-2 pl-1',

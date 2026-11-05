@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Subtask } from '@/db/types'
+import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { useAcoesSubtarefa } from '@/features/dia/hooks/use-acoes-subtarefa'
 import { AlcaArrastar } from '@/components/alca-arrastar'
 import { TituloEditavel } from '@/components/titulo-editavel'
@@ -35,6 +36,8 @@ export function ItemSubtarefa({
   isCompacto = false,
 }: ItemSubtarefaProps) {
   const { definirConclusaoSubtarefa, renomearSubtarefa, excluirSubtarefa } = useAcoesSubtarefa()
+  const { selecionados, tipo } = useSelecaoDaFolha()
+  const isSelecionada = tipo === 'subetapas' && selecionados.has(subtarefa.id)
   const {
     attributes,
     listeners,
@@ -55,10 +58,14 @@ export function ItemSubtarefa({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       data-sem-arrasto=""
+      data-alvo-subetapa={subtarefa.id}
+      data-dono-subetapa={subtarefa.taskId}
+      data-selecionada={isSelecionada || undefined}
       className={cn(
         'group/linha relative flex items-center gap-2 bg-papel pr-2',
         isCompacto ? 'min-h-7 gap-1.5' : 'min-h-9',
         isDragging && 'z-10 rounded-sm ring-2 ring-caneta/40',
+        isSelecionada && 'bg-accent',
       )}
     >
       <AlcaArrastar

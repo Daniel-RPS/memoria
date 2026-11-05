@@ -10,6 +10,7 @@ import type { DataLocal, Subtask, Task } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
 import { diasPendente, progressoSubtarefas } from '@/lib/tarefas'
+import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
 import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
@@ -34,13 +35,17 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
 
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
   const isPrioritaria = tarefa.status === 'pendente' && tarefa.prioridade === true
+  const { selecionados } = useSelecaoDaFolha()
+  const isSelecionada = !isSobreposto && selecionados.has(tarefa.id)
 
   return (
     <div
       data-em-andamento={isEmAndamento || undefined}
       data-prioridade={isPrioritaria || undefined}
+      data-selecionada={isSelecionada || undefined}
       className={cn(
         'group/linha relative flex items-start gap-1.5 border-b border-pauta py-1 pr-1 pl-1 text-[0.8125rem] leading-snug hover:bg-accent/60',
+        isSelecionada && 'bg-accent',
         isSobreposto && 'rotate-1 rounded-sm border bg-papel shadow-lg ring-2 ring-caneta/40',
       )}
     >

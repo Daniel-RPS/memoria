@@ -1,7 +1,9 @@
 import { cn } from 'cn'
-import type { DataLocal } from '@/db/types'
+import type { DataLocal, GroupItem, Task } from '@/db/types'
 import { ContextoSubetapas } from '@/hooks/contexto-subetapas'
+import { blocoDe, type Bloco } from '@/domain/ordem-de-exibicao'
 import { useAtalhoPrioridade } from '@/hooks/use-atalho-prioridade'
+import { useAtalhoDeMovimento, type ListaMovel } from '@/features/dia/hooks/use-movimento-em-lote'
 import { ContextoGruposLembrados, useGruposLembrados } from '@/hooks/use-grupos-lembrados'
 import { useLayoutDoDia } from '@/hooks/use-layout-do-dia'
 import { usePreferenciasDoDia } from '@/hooks/use-preferencias-do-dia'
@@ -60,6 +62,28 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
   useAtalhoPrioridade({
     tarefas: selecionadas.filter((id) => !idsGrupos.includes(id) && !idsItens.includes(id)),
     itens: selecionadas.filter((id) => idsItens.includes(id)),
+  })
+  // Alt+↑/↓: sobe e desce as selecionadas dentro da lista delas (soltas ou card).
+  const listasMoveis: ListaMovel[] = [
+    { destino: { tipo: 'soltas' }, ids: soltas.map((tarefa) => tarefa.id) },
+    ...cards.map((grupo) => ({
+      destino: { tipo: 'card' as const, cardId: grupo.card.id },
+      ids: pendentesDo(grupo).map((item) => item.id),
+    })),
+  ]
+  const registrosDasLinhas = new Map<string, Task | GroupItem>([
+    ...soltas.map((tarefa) => [tarefa.id, tarefa] as const),
+    ...cards.flatMap((grupo) => pendentesDo(grupo).map((item) => [item.id, item] as const)),
+  ])
+  const blocoDoId = (id: string): Bloco | undefined => {
+    const registro = registrosDasLinhas.get(id)
+    return registro ? blocoDe(registro) : undefined
+  }
+  useAtalhoDeMovimento({
+    selecao,
+    listas: listasMoveis,
+    blocoDoId,
+    subetapasPorDono: subtarefasPorTarefa,
   })
   const gruposLembrados = useGruposLembrados()
   const isColunas = modo === 'colunas'
@@ -162,7 +186,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                   )
                 }}
               </ListaDoDia>
-              {selecao.isSelecionando && (
+              {(selecao.isSelecionando || selecao.temSelecao) && (
                 <BarraSelecao
                   data={data}
                   hoje={hoje}

@@ -50,7 +50,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
   const isConcluido = item.status === 'concluido'
   const isTransferido = item.status === 'transferido'
   const isSelecionavel = isSelecionando && isPendente
-  const isSelecionado = isSelecionavel && selecionados.has(item.id)
+  const isSelecionado = isPendente && selecionados.has(item.id)
   const isAtrasado = isPendenteDeAntes(item, data, hoje)
   const isEmAndamento = isPendente && item.emAndamento === true
   const isPrioritario = isPendente && item.prioridade === true
@@ -75,6 +75,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
       <div
         data-em-andamento={isEmAndamento || undefined}
         data-prioridade={isPrioritario || undefined}
+        data-selecionada={isSelecionado || undefined}
         {...alvoDePrioridade('item', item.id, isPendente)}
         className={cn(
           'group/linha relative flex min-h-11 items-center gap-2 pr-2 pl-1',

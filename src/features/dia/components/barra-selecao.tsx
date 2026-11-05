@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
 import { Button } from '@/components/ui/button'
 import type { DataLocal } from '@/db/types'
+import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useAndamento } from '@/hooks/use-andamento'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { usePrioridade } from '@/hooks/use-prioridade'
@@ -19,7 +20,8 @@ interface BarraSelecaoProps {
 
 /** Barra fixa no rodapé com as ações sobre as tarefas selecionadas. */
 export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: BarraSelecaoProps) {
-  const { selecionados, encerrar, selecionarTodos } = useSelecaoDaFolha()
+  const { selecionados, tipo, encerrar, selecionarTodos } = useSelecaoDaFolha()
+  const { arquivarComAviso } = useAcoesDeArquivo()
   const { mover, adiar } = useMoverTarefas()
   const { marcarEmAndamento, pararAndamento } = useAndamento()
   const { marcarPrioridade, tirarPrioridade } = usePrioridade()
@@ -48,6 +50,14 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: 
     encerrar()
   }
 
+  async function handleArquivar() {
+    await arquivarComAviso(
+      { tarefas, itens: deGrupos.itens },
+      [...tarefas, ...deGrupos.itens].map(() => 'tarefa' as const),
+    )
+    encerrar()
+  }
+
   async function handleAdiar() {
     await adiar(tarefas, deGrupos)
     encerrar()
@@ -56,6 +66,34 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: 
   async function handleMover(destino: DataLocal) {
     await mover(tarefas, destino, deGrupos)
     encerrar()
+  }
+
+  // Subetapas selecionadas: só se reordenam (arrastar ou Alt+↑/↓); as ações abaixo são das linhas.
+  if (tipo === 'subetapas') {
+    return (
+      <div
+        role="toolbar"
+        aria-label="Subetapas selecionadas"
+        className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center gap-2 rounded-md border border-tinta/20 bg-tinta px-3 py-2 text-papel shadow-lg"
+      >
+        <p aria-live="polite" className="mr-auto px-1 text-sm font-semibold">
+          {selecionados.size === 1
+            ? '1 subetapa selecionada'
+            : `${selecionados.size} subetapas selecionadas`}
+          <span className="ml-2 font-normal text-papel/70">
+            Arraste ou use Alt+↑ e Alt+↓ para reordenar
+          </span>
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-papel hover:bg-papel/15 hover:text-papel"
+          onClick={encerrar}
+        >
+          Cancelar
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -121,6 +159,14 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: 
         onClick={() => setIsEscolhendoDia(true)}
       >
         Mover para…
+      </Button>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={!temAlvoDeAndamento}
+        onClick={() => void handleArquivar()}
+      >
+        Arquivar
       </Button>
       <Button
         variant="ghost"

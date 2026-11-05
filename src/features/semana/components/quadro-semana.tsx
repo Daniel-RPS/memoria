@@ -15,6 +15,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { moverLote } from '@/db/repositories/lote-repository'
 import { soltarTarefaNoDia } from '@/db/repositories/task-repository'
 import { gravarReordenacao } from '@/db/repositories/topo-repository'
 import {
@@ -25,6 +26,13 @@ import {
   type Bloco,
 } from '@/domain/ordem-de-exibicao'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
+import { inserirBloco } from '@/domain/selecao-em-lote'
+import {
+  avisarLote,
+  useAtalhoDeMovimento,
+  type ListaMovel,
+} from '@/features/dia/hooks/use-movimento-em-lote'
+import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { useAtalhoPrioridade } from '@/hooks/use-atalho-prioridade'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { ContextoGruposSemana } from '@/features/semana/hooks/use-grupos-semana'
@@ -103,6 +111,9 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
   const [origem, setOrigem] = useState<DataLocal | null>(null)
   const [diaSobre, setDiaSobre] = useState<DataLocal | null>(null)
+  /** Arrastando uma das selecionadas: todas vão juntas (ids na ordem da semana); senão `null`. */
+  const [lote, setLote] = useState<string[] | null>(null)
+  const selecao = useSelecaoDaFolha()
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
     // Só espaço inicia o arrastar: Enter fica para abrir o link do dia no título.
@@ -195,9 +206,57 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     onDragCancel: ({ active }) => `Movimento de ${tituloDe(active.id)} cancelado.`,
   }
 
+  /** As selecionadas na ordem da semana (dia a dia), se quem é arrastado é uma delas. */
+  function loteDe(idArrastado: string) {
+    const { selecionados, tipo } = selecao
+    if (tipo !== 'linhas' || selecionados.size < 2 || !selecionados.has(idArrastado)) return null
+    const naOrdem = semana
+      .flatMap((dia) =>
+        dia.entradas.flatMap((entrada) =>
+          entrada.tipo === 'tarefa'
+            ? [entrada.tarefa.id]
+            : pendentesDo(entrada.grupo).map((item) => item.id),
+        ),
+      )
+      .filter((id) => selecionados.has(id))
+    return naOrdem.length === selecionados.size ? naOrdem : null
+  }
+
+  /**
+   * Solta o lote no dia `destino`: o que é de outro dia é levado (tarefas movidas, itens
+   * copiados para o card da mesma série, tudo numa operação com Desfazer); as tarefas que já são
+   * deste dia andam juntas para onde foram soltas.
+   */
+  async function soltarLote(movidos: string[], destino: DataLocal, idAlvo: string) {
+    const diaDe = (id: string) => tarefaPorId.get(id)?.data ?? itemPorId.get(id)?.data
+    const foraDoDia = movidos.filter((id) => diaDe(id) !== destino)
+    const doDia = movidos.filter((id) => tarefaPorId.has(id) && diaDe(id) === destino)
+    if (foraDoDia.length > 0) {
+      const itens = foraDoDia.filter((id) => itemPorId.has(id))
+      for (const id of itens) {
+        const serieId = grupoPorId.get(itemPorId.get(id)!.item.cardId)?.serie.id
+        if (serieId) gruposSemana?.handleAbrir(serieId, destino)
+      }
+      await mover(
+        foraDoDia.filter((id) => tarefaPorId.has(id)),
+        destino,
+        { itens },
+      )
+    }
+    if (doDia.length === 0) return
+    const coluna = colunas[destino] ?? []
+    if (!coluna.includes(idAlvo)) return
+    const final = inserirBloco(coluna, doDia, idAlvo)
+    if (final.join() === coluna.join()) return
+    avisarLote([
+      await moverLote({ movidos: doDia, destino: { tipo: 'soltas' }, idsEmOrdemNoDestino: final }),
+    ])
+  }
+
   function handleDragStart({ active }: DragStartEvent) {
     const id = String(active.id)
     const dia = colunaDe(colunas, id) ?? itemPorId.get(id)?.data ?? null
+    setLote(loteDe(id))
     setIdAtivo(id)
     setOrigem(dia)
     setDiaSobre(dia)
@@ -208,6 +267,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
     const id = String(active.id)
     const destino = colunaDoAlvo(String(over.id))
     setDiaSobre(destino ?? null)
+    if (lote) return
     // Card e item não saem do lugar: o destino recebe a cópia só ao soltar.
     if (!tarefaPorId.has(id)) return
     const atual = colunaDe(colunas, id)
@@ -221,13 +281,19 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   function handleDragEnd({ active, over }: DragEndEvent) {
     const id = String(active.id)
     const diaDeOrigem = origem
+    const movidos = lote
     setIdAtivo(null)
     setOrigem(null)
     setDiaSobre(null)
+    setLote(null)
     if (!over || !diaDeOrigem) return
 
     const destino = colunaDoAlvo(String(over.id))
     if (!destino) return
+    if (movidos) {
+      void soltarLote(movidos, destino, String(over.id))
+      return
+    }
     if (itemPorId.has(id)) {
       const cardDoItem = (active.data.current as Partial<DadosArrastoItem> | undefined)?.cardId
       const cardDoAlvo = (over.data.current as Partial<DadosArrastoItem> | undefined)?.cardId
@@ -266,11 +332,24 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
   }
 
   function handleDragCancel() {
+    setLote(null)
     setIdAtivo(null)
     setOrigem(null)
     setDiaSobre(null)
     setColunas(colunasDe(semana))
   }
+
+  // Alt+↑/↓: sobe e desce as tarefas selecionadas dentro do dia delas.
+  const listasMoveis: ListaMovel[] = semana.map((dia) => ({
+    destino: { tipo: 'soltas' },
+    ids: colunas[dia.data] ?? [],
+  }))
+  useAtalhoDeMovimento({
+    selecao,
+    listas: listasMoveis,
+    blocoDoId,
+    subetapasPorDono: subtarefasPorTarefa,
+  })
 
   const tarefaAtiva = idAtivo ? tarefaPorId.get(idAtivo) : undefined
   const grupoAtivo = idAtivo ? grupoPorId.get(idAtivo) : undefined
@@ -287,7 +366,11 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       onDragCancel={handleDragCancel}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
-      <div ref={rolagem} className="md:overflow-x-auto">
+      <div
+        ref={rolagem}
+        data-arrastando-lote={lote ? '' : undefined}
+        className="md:overflow-x-auto"
+      >
         {/* Cada dia tem ao menos ~260px: sem espaço, a semana rola para o lado. */}
         <div className="grid grid-cols-1 md:grid-cols-[repeat(7,minmax(16.25rem,1fr))]">
           {semana.map((dia) => (
@@ -305,7 +388,12 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
         </div>
       </div>
       <DragOverlay dropAnimation={null}>
-        {tarefaAtiva && (
+        {lote && (
+          <div className="rotate-1 rounded-sm border border-pauta bg-papel px-2.5 py-1.5 text-[0.9375rem] font-semibold shadow-lg ring-2 ring-caneta/40">
+            {lote.length} tarefas
+          </div>
+        )}
+        {!lote && tarefaAtiva && (
           <CartaoTarefa
             tarefa={tarefaAtiva}
             subtarefas={subtarefasPorTarefa.get(tarefaAtiva.id) ?? []}
@@ -313,13 +401,13 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
             isSobreposto
           />
         )}
-        {grupoAtivo && <CartaoGrupo grupo={grupoAtivo} hoje={hoje} isSobreposto />}
-        {itemAtivo && (
+        {!lote && grupoAtivo && <CartaoGrupo grupo={grupoAtivo} hoje={hoje} isSobreposto />}
+        {!lote && itemAtivo && (
           <div className="rotate-1 rounded-sm border border-pauta bg-papel px-2.5 py-1.5 text-[0.9375rem] shadow-lg ring-2 ring-caneta/40">
             {itemAtivo.item.titulo}
           </div>
         )}
-        {isLevando && idAtivo && (
+        {!lote && isLevando && idAtivo && (
           <p className="mt-1.5 w-max max-w-64 rounded-sm bg-tinta px-2 py-1 text-xs font-semibold text-papel shadow-md">
             {previaDoLevar(idAtivo, diaSobre)}
           </p>

@@ -9,6 +9,7 @@ import { cn } from 'cn'
 import { IndicadorPrioridade } from '@/components/indicador-prioridade'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { contarPrioritarios } from '@/domain/prioridade'
+import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { useAnimarReordenacao } from '@/hooks/use-animar-reordenacao'
 import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { CampoNovoItem } from '@/components/campo-novo-item'
@@ -363,6 +364,8 @@ function LinhaItem({
   const isEditavel = !isTransferido && !isSobreposto
   const isEmAndamento = item.status === 'pendente' && item.emAndamento === true
   const isPrioritario = item.status === 'pendente' && item.prioridade === true
+  const { selecionados } = useSelecaoDaFolha()
+  const isSelecionado = !isSobreposto && item.status === 'pendente' && selecionados.has(item.id)
 
   function handleSalvarTitulo(titulo: string) {
     setIsEditando(false)
@@ -379,8 +382,12 @@ function LinhaItem({
       <div
         data-em-andamento={isEmAndamento || undefined}
         data-prioridade={isPrioritario || undefined}
+        data-selecionada={isSelecionado || undefined}
         {...alvoDePrioridade('item', item.id, item.status === 'pendente')}
-        className="relative flex items-start gap-1 py-1 pr-0.5 pl-1"
+        className={cn(
+          'relative flex items-start gap-1 py-1 pr-0.5 pl-1',
+          isSelecionado && 'bg-accent',
+        )}
       >
         {isEmAndamento && <FileteDeAndamento />}
         <span className="mt-0.5 flex w-4 shrink-0 justify-center">{alca}</span>

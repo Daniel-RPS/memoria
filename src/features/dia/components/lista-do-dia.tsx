@@ -25,7 +25,11 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
+import { moverLote } from '@/db/repositories/lote-repository'
 import { gravarReordenacao } from '@/db/repositories/topo-repository'
+import { inserirBloco } from '@/domain/selecao-em-lote'
+import { avisarLote } from '@/features/dia/hooks/use-movimento-em-lote'
+import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { useAnimarReordenacao } from '@/hooks/use-animar-reordenacao'
 import {
   blocoDe,
@@ -100,6 +104,9 @@ export function ListaDoDia({
   const [entradasAnteriores, setEntradasAnteriores] = useState(entradas)
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
   const [origem, setOrigem] = useState<string | null>(null)
+  /** Arrastando uma das selecionadas: todas vão juntas (ids na ordem da tela); senão `null`. */
+  const [lote, setLote] = useState<string[] | null>(null)
+  const selecao = useSelecaoDaFolha()
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -199,13 +206,47 @@ export function ListaDoDia({
       : colunas[destino].indexOf(idAlvo)
   }
 
+  /**
+   * As selecionadas, na ordem da tela (soltas, depois cada card), se quem é arrastado é uma
+   * delas e há mais de uma; só tarefas soltas e itens vão em lote (card inteiro não).
+   */
+  function loteDe(idArrastado: string) {
+    const { selecionados, tipo } = selecao
+    if (tipo !== 'linhas' || selecionados.size < 2 || !selecionados.has(idArrastado)) return null
+    const naOrdem = [
+      ...colunas[SOLTAS],
+      ...colunas[GRUPOS].flatMap((card) => colunas[card] ?? []),
+    ].filter((id) => selecionados.has(id))
+    return naOrdem.length === selecionados.size ? naOrdem : null
+  }
+
   function handleDragStart({ active }: DragStartEvent) {
     setIdAtivo(String(active.id))
     setOrigem(colunaDe(colunas, String(active.id)) ?? null)
+    setLote(loteDe(String(active.id)))
+  }
+
+  /** Solta o lote: as linhas entram juntas, na ordem, onde foi solto (uma operação, um aviso). */
+  async function soltarLote(movidos: string[], idAlvo: string) {
+    const destino = colunaDoAlvo(idAlvo)
+    if (!destino || destino === GRUPOS) return
+    const lista = colunas[destino] ?? []
+    const idsEmOrdemNoDestino = lista.includes(idAlvo)
+      ? inserirBloco(lista, movidos, idAlvo)
+      : [...lista.filter((id) => !movidos.includes(id)), ...movidos]
+    const isIgual =
+      idsEmOrdemNoDestino.join() === lista.join() && movidos.every((id) => lista.includes(id))
+    if (isIgual) return
+    const resultado = await moverLote({
+      movidos,
+      destino: destino === SOLTAS ? { tipo: 'soltas' } : { tipo: 'card', cardId: destino },
+      idsEmOrdemNoDestino,
+    })
+    avisarLote([resultado])
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
-    if (!over) return
+    if (!over || lote) return
     const id = String(active.id)
     const destino = colunaDoAlvo(String(over.id))
     const atual = colunaDe(colunas, id)
@@ -217,9 +258,15 @@ export function ListaDoDia({
   function handleDragEnd({ active, over }: DragEndEvent) {
     const id = String(active.id)
     const colunaDeOrigem = origem
+    const movidos = lote
     setIdAtivo(null)
     setOrigem(null)
+    setLote(null)
     if (!over || !colunaDeOrigem) return
+    if (movidos) {
+      void soltarLote(movidos, String(over.id))
+      return
+    }
     const destino = colunaDoAlvo(String(over.id))
     if (!destino) return
     const proximas = manterBlocosDas(
@@ -250,6 +297,7 @@ export function ListaDoDia({
   function handleDragCancel() {
     setIdAtivo(null)
     setOrigem(null)
+    setLote(null)
     setColunas(colunasDe(entradas))
   }
 
@@ -301,11 +349,14 @@ export function ListaDoDia({
       onDragCancel={handleDragCancel}
       accessibility={{ announcements: anuncios, screenReaderInstructions: instrucoesLeitorDeTela }}
     >
-      {children({ grupos, soltas })}
+      {/* Arrastando em lote, as outras selecionadas ficam esmaecidas (index.css). */}
+      <div className="contents" data-arrastando-lote={lote ? '' : undefined}>
+        {children({ grupos, soltas })}
+      </div>
       <DragOverlay dropAnimation={null}>
         {idAtivo && (
           <div className="rotate-1 rounded-sm border border-pauta bg-papel px-4 py-2.5 font-semibold shadow-lg ring-2 ring-caneta/40">
-            {tituloDe(idAtivo)}
+            {lote ? `${lote.length} tarefas` : tituloDe(idAtivo)}
           </div>
         )}
       </DragOverlay>

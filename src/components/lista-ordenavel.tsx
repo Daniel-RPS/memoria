@@ -15,6 +15,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import { inserirBloco } from '@/domain/selecao-em-lote'
 
 /** Tarefas e itens têm `titulo`; categorias têm `nome`. Usado nos anúncios do leitor de tela. */
 type ItemComTitulo = { id: string; titulo: string } | { id: string; nome: string }
@@ -30,6 +31,12 @@ interface ListaOrdenavelProps<T extends ItemComTitulo> {
   onReordenar: (idsEmOrdem: string[], idMovido: string) => Promise<unknown>
   renderItem: (item: T) => ReactNode
   className?: string
+  /**
+   * Selecionados da lista: arrastar um deles leva todos juntos (na ordem), por
+   * `onReordenarLote`, que recebe a lista final e os movidos.
+   */
+  idsSelecionados?: Set<string>
+  onReordenarLote?: (idsEmOrdem: string[], movidos: string[]) => Promise<unknown>
 }
 
 /** Distância mínima do ponteiro antes de começar a arrastar, para não roubar cliques. */
@@ -50,6 +57,8 @@ export function ListaOrdenavel<T extends ItemComTitulo>({
   onReordenar,
   renderItem,
   className,
+  idsSelecionados,
+  onReordenarLote,
 }: ListaOrdenavelProps<T>) {
   const [idsOtimistas, setIdsOtimistas] = useState<string[] | null>(null)
   const [itensAnteriores, setItensAnteriores] = useState(itens)
@@ -83,6 +92,19 @@ export function ListaOrdenavel<T extends ItemComTitulo>({
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
+    const movidos = ids.filter((id) => idsSelecionados?.has(id))
+    const isLote =
+      onReordenarLote !== undefined &&
+      idsSelecionados !== undefined &&
+      idsSelecionados.has(String(active.id)) &&
+      movidos.length > 1
+    if (isLote) {
+      const final = inserirBloco(ids, movidos, String(over.id))
+      if (final.join() === ids.join()) return
+      setIdsOtimistas(final)
+      void onReordenarLote(final, movidos)
+      return
+    }
     const novaOrdem = arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)))
     setIdsOtimistas(novaOrdem)
     void onReordenar(novaOrdem, String(active.id))

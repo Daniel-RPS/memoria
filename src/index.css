@@ -396,3 +396,8 @@
     background-color: var(--papel);
   }
 }
+
+/* Arrastando várias selecionadas de uma vez: as outras ficam esmaecidas até soltar. */
+[data-arrastando-lote] [data-selecionada] {
+  opacity: 0.4;
+}

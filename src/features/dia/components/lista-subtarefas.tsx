@@ -4,6 +4,9 @@ import { useAcoesSubtarefa } from '@/features/dia/hooks/use-acoes-subtarefa'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { ItemSubtarefa } from '@/features/dia/components/item-subtarefa'
 import { ListaOrdenavel } from '@/components/lista-ordenavel'
+import { reordenarSubetapasEmLote } from '@/db/repositories/lote-repository'
+import { avisarLote } from '@/features/dia/hooks/use-movimento-em-lote'
+import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 
 interface ListaSubtarefasProps {
   /** Tarefa solta ou item de grupo dono das subetapas. */
@@ -32,6 +35,12 @@ export function ListaSubtarefas({
   const { criarSubtarefa, criarSubtarefas, excluirSubtarefa, reordenarSubtarefa } =
     useAcoesSubtarefa()
   const [idEmEdicao, setIdEmEdicao] = useState<string | null>(null)
+  const selecao = useSelecaoDaFolha()
+  // Subetapas selecionadas DESTE dono: arrastar uma leva todas, numa operação com Desfazer.
+  const idsSelecionados =
+    selecao.tipo === 'subetapas' && selecao.donoDasSubetapas === dono.id
+      ? selecao.selecionados
+      : undefined
   const ultima = subtarefas.at(-1)
 
   async function handleApagarVazia(subtarefa: Subtask) {
@@ -46,6 +55,10 @@ export function ListaSubtarefas({
         itens={subtarefas}
         rotulo={`Subetapas de ${dono.titulo}`}
         onReordenar={reordenarSubtarefa}
+        idsSelecionados={idsSelecionados}
+        onReordenarLote={async (idsEmOrdem, movidos) =>
+          avisarLote([await reordenarSubetapasEmLote(idsEmOrdem, movidos)], 'subetapa', 'subetapas')
+        }
         renderItem={(subtarefa) => (
           <ItemSubtarefa
             key={subtarefa.id}

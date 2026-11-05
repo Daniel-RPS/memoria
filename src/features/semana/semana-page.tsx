@@ -16,6 +16,9 @@ import {
 import { deDataLocal, isDataLocalValida, somarDias } from '@/lib/datas'
 import { inicioDaSemana, intervaloDaSemana } from '@/lib/semana'
 import { ContextoSubetapas } from '@/hooks/contexto-subetapas'
+import { BarraSelecao } from '@/features/dia/components/barra-selecao'
+import { ContextoSelecao, useSelecao } from '@/features/dia/hooks/use-selecao'
+import { pendentesDo } from '@/lib/grupos'
 import { QuadroSemana } from '@/features/semana/components/quadro-semana'
 import { useTarefasDaSemana } from '@/features/semana/hooks/use-tarefas-da-semana'
 
@@ -47,77 +50,99 @@ function Semana({ inicio, hoje }: { inicio: string; hoje: string }) {
     ),
   )
   const gruposSemana = useGruposSemana(cardsDosGrupos, hoje)
+  // Selecionar na Semana: o mesmo estado e a mesma barra do Dia (tarefas soltas e itens).
+  const selecao = useSelecao()
+  const idsDeTarefas = semana.flatMap((dia) =>
+    dia.entradas.flatMap((entrada) => (entrada.tipo === 'tarefa' ? [entrada.tarefa.id] : [])),
+  )
+  const idsDeItens = semana.flatMap((dia) =>
+    dia.entradas.flatMap((entrada) =>
+      entrada.tipo === 'grupo' ? pendentesDo(entrada.grupo).map((item) => item.id) : [],
+    ),
+  )
 
   return (
     <ContextoCategorias.Provider value={categorias}>
       <ContextoGruposSemana.Provider value={gruposSemana}>
-        <ContextoSubetapas.Provider value={subtarefasPorTarefa}>
-          {/* A folha da semana: cabeçalho e, abaixo do traço, os 7 dias lado a lado. */}
-          <div className="rounded-lg border border-pauta bg-papel px-4 pt-5 pb-6 sm:px-6">
-            {/* O traço é do cabeçalho (fora da rolagem das colunas): vai de ponta a ponta. */}
-            <header className="border-b-2 border-tinta pb-4">
-              <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-                <h1 className="flex flex-col">
-                  <span className="text-sm text-grafite">
-                    {isEstaSemana ? 'Esta semana' : 'Semana'}, {format(deDataLocal(inicio), 'yyyy')}
-                  </span>
-                  <span className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">
-                    {intervaloDaSemana(inicio)}
-                  </span>
-                </h1>
-                <nav aria-label="Navegar entre semanas" className="flex items-center gap-1">
-                  <Button asChild variant="ghost" size="icon">
-                    <Link
-                      to={`/semana/${somarDias(inicio, -DIAS_NA_SEMANA)}`}
-                      aria-label="Semana anterior"
+        <ContextoSelecao.Provider value={selecao}>
+          <ContextoSubetapas.Provider value={subtarefasPorTarefa}>
+            {/* A folha da semana: cabeçalho e, abaixo do traço, os 7 dias lado a lado. */}
+            <div className="rounded-lg border border-pauta bg-papel px-4 pt-5 pb-6 sm:px-6">
+              {/* O traço é do cabeçalho (fora da rolagem das colunas): vai de ponta a ponta. */}
+              <header className="border-b-2 border-tinta pb-4">
+                <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+                  <h1 className="flex flex-col">
+                    <span className="text-sm text-grafite">
+                      {isEstaSemana ? 'Esta semana' : 'Semana'},{' '}
+                      {format(deDataLocal(inicio), 'yyyy')}
+                    </span>
+                    <span className="text-4xl font-extrabold tracking-[-0.02em] [font-stretch:80%]">
+                      {intervaloDaSemana(inicio)}
+                    </span>
+                  </h1>
+                  <nav aria-label="Navegar entre semanas" className="flex items-center gap-1">
+                    <Button asChild variant="ghost" size="icon">
+                      <Link
+                        to={`/semana/${somarDias(inicio, -DIAS_NA_SEMANA)}`}
+                        aria-label="Semana anterior"
+                      >
+                        <ChevronLeft />
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className={isEstaSemana ? 'pointer-events-none opacity-50' : undefined}
                     >
-                      <ChevronLeft />
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    variant="outline"
-                    className={isEstaSemana ? 'pointer-events-none opacity-50' : undefined}
-                  >
-                    <Link
-                      to={`/semana/${hoje}`}
-                      aria-disabled={isEstaSemana}
-                      tabIndex={isEstaSemana ? -1 : undefined}
-                    >
-                      Esta semana
-                    </Link>
-                  </Button>
-                  <Button asChild variant="ghost" size="icon">
-                    <Link
-                      to={`/semana/${somarDias(inicio, DIAS_NA_SEMANA)}`}
-                      aria-label="Próxima semana"
-                    >
-                      <ChevronRight />
-                    </Link>
-                  </Button>
-                </nav>
-              </div>
-              {cardsDosGrupos.length > 0 && (
-                <AcoesDasSecoes
-                  className="mt-2"
-                  isTudoAberto={gruposSemana.isTudoAberto}
-                  isTudoRecolhido={gruposSemana.isTudoRecolhido}
-                  onExpandirTudo={gruposSemana.handleExpandirTudo}
-                  onRecolherTudo={gruposSemana.handleRecolherTudo}
+                      <Link
+                        to={`/semana/${hoje}`}
+                        aria-disabled={isEstaSemana}
+                        tabIndex={isEstaSemana ? -1 : undefined}
+                      >
+                        Esta semana
+                      </Link>
+                    </Button>
+                    <Button asChild variant="ghost" size="icon">
+                      <Link
+                        to={`/semana/${somarDias(inicio, DIAS_NA_SEMANA)}`}
+                        aria-label="Próxima semana"
+                      >
+                        <ChevronRight />
+                      </Link>
+                    </Button>
+                  </nav>
+                </div>
+                {cardsDosGrupos.length > 0 && (
+                  <AcoesDasSecoes
+                    className="mt-2"
+                    isTudoAberto={gruposSemana.isTudoAberto}
+                    isTudoRecolhido={gruposSemana.isTudoRecolhido}
+                    onExpandirTudo={gruposSemana.handleExpandirTudo}
+                    onRecolherTudo={gruposSemana.handleRecolherTudo}
+                  />
+                )}
+              </header>
+
+              {!isCarregando && (
+                <QuadroSemana
+                  key={inicio}
+                  semana={semana}
+                  subtarefasPorTarefa={subtarefasPorTarefa}
+                  hoje={hoje}
                 />
               )}
-            </header>
-
-            {!isCarregando && (
-              <QuadroSemana
-                key={inicio}
-                semana={semana}
-                subtarefasPorTarefa={subtarefasPorTarefa}
-                hoje={hoje}
-              />
-            )}
-          </div>
-        </ContextoSubetapas.Provider>
+              {(selecao.isSelecionando || selecao.temSelecao) && (
+                <BarraSelecao
+                  data={hoje}
+                  hoje={hoje}
+                  idsPendentes={[...idsDeTarefas, ...idsDeItens]}
+                  idsGrupos={[]}
+                  idsItens={idsDeItens}
+                />
+              )}
+            </div>
+          </ContextoSubetapas.Provider>
+        </ContextoSelecao.Provider>
       </ContextoGruposSemana.Provider>
     </ContextoCategorias.Provider>
   )
