@@ -18,7 +18,7 @@ import {
   IndicadorAndamento,
   PontoDeAndamento,
 } from '@/components/indicador-andamento'
-import { useGrupoLembrado } from '@/hooks/use-grupos-lembrados'
+import { useGrupoNaSemana } from '@/features/semana/hooks/use-grupos-semana'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { contarEmAndamento } from '@/lib/andamento'
 import { vinculoDoItem } from '@/lib/notas'
@@ -84,7 +84,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
   const textoProgresso = grupo.itens.length > 0 ? textoProgressoGrupo(progresso) : ''
   const pendentes = grupo.itens.filter((item) => item.status === 'pendente')
   const isItensOrdenaveis = !isSobreposto && arrasto !== undefined
-  const { isAberto, handleAlternar, isRecolhivel } = useGrupoLembrado(serie.id)
+  const { isAberto, handleAlternar, isRecolhivel } = useGrupoNaSemana(serie.id, card.data)
   const idConteudo = useId()
   const emAndamento = contarEmAndamento(grupo.itens)
 

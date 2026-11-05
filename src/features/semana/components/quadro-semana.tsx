@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useLayoutEffect, useRef, useState } from 'react'
 import {
   closestCorners,
   DndContext,
@@ -19,6 +19,7 @@ import { reordenarItem } from '@/db/repositories/group-repository'
 import { reordenarTarefa, soltarTarefaNoDia } from '@/db/repositories/task-repository'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
+import { ContextoGruposSemana } from '@/features/semana/hooks/use-grupos-semana'
 import { idDaEntrada, pendentesDo, textoPreviaLevar, type GrupoDoDia } from '@/lib/grupos'
 import { nomeDoDia } from '@/lib/mover'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
@@ -76,6 +77,7 @@ function colunasDe(semana: DiaDaSemana[]): Colunas {
  */
 export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemanaProps) {
   const { mover } = useMoverTarefas()
+  const gruposSemana = useContext(ContextoGruposSemana)
   // Com rolagem lateral, abre mostrando o dia de hoje (um pouco do anterior à esquerda).
   const rolagem = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
@@ -210,11 +212,15 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       if (cardDoItem && cardDoItem === cardDoAlvo && itemPorId.has(String(over.id))) {
         reordenarNoCard(id, String(over.id), cardDoItem)
       } else if (destino !== diaDeOrigem) {
+        const serieId = cardDoItem ? grupoPorId.get(cardDoItem)?.serie.id : undefined
+        if (serieId) gruposSemana?.handleAbrir(serieId, destino)
         void mover([], destino, { itens: [id] })
       }
       return
     }
     if (grupoPorId.has(id) && destino !== diaDeOrigem) {
+      const serieId = grupoPorId.get(id)?.serie.id
+      if (serieId) gruposSemana?.handleAbrir(serieId, destino)
       void mover([], destino, { grupos: [id] })
       return
     }

@@ -22,7 +22,6 @@ describe('Grupos nas visões de semana, mês e ano', () => {
   })
 
   it('semana: card compacto arrastável pelo cabeçalho, com "Novo grupo" na coluna', async () => {
-    const usuario = userEvent.setup()
     const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
     await definirConclusaoItem((await criarItem(card.id, 'Arrumar o quarto')).id, true)
     await criarItem(card.id, 'Fazer comida')
@@ -33,39 +32,51 @@ describe('Grupos nas visões de semana, mês e ano', () => {
         name: 'Grupo Casa, 1/2. Espaço para levar os pendentes a outro dia.',
       }),
     ).toBeInTheDocument()
-    await usuario.click(screen.getByRole('button', { name: 'Expandir Casa' }))
+    // No dia de hoje, o card já abre expandido por padrão.
+    expect(screen.getByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
     const itens = screen.getByRole('list', { name: 'Itens de Casa' })
     expect(within(itens).getByText('Fazer comida')).toBeInTheDocument()
     expect(screen.getAllByRole('textbox', { name: /^Novo grupo em / })).toHaveLength(7)
   })
 
-  it('semana: cards abrem recolhidos; o estado é lembrado pela série e a chave antiga some', async () => {
+  it('semana: hoje abre expandido e outro dia recolhido; abrir em outro dia não afeta os demais', async () => {
     const usuario = userEvent.setup()
-    const card = await criarGrupo({ titulo: 'Casa', data: HOJE })
-    await criarItem(card.id, 'Fazer comida')
-    const outroDia = await criarGrupo({ titulo: 'Casa', data: somarDias(HOJE, 1) })
-    await criarItem(outroDia.id, 'Lavar roupa')
-    // Lista antiga de recolhidos (por card, até 03/11/2026): é apagada e não manda mais.
+    const cardHoje = await criarGrupo({ titulo: 'Casa', data: HOJE })
+    await criarItem(cardHoje.id, 'Fazer comida')
+    const cardAmanha = await criarGrupo({ titulo: 'Casa', data: somarDias(HOJE, 1) })
+    await criarItem(cardAmanha.id, 'Lavar roupa')
+    // Lista antiga de recolhidos (legado): é apagada.
     localStorage.setItem('memoria:recolhidos:semana:cards', JSON.stringify(['outro']))
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
 
-    const expandir = await screen.findAllByRole('button', { name: 'Expandir Casa' })
-    expect(expandir).toHaveLength(2)
+    // 1. Hoje aberto, outro dia recolhido.
+    expect(await screen.findByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
+    const botaoExpandir = screen.getByRole('button', { name: 'Expandir Casa' })
+    expect(botaoExpandir).toBeInTheDocument()
     expect(localStorage.getItem('memoria:recolhidos:semana:cards')).toBeNull()
-    // Os dois cards são da mesma série: abrir um abre o outro.
-    await usuario.click(expandir[0])
-    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
-    expect(screen.getByText('Fazer comida')).toBeVisible()
-    cleanup()
 
-    // Outra visita: continua aberto; "Recolher tudo" fecha e também é lembrado.
-    renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
-    expect(await screen.findAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
+    // 2. Clicar no chevron do outro dia abre SÓ aquele card.
+    await usuario.click(botaoExpandir)
+    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
+
+    // 3. Fechar o card de hoje afeta só o de hoje.
+    const botoesRecolher = screen.getAllByRole('button', { name: 'Recolher Casa' })
+    await usuario.click(botoesRecolher[0])
+    expect(screen.getAllByRole('button', { name: 'Expandir Casa' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(1)
+
+    // 4. Ações globais: Recolher tudo / Expandir tudo.
     await usuario.click(screen.getByRole('button', { name: 'Recolher tudo' }))
     expect(screen.getAllByRole('button', { name: 'Expandir Casa' })).toHaveLength(2)
+    await usuario.click(screen.getByRole('button', { name: 'Expandir tudo' }))
+    expect(screen.getAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
+
     cleanup()
+
+    // 5. Nova visita / recarregamento: volta à regra inicial (hoje aberto, outro dia recolhido).
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
-    expect(await screen.findAllByRole('button', { name: 'Expandir Casa' })).toHaveLength(2)
+    expect(await screen.findByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Expandir Casa' })).toBeInTheDocument()
   })
 
   it('mês: itens pendentes e feitos contam; transferidos não', async () => {
@@ -89,8 +100,7 @@ describe('Grupos nas visões de semana, mês e ano', () => {
     await criarItem(card.id, 'Lavar roupa')
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
 
-    await usuario.click(await screen.findByRole('button', { name: 'Expandir Casa' }))
-    // Cada item pendente tem a própria alça; o card inteiro arrasta o grupo.
+    // O card de hoje já abre expandido; cada item pendente tem a própria alça.
     expect(
       await screen.findByRole('button', { name: /^Arrastar Fazer comida\./ }),
     ).toBeInTheDocument()
