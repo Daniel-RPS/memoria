@@ -5,12 +5,14 @@ import { useCategorias } from '@/hooks/use-categorias'
 import { useHoje } from '@/hooks/use-hoje'
 import { deDataLocal } from '@/lib/datas'
 import { BlocoAtrasadas } from '@/features/inicio/components/bloco-atrasadas'
+import { BlocoEmAndamento } from '@/features/inicio/components/bloco-em-andamento'
 import { BlocoHoje } from '@/features/inicio/components/bloco-hoje'
 import { CapturaRapida } from '@/features/inicio/components/captura-rapida'
 import { MapaDeConclusoes } from '@/features/inicio/components/mapa-de-conclusoes'
 import { ProximosDias } from '@/features/inicio/components/proximos-dias'
 import {
   useAtrasadas,
+  useEmAndamentoNoInicio,
   useHojeNoInicio,
   useProximosDias,
 } from '@/features/inicio/hooks/use-resumo-do-inicio'
@@ -26,6 +28,7 @@ function capitalizar(texto: string) {
 export function InicioPage() {
   const hoje = useHoje()
   const { categorias } = useCategorias()
+  const emAndamento = useEmAndamentoNoInicio(hoje)
   const resumoDeHoje = useHojeNoInicio(hoje)
   const atrasadas = useAtrasadas(hoje)
   const proximos = useProximosDias(hoje)
@@ -51,6 +54,7 @@ export function InicioPage() {
           aria-label="Hoje, atrasadas e próximos dias"
           className="flex flex-col gap-10 lg:pt-1"
         >
+          <BlocoEmAndamento resumo={emAndamento} />
           <BlocoHoje numeros={resumoDeHoje} hoje={hoje} />
           <BlocoAtrasadas
             numeros={atrasadas.numeros}

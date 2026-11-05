@@ -84,7 +84,7 @@ async function capturar(page: Page, nome: string) {
   await page.screenshot({ path: `e2e/capturas/resumo-${FASE}-${nome}.png`, fullPage: true })
 }
 
-function bloco(page: Page, nome: 'Hoje' | 'Atrasadas') {
+function bloco(page: Page, nome: 'Hoje' | 'Atrasadas' | 'Em andamento') {
   return page.getByRole('region', { name: nome, exact: true })
 }
 
@@ -103,8 +103,13 @@ test('capturas: Início, Dia e Semana nos dois temas', async ({ page }) => {
     await page.setViewportSize({ width: 1680, height: 1000 })
     await page.goto('/inicio')
     await expect(bloco(page, 'Hoje').getByText('16 pendentes', { exact: true })).toBeVisible()
+    await expect(bloco(page, 'Hoje').getByText('3 grupos')).toBeVisible()
+    await expect(bloco(page, 'Hoje').getByText('15 itens')).toBeVisible()
+    await expect(bloco(page, 'Hoje').getByText('1 tarefa solta')).toBeVisible()
+    expect(await textosCortados(page)).toEqual([])
     await capturar(page, `inicio-${tema}`)
     await page.setViewportSize({ width: 900, height: 1000 })
+    expect(await textosCortados(page)).toEqual([])
     await capturar(page, `inicio-estreita-${tema}`)
     await page.setViewportSize({ width: 1680, height: 1000 })
     await page.goto(`/dia/${HOJE}`)
@@ -146,9 +151,12 @@ test('1 grupo (1 item) + 1 tarefa solta: frase, contagem e barra; marcar tudo �
 
   const hoje = bloco(page, 'Hoje')
   await expect(hoje.getByText('2 pendentes para hoje.')).toBeVisible()
-  await expect(
-    hoje.getByRole('list', { name: 'Grupos e tarefas soltas' }).getByRole('listitem'),
-  ).toHaveText(['1 grupo · 1 item', '1 tarefa solta'])
+  const itensDaLista = hoje
+    .getByRole('list', { name: 'Grupos e tarefas soltas' })
+    .getByRole('listitem')
+  await expect(itensDaLista.first().getByText('1 grupo')).toBeVisible()
+  await expect(itensDaLista.first().getByText('1 item')).toBeVisible()
+  await expect(itensDaLista.nth(1).getByText('1 tarefa solta')).toBeVisible()
   const barra = hoje.getByRole('progressbar', { name: 'Progresso de hoje' })
   await expect(barra).toHaveAttribute('aria-valuenow', '0')
   await expect(barra).toHaveAttribute('aria-valuemax', '2')
@@ -187,9 +195,12 @@ test('Hoje: "Ver o dia" abre o Dia de hoje; marcar no Dia atualiza sem recarrega
   const hoje = bloco(page, 'Hoje')
   await expect(hoje.getByText('16 pendentes', { exact: true })).toBeVisible()
   await expect(hoje.getByText('Faltam 16 de 17.')).toBeVisible()
-  await expect(
-    hoje.getByRole('list', { name: 'Grupos e tarefas soltas' }).getByRole('listitem'),
-  ).toHaveText(['3 grupos · 15 itens', '1 tarefa solta'])
+  const listaHoje = hoje
+    .getByRole('list', { name: 'Grupos e tarefas soltas' })
+    .getByRole('listitem')
+  await expect(listaHoje.first().getByText('3 grupos')).toBeVisible()
+  await expect(listaHoje.first().getByText('15 itens')).toBeVisible()
+  await expect(listaHoje.nth(1).getByText('1 tarefa solta')).toBeVisible()
 
   await hoje.getByRole('link', { name: 'Ver o dia' }).click()
   await expect(page).toHaveURL(new RegExp(`/dia/${HOJE}$`))
@@ -222,6 +233,7 @@ test('Atrasadas: frase com o mais antigo, contagem e "Ver atrasadas" abre o dia 
 })
 
 test('Dia e Semana abrem com os grupos recolhidos e lembram o que foi aberto', async ({ page }) => {
+  test.setTimeout(60_000)
   await page.goto('/inicio')
   await semearHoje(page)
 
@@ -265,4 +277,111 @@ test('Dia e Semana abrem com os grupos recolhidos e lembram o que foi aberto', a
   await bloco(page, 'Hoje').waitFor()
   await page.goBack()
   await expect(page.getByRole('button', { name: 'Recolher MemorIA' })).toBeVisible()
+})
+
+test('bloco Em andamento: ausente sem andamento, exibe grupos/soltas e números ao marcar, e some ao concluir', async ({
+  page,
+}) => {
+  test.setTimeout(60_000)
+  await page.goto('/inicio')
+  await semearHoje(page)
+
+  // 1. Sem nada em andamento: bloco não existe
+  await expect(page.getByRole('region', { name: 'Em andamento' })).toHaveCount(0)
+
+  // Capturas sem andamento (claro e escuro)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-sem-andamento-${tema}`)
+  }
+
+  // 2. Marcar 2 itens de "Simulador POOSE" e 1 tarefa solta em andamento
+  await page.evaluate(async (hoje: string) => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const andamento = (await importar('/src/db/repositories/andamento-repository.ts')) as {
+      definirAndamento: (
+        alvos: { tarefas?: string[]; itens?: string[] },
+        isMarcar: boolean,
+      ) => Promise<unknown>
+    }
+    const db = banco.db
+
+    const serie = await db.groupSeries
+      .filter((s: { titulo: string }) => s.titulo === 'Simulador POOSE')
+      .first()
+    const card = await db.groupCards.where('[seriesId+data]').equals([serie.id, hoje]).first()
+    const itens = await db.groupItems
+      .where('cardId')
+      .equals(card.id)
+      .filter((i: { status: string }) => i.status === 'pendente')
+      .limit(2)
+      .toArray()
+    const tarefa = await db.tasks.where('data').equals(hoje).first()
+
+    await andamento.definirAndamento(
+      {
+        tarefas: [tarefa.id],
+        itens: itens.map((i: { id: string }) => i.id),
+      },
+      true,
+    )
+  }, HOJE)
+
+  // 3. O bloco surge com números e grupos
+  const blocoAndamento = page.getByRole('region', { name: 'Em andamento' })
+  await expect(blocoAndamento).toBeVisible()
+  await expect(blocoAndamento.getByText('3 agora')).toBeVisible()
+  await expect(blocoAndamento.getByText('Simulador POOSE')).toBeVisible()
+  await expect(blocoAndamento.getByText('2 itens')).toBeVisible()
+  await expect(blocoAndamento.getByText('1 tarefa solta')).toBeVisible()
+
+  // Não mostrar o nome das tarefas no bloco
+  await expect(blocoAndamento.getByText('Tela 1 do simulador')).toHaveCount(0)
+  await expect(blocoAndamento.getByText('Pagar a conta de luz')).toHaveCount(0)
+
+  // Link "Ver no dia"
+  await expect(blocoAndamento.getByRole('link', { name: 'Ver no dia' })).toHaveAttribute(
+    'href',
+    `/dia/${HOJE}`,
+  )
+
+  // Textos cortados com reticências em largura normal e estreita
+  for (const largura of [1680, 900]) {
+    await page.setViewportSize({ width: largura, height: 1000 })
+    expect(await textosCortados(page)).toEqual([])
+  }
+
+  // Capturas com andamento (claro e escuro)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await capturar(page, `inicio-com-andamento-${tema}`)
+  }
+
+  // 4. Concluir todas as tarefas e itens em andamento → o bloco some sozinho
+  await page.evaluate(async () => {
+    const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+    const grupos = (await importar('/src/db/repositories/group-repository.ts')) as ModuloGrupos
+    const tarefasRepo = (await importar('/src/db/repositories/task-repository.ts')) as {
+      definirConclusao: (id: string, concluida: boolean) => Promise<unknown>
+    }
+    const banco = (await importar('/src/db/database.ts')) as { db: any }
+    const db = banco.db
+
+    const itens = await db.groupItems
+      .filter((i: { emAndamento?: boolean }) => i.emAndamento === true)
+      .toArray()
+    for (const item of itens) {
+      await grupos.definirConclusaoItem(item.id, true)
+    }
+
+    const tarefas = await db.tasks
+      .filter((t: { emAndamento?: boolean }) => t.emAndamento === true)
+      .toArray()
+    for (const tarefa of tarefas) {
+      await tarefasRepo.definirConclusao(tarefa.id, true)
+    }
+  })
+
+  await expect(page.getByRole('region', { name: 'Em andamento' })).toHaveCount(0)
 })

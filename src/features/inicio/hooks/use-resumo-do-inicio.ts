@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/db/database'
 import { listarGruposAtrasados } from '@/db/repositories/group-repository'
 import { listarTarefasAtrasadas } from '@/db/repositories/task-repository'
-import type { DataLocal } from '@/db/types'
+import type { DataLocal, GroupCard, GroupSeries } from '@/db/types'
+import { montarResumoDeAndamento, type ResumoDeAndamento } from '@/domain/andamento'
 import { useGruposDoPeriodo } from '@/hooks/use-grupos-do-periodo'
 import { useTarefasDoPeriodo } from '@/hooks/use-tarefas-do-periodo'
 import { somarDias } from '@/lib/datas'
@@ -70,4 +72,44 @@ export function useProximosDias(hoje: DataLocal) {
     () => contarProximosDias(tarefas, grupos, hoje, DIAS_A_FRENTE),
     [tarefas, grupos, hoje],
   )
+}
+
+/**
+ * Itens e tarefas soltas atualmente em andamento.
+ * Atualiza instantaneamente com qualquer alteração nas tabelas relevantes.
+ */
+export function useEmAndamentoNoInicio(hoje: DataLocal): ResumoDeAndamento | null {
+  const resumo = useLiveQuery(async () => {
+    const tarefas = await db.tasks
+      .filter((t) => t.status === 'pendente' && t.emAndamento === true)
+      .toArray()
+
+    const itens = await db.groupItems
+      .filter((i) => i.status === 'pendente' && i.emAndamento === true)
+      .toArray()
+
+    if (tarefas.length === 0 && itens.length === 0) {
+      return null
+    }
+
+    const cardIds = Array.from(new Set(itens.map((i) => i.cardId)))
+    const cards = (await db.groupCards.bulkGet(cardIds)).filter(
+      (c): c is GroupCard => c !== undefined,
+    )
+
+    const seriesIds = Array.from(new Set(cards.map((c) => c.seriesId)))
+    const series = (await db.groupSeries.bulkGet(seriesIds)).filter(
+      (s): s is GroupSeries => s !== undefined,
+    )
+
+    return montarResumoDeAndamento({
+      tarefas,
+      itens,
+      cards,
+      series,
+      hoje,
+    })
+  }, [hoje])
+
+  return resumo ?? null
 }

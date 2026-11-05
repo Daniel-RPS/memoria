@@ -15,27 +15,31 @@ interface ContagemDeTiposProps {
 }
 
 /**
- * "1 grupo · 1 item   1 tarefa solta": um tipo por vez, com ícone discreto, menor e em cor
- * secundária. Tipo com zero não aparece.
+ * Contagem em lista: uma linha por tipo com ícone à esquerda na cor de destaque com opacidade reduzida.
+ * Grupos e tarefas soltas em cor de texto principal (13px), itens dos grupos alinhados ao texto na linha de baixo (12px cinza).
+ * Tipo com zero não aparece.
  */
 export function ContagemDeTipos({ grupos, itensDosGrupos = 0, soltas }: ContagemDeTiposProps) {
   if (grupos === 0 && soltas === 0) return null
   return (
-    <ul
-      aria-label="Grupos e tarefas soltas"
-      className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-grafite"
-    >
+    <ul aria-label="Grupos e tarefas soltas" className="mt-2 flex flex-col gap-1.5">
       {grupos > 0 && (
-        <li className="flex items-center gap-1.5">
-          <ListChecks aria-hidden className="size-3.5 shrink-0" />
-          {textoDaQuantidade(grupos, 'grupo', 'grupos')}
-          {itensDosGrupos > 0 && ` · ${textoDaQuantidade(itensDosGrupos, 'item', 'itens')}`}
+        <li className="flex flex-col">
+          <div className="flex items-center gap-2 text-[0.8125rem] font-medium text-tinta">
+            <ListChecks aria-hidden className="size-3.5 shrink-0 text-caneta/75" />
+            <span>{textoDaQuantidade(grupos, 'grupo', 'grupos')}</span>
+          </div>
+          {itensDosGrupos > 0 && (
+            <span className="pl-[1.375rem] text-xs font-normal text-grafite">
+              {textoDaQuantidade(itensDosGrupos, 'item', 'itens')}
+            </span>
+          )}
         </li>
       )}
       {soltas > 0 && (
-        <li className="flex items-center gap-1.5">
-          <Square aria-hidden className="size-3 shrink-0" />
-          {textoDaQuantidade(soltas, 'tarefa solta', 'tarefas soltas')}
+        <li className="flex items-center gap-2 text-[0.8125rem] font-medium text-tinta">
+          <Square aria-hidden className="size-3.5 shrink-0 text-caneta/75" />
+          <span>{textoDaQuantidade(soltas, 'tarefa solta', 'tarefas soltas')}</span>
         </li>
       )}
     </ul>

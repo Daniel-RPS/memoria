@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
+import { definirAndamento } from '@/db/repositories/andamento-repository'
+import { criarGrupo, criarItem } from '@/db/repositories/group-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { hoje, somarDias } from '@/lib/datas'
 import { renderizarApp } from '@/test/renderizar-app'
@@ -87,5 +89,37 @@ describe('Início', () => {
 
     expect(await within(atrasadas).findByText('Tudo em dia')).toBeInTheDocument()
     expect((await db.tasks.toArray())[0]).toMatchObject({ data: hoje() })
+  })
+
+  it('Em andamento: só aparece quando há algo em andamento, não mostra nome de tarefa e some quando para', async () => {
+    // Inicialmente sem nada em andamento
+    renderizarApp('/inicio')
+    expect(screen.queryByRole('region', { name: 'Em andamento' })).not.toBeInTheDocument()
+
+    // Cria grupo com 2 itens em andamento e 1 tarefa solta em andamento
+    const card = await criarGrupo({ titulo: 'Simulador POOSE', data: hoje() })
+    const item1 = await criarItem(card.id, 'Tela 1 do simulador')
+    const item2 = await criarItem(card.id, 'Tela 2 do simulador')
+    const tarefaSolta = await criarTarefa({ titulo: 'Instalar dependências', data: hoje() })
+
+    await definirAndamento({ tarefas: [tarefaSolta.id], itens: [item1.id, item2.id] }, true)
+
+    // O bloco deve surgir reativamente
+    const bloco = await screen.findByRole('region', { name: 'Em andamento' })
+    expect(within(bloco).getByText('3 agora')).toBeVisible()
+    expect(within(bloco).getByText('Simulador POOSE')).toBeVisible()
+    expect(within(bloco).getByText('2 itens')).toBeVisible()
+    expect(within(bloco).getByText('1 tarefa solta')).toBeVisible()
+
+    // Não deve mostrar os nomes das tarefas
+    expect(within(bloco).queryByText('Tela 1 do simulador')).not.toBeInTheDocument()
+    expect(within(bloco).queryByText('Tela 2 do simulador')).not.toBeInTheDocument()
+    expect(within(bloco).queryByText('Instalar dependências')).not.toBeInTheDocument()
+
+    // Ao parar o andamento de todos, o bloco some sozinho
+    await definirAndamento({ tarefas: [tarefaSolta.id], itens: [item1.id, item2.id] }, false)
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Em andamento' })).not.toBeInTheDocument()
+    })
   })
 })
