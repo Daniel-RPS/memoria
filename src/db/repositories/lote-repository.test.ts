@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from '@/db/database'
 import { definirAndamento } from '@/db/repositories/andamento-repository'
 import { criarGrupo, criarItem, listarGruposEntre } from '@/db/repositories/group-repository'
-import { moverLote, reordenarSubetapasEmLote } from '@/db/repositories/lote-repository'
+import {
+  colocarNoGrupoComDesfazer,
+  moverLote,
+  reordenarSubetapasEmLote,
+  tirarDoGrupoComDesfazer,
+} from '@/db/repositories/lote-repository'
+import { adicionarAnexo } from '@/db/repositories/attachment-repository'
+import { criarCategoria, criarSubcategoria } from '@/db/repositories/category-repository'
+import { textoDoAviso } from '@/domain/categoria-no-grupo'
 import { criarNota } from '@/db/repositories/note-repository'
 import { definirPrioridade } from '@/db/repositories/prioridade-repository'
 import { criarSubtarefa } from '@/db/repositories/subtask-repository'
@@ -203,5 +211,91 @@ describe('lote: subetapas', () => {
 
     await resultado.desfazer()
     expect(await titulos()).toEqual(['1', '2', '3', '4', '5'])
+  })
+})
+
+describe('categoria ao entrar no grupo ou sair dele', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((tabela) => tabela.clear()))
+  })
+
+  async function cenario() {
+    const trabalho = await criarCategoria({ nome: 'Trabalho' })
+    const casa = await criarCategoria({ nome: 'Casa' })
+    const reunioes = await criarSubcategoria({ categoryId: trabalho.id, nome: 'Reuniões' })
+    const cardCasa = await criarGrupo({ titulo: 'Casa', data: DIA, categoryId: casa.id })
+    return { trabalho, casa, reunioes, cardCasa }
+  }
+
+  it('desfazer restaura categoria, subcategoria, dia, posição e anexos', async () => {
+    const { trabalho, reunioes, cardCasa } = await cenario()
+    const [, ligar] = await criarSoltas(['Antes', 'x'])
+    await db.tasks.update(ligar.id, {
+      titulo: 'Ligar para Fulano',
+      categoryId: trabalho.id,
+      subcategoryId: reunioes.id,
+    })
+    await criarSoltas(['Depois'])
+    await adicionarAnexo({
+      dono: { tipo: 'task', id: ligar.id },
+      tipo: 'link',
+      nome: 'Site',
+      url: 'https://exemplo.com',
+    })
+    const antes = await db.tasks.get(ligar.id)
+
+    const resultado = await colocarNoGrupoComDesfazer(ligar.id, cardCasa.id)
+    expect(await db.tasks.get(ligar.id)).toBeUndefined()
+    expect(await titulosDoCard('Casa')).toEqual(['Ligar para Fulano'])
+    expect(textoDoAviso(resultado.avisos)).toBe(
+      '"Ligar para Fulano" foi para o grupo Casa e deixou a categoria Trabalho › Reuniões.',
+    )
+
+    await resultado.desfazer()
+    expect(await db.tasks.get(ligar.id)).toEqual(antes)
+    expect(await db.groupItems.get(ligar.id)).toBeUndefined()
+    expect(await titulosDasSoltas()).toEqual(['Antes', 'Ligar para Fulano', 'Depois'])
+    expect(await db.attachments.count()).toBe(1)
+  })
+
+  it('mesma categoria ou tarefa sem categoria: sem aviso', async () => {
+    const { casa, cardCasa } = await cenario()
+    const [daCasa, semCategoria] = await criarSoltas(['Lavar', 'Varrer'])
+    await db.tasks.update(daCasa.id, { categoryId: casa.id })
+    expect((await colocarNoGrupoComDesfazer(daCasa.id, cardCasa.id)).avisos).toEqual([])
+    expect((await colocarNoGrupoComDesfazer(semCategoria.id, cardCasa.id)).avisos).toEqual([])
+  })
+
+  it('item sai de grupo com categoria: fica sem categoria e avisa', async () => {
+    const { cardCasa } = await cenario()
+    const item = await criarItem(cardCasa.id, 'Lavar')
+    const resultado = await tirarDoGrupoComDesfazer(item.id)
+    expect(textoDoAviso(resultado.avisos)).toBe('"Lavar" saiu do grupo Casa e ficou sem categoria.')
+    expect((await db.tasks.get(item.id))?.categoryId).toBeUndefined()
+    await resultado.desfazer()
+    expect(await titulosDoCard('Casa')).toEqual(['Lavar'])
+  })
+
+  it('lote: conta só as que mudaram e o Desfazer restaura todas', async () => {
+    const { trabalho, casa, cardCasa } = await cenario()
+    const [a, b, c, d] = await criarSoltas(['A', 'B', 'C', 'D'])
+    await db.tasks.update(a.id, { categoryId: trabalho.id })
+    await db.tasks.update(b.id, { categoryId: casa.id })
+    const outra = await criarCategoria({ nome: 'Estudos' })
+    await db.tasks.update(c.id, { categoryId: outra.id })
+    const antes = await db.tasks.toArray()
+
+    const movidos = [a.id, b.id, c.id, d.id]
+    const resultado = await moverLote({
+      movidos,
+      destino: { tipo: 'card', cardId: cardCasa.id },
+      idsEmOrdemNoDestino: movidos,
+    })
+    expect(resultado.avisos.map((aviso) => aviso.titulo)).toEqual(['A', 'C'])
+    expect(textoDoAviso(resultado.avisos)).toBe('2 tarefas deixaram suas categorias.')
+
+    await resultado.desfazer()
+    expect(await db.tasks.toArray()).toEqual(antes)
+    expect(await db.groupItems.count()).toBe(0)
   })
 })

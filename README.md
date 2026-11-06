@@ -74,7 +74,7 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Na Semana, o card se edita ali mesmo: clicar no título renomeia; "+ Adicionar item"; clicar no item renomeia; menu ⋯ do item exclui; a alça ⋮⋮ reordena dentro do card
 - ✅ Levar de volta para um dia onde o item ficou como transferido **desfaz a transferência**: o item de lá volta a pendente, sem duplicata; o card que nasceu da transferência e ficou sem itens some sozinho (card criado por você nunca some sozinho)
 - ✅ Toda movimentação mostra "2 itens levados para amanhã · Desfazer"; **Ctrl+Z** faz o mesmo enquanto o aviso está na tela
-- ✅ Colocar uma tarefa solta no grupo e tirar um item do grupo
+- ✅ Colocar uma tarefa solta no grupo e tirar um item do grupo. O item usa a categoria do grupo: se a tarefa perde a dela, aparece o aviso "“Ligar para Fulano” foi para o grupo Casa e deixou a categoria Trabalho." com **Desfazer** (volta solta, com a categoria, no mesmo lugar); várias de uma vez dão um aviso só ("3 tarefas deixaram suas categorias."); tirar de um grupo com categoria avisa que ficou sem categoria (06/11/2026)
 - ✅ Adiar, mover para outro dia, seleção múltipla e trazer pendências de ontem seguem a mesma regra; no modo Selecionar, clicar no cabeçalho do card marca o card inteiro
 - ✅ Arquivar um item ou o card inteiro
 - ✅ Na Semana, a seta do cabeçalho recolhe o card (fica só a alça, o nome, a contagem e a faixa de cor), lembrado por grupo e dia; "Expandir tudo" e "Recolher tudo" abaixo da navegação. Recolhido, o card continua arrastável e recebe item solto em cima (02/11/2026)

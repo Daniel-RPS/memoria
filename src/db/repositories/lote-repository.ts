@@ -1,11 +1,17 @@
 import { db } from '@/db/database'
-import type { Attachment, GroupItem, Note, Subtask, Task, TimeSession } from '@/db/types'
+import type { Attachment, GroupCard, GroupItem, Note, Subtask, Task, TimeSession } from '@/db/types'
 import {
   colocarNoGrupo,
   passarItemParaCard,
   tirarDoGrupo,
 } from '@/db/repositories/group-repository'
 import { agora } from '@/db/repositories/ordenacao'
+import {
+  montarAviso,
+  mudancaAoEntrarNoGrupo,
+  mudancaAoSairDoGrupo,
+  type AvisoDeCategoria,
+} from '@/domain/categoria-no-grupo'
 import { tabelaDoDia } from '@/db/repositories/task-repository'
 import {
   BLOCO_DEMAIS,
@@ -25,6 +31,8 @@ import { planejarOrdens } from '@/domain/selecao-em-lote'
 export interface ResultadoLote {
   /** Quantos registros foram movidos. */
   quantidade: number
+  /** Linhas que perderam a categoria ao entrar num grupo ou sair dele (para o aviso). */
+  avisos: AvisoDeCategoria[]
   /** Devolve tudo ao que era antes do movimento. */
   desfazer: () => Promise<void>
 }
@@ -41,6 +49,8 @@ const TABELAS = [
   db.groupCards,
   db.groupItems,
   db.sessions,
+  db.categories,
+  db.subcategories,
 ]
 
 /** Os registros como estavam: o suficiente para voltar atrás (inclusive depois de converter). */
@@ -49,6 +59,8 @@ interface Instantaneo {
   ids: string[]
   tarefas: Task[]
   itens: GroupItem[]
+  /** Cards da lista (tarefas soltas e cards dividem a escala de `ordem` do dia). */
+  cards: GroupCard[]
   subtarefas: Subtask[]
   notas: Note[]
   anexos: Attachment[]
@@ -60,7 +72,11 @@ function existentes<T>(lista: (T | undefined)[]) {
 }
 
 async function capturar(ids: string[], movidos: string[]): Promise<Instantaneo> {
-  const [tarefas, itens] = await Promise.all([db.tasks.bulkGet(ids), db.groupItems.bulkGet(ids)])
+  const [tarefas, itens, cards] = await Promise.all([
+    db.tasks.bulkGet(ids),
+    db.groupItems.bulkGet(ids),
+    db.groupCards.bulkGet(ids),
+  ])
   const itensMovidos = existentes(await db.groupItems.bulkGet(movidos))
   const donos = new Set(movidos)
   const cadeias = new Set(itensMovidos.map((item) => item.cadeiaId))
@@ -91,6 +107,7 @@ async function capturar(ids: string[], movidos: string[]): Promise<Instantaneo> 
     ids,
     tarefas: existentes(tarefas),
     itens: existentes(itens),
+    cards: existentes(cards),
     subtarefas,
     notas,
     anexos,
@@ -105,12 +122,57 @@ async function restaurar(instantaneo: Instantaneo, movidos: string[]) {
     await db.groupItems.bulkDelete(instantaneo.ids)
     await db.tasks.bulkPut(instantaneo.tarefas)
     await db.groupItems.bulkPut(instantaneo.itens)
+    await db.groupCards.bulkPut(instantaneo.cards)
     await db.subtasks.where('taskId').anyOf(movidos).delete()
     await db.subtasks.bulkPut(instantaneo.subtarefas)
     await db.notes.bulkPut(instantaneo.notas)
     await db.attachments.bulkPut(instantaneo.anexos)
     await db.sessions.bulkPut(instantaneo.sessoes)
   })
+}
+
+/** Nomes de todas as categorias e subcategorias, por id. */
+async function lerNomesDeCategoria() {
+  const [categorias, subcategorias] = await Promise.all([
+    db.categories.toArray(),
+    db.subcategories.toArray(),
+  ])
+  return new Map([...categorias, ...subcategorias].map((registro) => [registro.id, registro.nome]))
+}
+
+/**
+ * Antes de converter: quem vai perder a categoria (tarefa solta entrando no card `destino`, ou
+ * item saindo do grupo para as soltas). A regra está em `domain/categoria-no-grupo`.
+ */
+async function avisosDeCategoria(movidos: string[], destino: DestinoDoLote) {
+  const avisos: AvisoDeCategoria[] = []
+  let nomes: Map<string, string> | undefined
+  const nomesDe = async () => (nomes ??= await lerNomesDeCategoria())
+  const serieDoCard = async (cardId: string) => {
+    const card = await db.groupCards.get(cardId)
+    return card ? db.groupSeries.get(card.seriesId) : undefined
+  }
+  const serieDestino = destino.tipo === 'card' ? await serieDoCard(destino.cardId) : undefined
+  for (const id of movidos) {
+    const tarefa = await db.tasks.get(id)
+    if (tarefa && serieDestino) {
+      const mudanca = mudancaAoEntrarNoGrupo(tarefa, serieDestino)
+      if (mudanca) {
+        avisos.push(
+          montarAviso('entrou', tarefa.titulo, serieDestino.titulo, mudanca, await nomesDe()),
+        )
+      }
+      continue
+    }
+    const item = tarefa ? undefined : await db.groupItems.get(id)
+    if (!item || destino.tipo !== 'soltas') continue
+    const serie = await serieDoCard(item.cardId)
+    const mudanca = serie && mudancaAoSairDoGrupo(serie)
+    if (serie && mudanca) {
+      avisos.push(montarAviso('saiu', item.titulo, serie.titulo, mudanca, await nomesDe()))
+    }
+  }
+  return avisos
 }
 
 /** Lê tarefas e itens da lista para saber o bloco de exibição e a `ordem` de cada um. */
@@ -193,6 +255,7 @@ export async function moverLote(pedido: PedidoDeLote): Promise<ResultadoLote> {
   const ids = [...new Set([...idsEmOrdemNoDestino, ...movidos])]
   return db.transaction('rw', TABELAS, async () => {
     const instantaneo = await capturar(ids, movidos)
+    const avisos = await avisosDeCategoria(movidos, destino)
     for (const id of movidos) {
       const isTarefa = await db.tasks.get(id)
       if (destino.tipo === 'soltas') {
@@ -211,8 +274,55 @@ export async function moverLote(pedido: PedidoDeLote): Promise<ResultadoLote> {
     )
     return {
       quantidade: movidos.length,
+      avisos,
       desfazer: () => restaurar(instantaneo, movidos),
     }
+  })
+}
+
+/**
+ * Uma tarefa solta vira item do card (arrastar uma só, menu ⋯ "Colocar no grupo"): o mesmo
+ * `colocarNoGrupo`, com o "Desfazer" (devolve a tarefa solta com categoria, dia, posição, notas e
+ * anexos) e o aviso se ela perdeu a categoria.
+ */
+export async function colocarNoGrupoComDesfazer(
+  tarefaId: string,
+  cardId: string,
+  idsEmOrdem?: string[],
+): Promise<ResultadoLote> {
+  return converterUm(
+    tarefaId,
+    { tipo: 'card', cardId },
+    () => colocarNoGrupo(tarefaId, cardId, idsEmOrdem),
+    idsEmOrdem,
+  )
+}
+
+/** Um item vira tarefa solta (arrastar um só, menu ⋯ "Tirar do grupo"), com "Desfazer" e aviso. */
+export async function tirarDoGrupoComDesfazer(
+  itemId: string,
+  idsEmOrdemNoDia?: string[],
+): Promise<ResultadoLote> {
+  return converterUm(
+    itemId,
+    { tipo: 'soltas' },
+    () => tirarDoGrupo(itemId, idsEmOrdemNoDia),
+    idsEmOrdemNoDia,
+  )
+}
+
+async function converterUm(
+  id: string,
+  destino: DestinoDoLote,
+  converter: () => Promise<void>,
+  idsEmOrdem: string[] = [],
+): Promise<ResultadoLote> {
+  const ids = [...new Set([id, ...idsEmOrdem])]
+  return db.transaction('rw', TABELAS, async () => {
+    const instantaneo = await capturar(ids, [id])
+    const avisos = await avisosDeCategoria([id], destino)
+    await converter()
+    return { quantidade: 1, avisos, desfazer: () => restaurar(instantaneo, [id]) }
   })
 }
 
@@ -240,6 +350,7 @@ export async function reordenarSubetapasEmLote(
     }
     return {
       quantidade: movidos.length,
+      avisos: [],
       desfazer: async () => {
         await db.subtasks.bulkPut(antes)
       },

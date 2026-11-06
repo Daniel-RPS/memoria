@@ -5,6 +5,7 @@ import {
   type DestinoDoLote,
   type ResultadoLote,
 } from '@/db/repositories/lote-repository'
+import { textoDoAviso } from '@/domain/categoria-no-grupo'
 import type { Bloco } from '@/domain/ordem-de-exibicao'
 import { manterBlocos } from '@/domain/ordem-de-exibicao'
 import { deslocar } from '@/domain/selecao-em-lote'
@@ -23,14 +24,33 @@ function textoDoLote(quantidade: number, singular: string, plural: string) {
   return quantidade === 1 ? `1 ${singular} movida` : `${quantidade} ${plural} movidas`
 }
 
-/** Um aviso só, com um "Desfazer" só, para o movimento em lote (também Ctrl+Z). */
+function desfazerTodos(resultados: ResultadoLote[]) {
+  return async () => {
+    // Desfaz na ordem contrária à que foi feita.
+    for (const resultado of [...resultados].reverse()) await resultado.desfazer()
+  }
+}
+
+/**
+ * Uma linha só convertida (tarefa solta ↔ item, arrastar uma ou menu ⋯): aviso com "Desfazer"
+ * SÓ se ela perdeu a categoria; sem mudança de categoria, nada (como sempre foi).
+ */
+export function avisarConversao(resultado: ResultadoLote) {
+  const texto = textoDoAviso(resultado.avisos)
+  if (texto) avisarComDesfazer(texto, desfazerTodos([resultado]))
+}
+
+/**
+ * Um aviso só, com um "Desfazer" só, para o movimento em lote (também Ctrl+Z). Se alguma linha
+ * perdeu a categoria ao entrar num grupo ou sair dele, o aviso diz isso no lugar de "N movidas".
+ */
 export function avisarLote(resultados: ResultadoLote[], singular = 'tarefa', plural = 'tarefas') {
   const quantidade = resultados.reduce((total, resultado) => total + resultado.quantidade, 0)
   if (quantidade === 0) return
-  avisarComDesfazer(textoDoLote(quantidade, singular, plural), async () => {
-    // Desfaz na ordem contrária à que foi feita.
-    for (const resultado of [...resultados].reverse()) await resultado.desfazer()
-  })
+  const texto =
+    textoDoAviso(resultados.flatMap((resultado) => resultado.avisos)) ??
+    textoDoLote(quantidade, singular, plural)
+  avisarComDesfazer(texto, desfazerTodos(resultados))
 }
 
 interface Opcoes {

@@ -1,4 +1,4 @@
-import { colocarNoGrupo } from '@/db/repositories/group-repository'
+import { colocarNoGrupoComDesfazer } from '@/db/repositories/lote-repository'
 import {
   arquivarTarefa,
   criarTarefa,
@@ -8,6 +8,12 @@ import {
   renomearTarefa,
   reordenarTarefa,
 } from '@/db/repositories/task-repository'
+import { avisarConversao } from '@/features/dia/hooks/use-movimento-em-lote'
+
+/** Tarefa solta vira item; avisa (com Desfazer) se ela perdeu a categoria. */
+async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrdem?: string[]) {
+  avisarConversao(await colocarNoGrupoComDesfazer(tarefaId, cardId, idsEmOrdem))
+}
 
 /** Ações sobre tarefas usadas pela visão do dia; a escrita fica no repositório. */
 export function useAcoesTarefa() {
