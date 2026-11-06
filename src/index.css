@@ -192,15 +192,11 @@
   color-scheme: dark;
 }
 
-/* Troca de tema: as cores deslizam só durante a troca (`data-trocando-tema`, ~200 ms). */
-:root[data-trocando-tema],
-:root[data-trocando-tema] * {
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease,
-    opacity 180ms ease !important;
-}
+/*
+ * Troca de tema (`aplicarTemaNoHtml`): instantânea, só o `data-tema` do <html>. NUNCA ponha
+ * `transition` de cor ligada ao tema em `*` nem em linhas de lista (com centenas de linhas a troca
+ * levava segundos), nem regra `:root[atributo] *`: ligar o atributo recalcula a árvore inteira.
+ */
 
 @layer base {
   * {
@@ -395,6 +391,16 @@
   :root[data-tema='escuro'] .glass-surface {
     background-color: var(--papel);
   }
+}
+
+/*
+ * Linhas e cards das listas do Dia e da Semana (`data-flip-id`): fora da tela o navegador pula
+ * estilo, layout e pintura (a troca de tema recalcula só o que está à vista). `auto` lembra a
+ * altura já desenhada. Contém a pintura: nada dentro da linha pode desenhar fora dela.
+ */
+[data-flip-id] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2.5rem;
 }
 
 /* Arrastando várias selecionadas de uma vez: as outras ficam esmaecidas até soltar. */

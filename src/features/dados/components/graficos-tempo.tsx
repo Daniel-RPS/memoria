@@ -162,7 +162,6 @@ export function GraficoPizzaCategoria({
                       cy="80"
                       r="58"
                       fill="none"
-                      stroke={cor}
                       strokeWidth={isHovered ? 17 : 13}
                       strokeDasharray={`${dash} ${circ - dash}`}
                       strokeDashoffset={fatia.offset}
@@ -170,6 +169,7 @@ export function GraficoPizzaCategoria({
                       data-fatia-pizza={fatia.nome}
                       className="cursor-pointer transition-all duration-150 outline-none"
                       style={{
+                        stroke: cor,
                         opacity: fatiaHoverId && !isHovered ? 0.45 : 1,
                         pointerEvents: 'stroke',
                       }}

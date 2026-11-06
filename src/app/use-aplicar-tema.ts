@@ -1,28 +1,19 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
+import { aplicarTemaNoHtml } from '@/app/trocar-tema'
 import { useAparencia } from '@/app/use-aparencia'
-import { temaOposto } from '@/lib/aparencia'
-
-const DURACAO_DA_TROCA_MS = 200
+import { temaOposto, type Tema } from '@/lib/aparencia'
 
 /**
- * Leva o tema para o <html> (`data-tema`, lido pelos tokens de src/index.css) e liga o
- * Ctrl+Shift+L, que alterna entre claro e escuro. Na troca, as cores deslizam por ~200 ms
- * (`data-trocando-tema`), exceto com movimento reduzido. Ao abrir, quem põe o tema é o script
- * do index.html: aqui só confirma, sem transição.
+ * Mantém o `<html>` no tema que vale quando ele muda por fora do seletor (outra aba, sistema
+ * operacional em "Sistema") e liga o Ctrl+Shift+L, que alterna entre claro e escuro. Ao abrir,
+ * quem põe o tema é o script do index.html: aqui só confirma. Use num componente pequeno (ver
+ * `AplicadorDoTema`): quem chama re-renderiza a cada troca.
  */
 export function useAplicarTema() {
   const { tema, handleEscolherTema } = useAparencia()
-  const anterior = useRef(document.documentElement.dataset.tema)
 
   useEffect(() => {
-    const raiz = document.documentElement
-    if (anterior.current === tema) return
-    anterior.current = tema
-    const isMovimentoReduzido = matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (!isMovimentoReduzido) raiz.setAttribute('data-trocando-tema', '')
-    raiz.dataset.tema = tema
-    const espera = setTimeout(() => raiz.removeAttribute('data-trocando-tema'), DURACAO_DA_TROCA_MS)
-    return () => clearTimeout(espera)
+    aplicarTemaNoHtml(tema)
   }, [tema])
 
   useEffect(() => {
@@ -34,9 +25,11 @@ export function useAplicarTema() {
         evento.key.toLowerCase() === 'l'
       if (!isAtalho) return
       evento.preventDefault()
-      handleEscolherTema(temaOposto(tema))
+      // O <html> já tem o tema da última troca, mesmo antes de ela ser gravada.
+      const atual: Tema = document.documentElement.dataset.tema === 'escuro' ? 'escuro' : 'claro'
+      handleEscolherTema(temaOposto(atual))
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tema, handleEscolherTema])
+  }, [handleEscolherTema])
 }

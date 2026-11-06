@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import { gravarPreferencia, lerPreferencia } from '@/app/preferencia-local'
+import { aplicarTemaNoHtml, depoisDaTroca } from '@/app/trocar-tema'
 import {
   lerEscolhaTema,
   lerFundo,
@@ -44,12 +45,21 @@ function gravar(chave: string, valor: string) {
   window.dispatchEvent(new Event(EVENTO_APARENCIA))
 }
 
+/**
+ * Troca de tema: PRIMEIRO o `<html>` (o que o usuário vê), depois, fora do caminho crítico, a
+ * gravação e o aviso a esta aba (seletor) e às outras (evento `storage`).
+ */
+function escolherTema(escolha: EscolhaTema) {
+  aplicarTemaNoHtml(resolverTema(escolha, matchMedia(CONSULTA_SISTEMA_ESCURO).matches))
+  depoisDaTroca(() => gravar(CHAVE_TEMA, escolha))
+}
+
 /** Tema escolhido, tema que vale agora (resolvendo "Sistema") e fundo, lembrados no navegador. */
 export function useAparencia() {
   const [escolhaTema, fundo, temaDoSistema] = useSyncExternalStore(assinar, lerInstantaneo).split(
     '|',
   ) as [EscolhaTema, Fundo, string]
-  const handleEscolherTema = useCallback((escolha: EscolhaTema) => gravar(CHAVE_TEMA, escolha), [])
+  const handleEscolherTema = useCallback((escolha: EscolhaTema) => escolherTema(escolha), [])
   const handleEscolherFundo = useCallback((novo: Fundo) => gravar(CHAVE_FUNDO, novo), [])
   return {
     escolhaTema,
