@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Aba Grupos: quais grupos existem e quantos são, por categoria, com o contador da barra
+ * Aba Grupos: quais grupos existem e quantos são, por categoria (a barra lateral não tem contador)
  * lateral, atualização entre abas, arquivar, abrir o dia e a barra recolhida.
  * Capturas em e2e/capturas/grupos-*.png.
  */
@@ -79,11 +79,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto(`/dia/${HOJE}`)
 })
 
-test('lista por categoria, com o contador da barra e o resumo de cada grupo', async ({ page }) => {
+test('lista por categoria, com o total e o resumo de cada grupo, sem contador na barra', async ({
+  page,
+}) => {
   await abrirGrupos(page)
   await expect(page.getByText('2 grupos', { exact: true })).toBeVisible()
-  await expect(linkGrupos(page).locator('[data-contador]')).toHaveText('2')
-  await expect(linkGrupos(page)).toHaveAttribute('aria-description', '2 grupos')
+  await expect(linkGrupos(page).locator('[data-contador]')).toHaveCount(0)
+  await expect(linkGrupos(page)).not.toHaveAttribute('aria-description')
 
   await expect(bloco(page, 'Lar').getByRole('button', { name: /Casa/ })).toHaveText(
     /Casa1 pendente · 1 feito · 2 dias/,
@@ -111,12 +113,12 @@ test('lista por categoria, com o contador da barra e o resumo de cada grupo', as
   await capturar(page, 'cheia-escuro')
 })
 
-test('criar um grupo em outra janela sobe o contador e a lista sem recarregar', async ({
+test('criar um grupo em outra janela sobe o total e a lista sem recarregar', async ({
   page,
   context,
 }) => {
   await abrirGrupos(page)
-  await expect(linkGrupos(page).locator('[data-contador]')).toHaveText('2')
+  await expect(page.getByText('2 grupos', { exact: true })).toBeVisible()
 
   const outra = await context.newPage()
   await outra.goto(`/dia/${HOJE}`)
@@ -126,14 +128,13 @@ test('criar um grupo em outra janela sobe o contador e a lista sem recarregar', 
   await outra.getByRole('textbox', { name: 'Novo grupo' }).press('Enter')
   await expect(outra.getByRole('region', { name: 'Grupo Mercado' })).toBeVisible()
 
-  await expect(linkGrupos(page).locator('[data-contador]')).toHaveText('3')
   await expect(page.getByText('3 grupos', { exact: true })).toBeVisible()
   await expect(
     bloco(page, 'Sem categoria').getByRole('button', { name: /Mercado.*nenhum item · 1 dia/ }),
   ).toBeVisible()
 })
 
-test('arquivar Casa em todos os dias tira da aba e desce o contador', async ({ page }) => {
+test('arquivar Casa em todos os dias tira da aba e desce o total', async ({ page }) => {
   await abrirGrupos(page)
   for (const data of [HOJE, AMANHA]) {
     await page.goto(`/dia/${data}`)
@@ -141,7 +142,6 @@ test('arquivar Casa em todos os dias tira da aba e desce o contador', async ({ p
     await page.getByRole('menuitem', { name: 'Arquivar' }).click()
     await expect(page.getByRole('region', { name: 'Grupo Casa' })).toBeHidden()
   }
-  await expect(linkGrupos(page).locator('[data-contador]')).toHaveText('1')
   await linkGrupos(page).click()
   await expect(page.getByText('1 grupo', { exact: true })).toBeVisible()
   await expect(lista(page).getByRole('button', { name: /Casa/ })).toHaveCount(0)
@@ -191,7 +191,7 @@ test('barra recolhida: ícone e dica de Grupos; capturas nos dois temas', async 
   }
 })
 
-test('vazia: ícone apagado, texto de onde criar e sem contador', async ({ page }) => {
+test('vazia: ícone apagado e texto de onde criar', async ({ page }) => {
   for (const tema of ['claro', 'escuro'] as const) {
     await page.evaluate((valor) => localStorage.setItem('memoria:tema', valor), tema)
     await page.goto('/grupos')

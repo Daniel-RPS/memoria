@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Category, GroupCard, GroupItem, GroupSeries } from '@/db/types'
 import {
-  contarGrupos,
   diaDeDestinoDoGrupo,
   montarListaDeGrupos,
   textoResumoDoGrupo,
@@ -105,7 +104,6 @@ describe('montarListaDeGrupos', () => {
     })
     const lista = montarListaDeGrupos(entrada, HOJE)
     expect(lista.total).toBe(1)
-    expect(contarGrupos(entrada, HOJE)).toBe(1)
     const [grupo] = lista.blocos[0].grupos
     expect(grupo.serie.titulo).toBe('Estudos')
     // Itens do card arquivado não contam, nem o dia dele.

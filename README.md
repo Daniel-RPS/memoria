@@ -79,7 +79,7 @@ Legenda: ✅ pronto · 🔜 planejado
 - ✅ Arquivar um item ou o card inteiro
 - ✅ Na Semana, a seta do cabeçalho recolhe o card (fica só a alça, o nome, a contagem e a faixa de cor), lembrado por grupo e dia; "Expandir tudo" e "Recolher tudo" abaixo da navegação. Recolhido, o card continua arrastável e recebe item solto em cima (02/11/2026)
 - ✅ Colunas da Semana com pelo menos ~260 px: sem espaço, a semana rola para o lado e abre mostrando hoje (02/11/2026)
-- ✅ Aba **Grupos** na barra lateral (06/11/2026), com contador: quais grupos existem e quantos são, em blocos recolhíveis por categoria ("Sem categoria" por último), com busca pelo nome do grupo ou da categoria. Cada grupo é um cartão com faixa na cor da categoria, "3 pendentes · 5 feitos · 4 dias" e barra de progresso; clicar abre o cartão na largura toda, só para ler: os pendentes (com o dia, prioridade e em andamento), um chip por dia com card ("07/11 · 3/4", abre aquele dia) e "Feitos (n)" recolhido. "Abrir no dia" leva a hoje, senão ao próximo dia com card, senão ao mais recente. Grupo com todos os cards arquivados fica só em Arquivados
+- ✅ Aba **Grupos** na barra lateral (06/11/2026): quais grupos existem e quantos são, em blocos recolhíveis por categoria ("Sem categoria" por último), com busca pelo nome do grupo ou da categoria. Cada grupo é um cartão com faixa na cor da categoria, "3 pendentes · 5 feitos · 4 dias" e barra de progresso; clicar abre o cartão na largura toda, só para ler: os pendentes (com o dia, prioridade e em andamento), um chip por dia com card ("07/11 · 3/4", abre aquele dia) e "Feitos (n)" recolhido. "Abrir no dia" leva a hoje, senão ao próximo dia com card, senão ao mais recente. Grupo com todos os cards arquivados fica só em Arquivados
 
 ### Procedimentos
 

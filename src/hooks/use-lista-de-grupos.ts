@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { carregarGruposParaLista } from '@/db/repositories/group-repository'
 import { useCategorias } from '@/hooks/use-categorias'
 import { useHoje } from '@/hooks/use-hoje'
-import { contarGrupos, montarListaDeGrupos, type ListaDeGrupos } from '@/lib/grupos'
+import { montarListaDeGrupos, type ListaDeGrupos } from '@/lib/grupos'
 
 const VAZIA: ListaDeGrupos = { total: 0, blocos: [] }
 
@@ -17,11 +17,4 @@ export function useListaDeGrupos(termo: string) {
     [dados, categorias, hoje, termo],
   )
   return { ...lista, isCarregando: dados === undefined || isCarregandoCategorias }
-}
-
-/** Quantos grupos existem (contador da barra lateral); mesma regra do total da aba Grupos. */
-export function useTotalDeGrupos() {
-  const hoje = useHoje()
-  const dados = useLiveQuery(carregarGruposParaLista, [])
-  return dados ? contarGrupos(dados, hoje) : 0
 }

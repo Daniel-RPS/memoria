@@ -304,7 +304,7 @@ export interface BlocoDeGrupos {
 }
 
 export interface ListaDeGrupos {
-  /** Total de grupos, sem a busca (o mesmo número da barra lateral). */
+  /** Total de grupos, sem a busca. */
   total: number
   /** Só os blocos com grupos (com a busca, só os que têm resultado). */
   blocos: BlocoDeGrupos[]
@@ -391,11 +391,6 @@ function gruposAtivos(
       },
     ]
   })
-}
-
-/** Quantos grupos existem no app (séries com algum card fora de Arquivados). */
-export function contarGrupos(dados: Omit<DadosDaListaDeGrupos, 'categorias'>, hoje: DataLocal) {
-  return gruposAtivos(dados, hoje).length
 }
 
 /**
