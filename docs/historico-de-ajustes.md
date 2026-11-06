@@ -57,3 +57,4 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 06/11/2026: aba Grupos na barra lateral sem o contador (o total fica só no subtítulo da tela); saíram `useTotalDeGrupos` e `contarGrupos`
 - Ajuste 06/11/2026: novo isotipo ("M" geométrico em fita 3D) em `src/assets/` (`512×512` transparente por tema), `public/` (favicon e `apple-touch-icon.png`), `docs/logo-memoria.png` e `docs/branding/logo/`
   Na barra lateral (`LogoDaBarra`), o símbolo combina com o nome "MemorIA" em SVG (`currentColor` + `fill-caneta`), sem re-render nem transição no tema; removidos `src/assets/logo-memoria*.png` e `docs/branding/logo/logo-original.png`
+- Ajuste 06/11/2026: logo do MemorIA no topo da barra lateral (expandida e recolhida) vira link acessível para a tela Início (`/inicio`) com foco visível e navegação sem recarregar

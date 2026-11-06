@@ -21,6 +21,7 @@ if (!Element.prototype.setPointerCapture) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {}
 }
+window.scrollTo = () => {}
 
 // O Blob do jsdom vira objeto vazio ao passar pelo fake-indexeddb (o IndexedDB real guarda Blob).
 // O Blob nativo do Node sobrevive à cópia, então os testes de anexos usam ele.

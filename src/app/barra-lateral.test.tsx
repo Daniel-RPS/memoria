@@ -72,4 +72,14 @@ describe('grupo Calendário na barra lateral', () => {
     await usuario.keyboard('{Home}')
     expect(grupo).toHaveFocus()
   })
+
+  it('clicar na logo leva ao Início com link acessível', async () => {
+    const usuario = userEvent.setup()
+    const router = renderizarApp('/notas')
+    const linkLogo = screen.getByRole('link', { name: 'MemorIA — ir para o Início' })
+    expect(linkLogo).toHaveAttribute('href', '/inicio')
+
+    await usuario.click(linkLogo)
+    expect(router.state.location.pathname).toBe('/inicio')
+  })
 })

@@ -127,11 +127,16 @@ const CAMINHO_IA =
  */
 function LogoDaBarra({ isRecolhida }: { isRecolhida: boolean }) {
   return (
-    <span
+    <Link
+      to="/inicio"
+      aria-label="MemorIA — ir para o Início"
       data-logo
+      onClick={() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }}
       className={cn(
         // Expandida: largura da logo a h-8 (proporção 864×218).
-        'relative flex h-8 shrink-0 items-center overflow-hidden transition-[width]',
+        'relative flex h-8 shrink-0 items-center overflow-hidden rounded-md transition-[width,opacity] hover:opacity-80 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-barra-texto',
         TRANSICAO_DA_BARRA,
         isRecolhida ? 'w-8' : 'w-[calc(var(--spacing)*8*864/218)]',
       )}
@@ -158,7 +163,7 @@ function LogoDaBarra({ isRecolhida }: { isRecolhida: boolean }) {
         <path fill="currentColor" fillRule="evenodd" d={CAMINHO_MEMOR} />
         <path className="fill-caneta" fillRule="evenodd" d={CAMINHO_IA} />
       </svg>
-    </span>
+    </Link>
   )
 }
 

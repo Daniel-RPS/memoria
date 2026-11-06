@@ -10,17 +10,21 @@ const HOJE = '2026-11-02'
 const LARGURA_RECOLHIDA = 64
 const LARGURA_EXPANDIDA = 224
 
+function barraLateral(page: Page) {
+  return page.locator('aside').first()
+}
+
 function larguraDaBarra(page: Page) {
-  return page.locator('aside').evaluate((barra) => barra.getBoundingClientRect().width)
+  return barraLateral(page).evaluate((barra) => barra.getBoundingClientRect().width)
 }
 
 function seletorDeTema(page: Page) {
-  return page.locator('aside').getByRole('radiogroup', { name: 'Tema' })
+  return barraLateral(page).getByRole('radiogroup', { name: 'Tema' })
 }
 
 /** O símbolo anunciado ("MemorIA") do tema atual e se carregou em alta resolução (512 px). */
 async function logoVisivel(page: Page) {
-  const logo = page.locator('aside').getByRole('img', { name: 'MemorIA', exact: true })
+  const logo = barraLateral(page).getByRole('img', { name: 'MemorIA', exact: true })
   await expect(logo).toHaveCount(1)
   await expect(logo).toBeVisible()
   await expect
@@ -30,7 +34,7 @@ async function logoVisivel(page: Page) {
 }
 
 async function esperarOpacidadeDoNome(page: Page, opacidade: string) {
-  const nome = page.locator('aside [data-logo-nome]')
+  const nome = barraLateral(page).locator('[data-logo-nome]')
   await expect.poll(() => nome.evaluate((svg) => getComputedStyle(svg).opacity)).toBe(opacidade)
 }
 
@@ -122,4 +126,75 @@ test('favicon e título da aba', async ({ page }) => {
     path: 'e2e/capturas/logo-aba.png',
     clip: { x: 0, y: 0, width: 244, height: 72 },
   })
+})
+
+test('clique na logo abre o Início sem recarregar (expandida e recolhida), botão de recolher não navega, e foco visível nos dois temas', async ({
+  page,
+}) => {
+  // 1. Ir para outra tela (ex.: Notas)
+  await page.goto('/notas')
+  await expect.poll(() => larguraDaBarra(page)).toBe(LARGURA_EXPANDIDA)
+
+  // Marca no window para conferir que a navegação não recarrega a página.
+  await page.evaluate(() => {
+    ;(window as unknown as { __spaTeste?: boolean }).__spaTeste = true
+  })
+
+  const linkLogo = barraLateral(page).getByRole('link', { name: 'MemorIA — ir para o Início' })
+  const linkInicioNav = page
+    .getByRole('navigation', { name: 'Telas' })
+    .getByRole('link', { name: 'Início' })
+
+  // 2. Clicar na logo com a barra expandida
+  await linkLogo.click()
+  await expect(page).toHaveURL('/inicio')
+  expect(await page.evaluate(() => (window as unknown as { __spaTeste?: boolean }).__spaTeste)).toBe(
+    true,
+  )
+  await expect(linkInicioNav).toHaveAttribute('aria-current', 'page')
+
+  // Clicar novamente estando já no Início não recarrega a página
+  await linkLogo.click()
+  await expect(page).toHaveURL('/inicio')
+  expect(await page.evaluate(() => (window as unknown as { __spaTeste?: boolean }).__spaTeste)).toBe(
+    true,
+  )
+
+  // 3. Voltar para /notas e recolher a barra
+  await page.goto('/notas')
+  await page.evaluate(() => {
+    ;(window as unknown as { __spaTeste?: boolean }).__spaTeste = true
+  })
+  const botaoRecolher = page.getByRole('button', { name: 'Recolher menu' })
+  await botaoRecolher.click()
+  // Conferir que o botão de recolher não navega
+  await expect(page).toHaveURL('/notas')
+  await expect.poll(() => larguraDaBarra(page)).toBe(LARGURA_RECOLHIDA)
+
+  // 4. Clicar na logo com a barra recolhida (símbolo)
+  await linkLogo.click()
+  await expect(page).toHaveURL('/inicio')
+  expect(await page.evaluate(() => (window as unknown as { __spaTeste?: boolean }).__spaTeste)).toBe(
+    true,
+  )
+
+  // 5. Captura da sidebar com foco por teclado na logo para conferir foco visível, nos dois temas
+  await page.keyboard.press('Control+b')
+  await expect.poll(() => larguraDaBarra(page)).toBe(LARGURA_EXPANDIDA)
+
+  for (const [rotulo, sufixo] of [
+    ['Claro', 'claro'],
+    ['Escuro', 'escuro'],
+  ] as const) {
+    await seletorDeTema(page).getByRole('radio', { name: rotulo }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-tema', sufixo)
+    // Foco por teclado: foca o botão ao lado e volta com Shift+Tab para acionar :focus-visible.
+    await page.getByRole('button', { name: 'Recolher menu' }).focus()
+    await page.keyboard.press('Shift+Tab')
+    await expect(linkLogo).toBeFocused()
+    await page.screenshot({
+      path: `e2e/capturas/logo-foco-${sufixo}.png`,
+      clip: { x: 0, y: 0, width: 260, height: 120 },
+    })
+  }
 })

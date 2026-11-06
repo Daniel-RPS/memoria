@@ -187,6 +187,8 @@ test('teclado: Tab chega no grupo, Enter/Espaço alternam, setas andam nas visõ
   await page.waitForLoadState('networkidle')
 
   await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'MemorIA — ir para o Início' })).toBeFocused()
+  await page.keyboard.press('Tab')
   await expect(page.getByRole('button', { name: 'Recolher menu' })).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(navegacao(page).getByRole('link', { name: 'Início' })).toBeFocused()
@@ -200,11 +202,12 @@ test('teclado: Tab chega no grupo, Enter/Espaço alternam, setas andam nas visõ
   await page.keyboard.press('Shift+Tab')
   await page.keyboard.press('Space')
   await expect(grupo).toHaveAttribute('aria-expanded', 'true')
+  const mes = navegacao(page).getByRole('link', { name: 'Mês', exact: true })
+  await expect(mes).toBeVisible()
 
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')
-  const mes = navegacao(page).getByRole('link', { name: 'Mês', exact: true })
   await expect(mes).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(`/mes/${HOJE}`)
