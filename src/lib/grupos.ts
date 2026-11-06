@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import type { Category, DataLocal, GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
 import { sortForDisplay } from '@/domain/ordem-de-exibicao'
-import { deDataLocal } from '@/lib/datas'
+import { deDataLocal, nomeRelativo, paraDataLocal } from '@/lib/datas'
 import { normalizar } from '@/lib/procedimentos'
 
 /** Um card já montado: card, série e itens visíveis (sem arquivados). */
@@ -252,8 +252,49 @@ export interface GrupoNaLista {
   feitos: number
   /** Quantos dias têm card do grupo (não arquivado). */
   dias: number
-  /** Dia que a linha abre: hoje, senão o próximo com card, senão o mais recente. */
+  /** Dia que "Abrir no dia" abre: hoje, senão o próximo com card, senão o mais recente. */
   destino: DataLocal
+  /** Pendentes por dia (mais cedo primeiro) e, no dia, na ordem de exibição do app. */
+  itensPendentes: ItemPendenteDoGrupo[]
+  /** Dias com card (não arquivado), do mais recente ao mais antigo. */
+  diasComCard: DiaDoGrupo[]
+  /** Feitos, do concluído mais recente ao mais antigo. */
+  itensFeitos: ItemFeitoDoGrupo[]
+}
+
+/** Item de grupo com os campos que a aba Grupos mostra. */
+export type ItemParaLista = Pick<
+  GroupItem,
+  | 'id'
+  | 'cardId'
+  | 'status'
+  | 'titulo'
+  | 'ordem'
+  | 'concluidoEm'
+  | 'emAndamento'
+  | 'emAndamentoDesde'
+  | 'prioridade'
+  | 'prioridadeDesde'
+  | 'ordemNoTopo'
+>
+
+export interface ItemPendenteDoGrupo {
+  item: ItemParaLista
+  /** Dia do card onde o item está. */
+  data: DataLocal
+}
+
+export interface ItemFeitoDoGrupo {
+  item: ItemParaLista
+  /** Dia em que foi concluído (sem `concluidoEm`, o dia do card). */
+  data: DataLocal
+}
+
+/** Um card do grupo: o dia e o progresso ("3/4"; transferidos e arquivados fora). */
+export interface DiaDoGrupo {
+  data: DataLocal
+  feitos: number
+  total: number
 }
 
 /** Um bloco da aba Grupos: uma categoria (ou "Sem categoria", `categoria` nula). */
@@ -272,7 +313,7 @@ export interface ListaDeGrupos {
 export interface DadosDaListaDeGrupos {
   series: GroupSeries[]
   cards: Pick<GroupCard, 'id' | 'seriesId' | 'data' | 'arquivado'>[]
-  itens: Pick<GroupItem, 'cardId' | 'status'>[]
+  itens: ItemParaLista[]
   /** Categorias de grupo na ordem definida pelo usuário (`montarCategorias`). */
   categorias: Category[]
 }
@@ -288,34 +329,67 @@ export function diaDeDestinoDoGrupo(datas: DataLocal[], hoje: DataLocal): DataLo
 const porTituloDaSerie = (a: GrupoNaLista, b: GrupoNaLista) =>
   a.serie.titulo.localeCompare(b.serie.titulo, 'pt-BR', { sensitivity: 'base' })
 
-/** Séries com pelo menos um card no calendário (não arquivado), com contagens e destino. */
+/** Séries com pelo menos um card no calendário (não arquivado), com contagens e conteúdo. */
 function gruposAtivos(
   { series, cards, itens }: Omit<DadosDaListaDeGrupos, 'categorias'>,
   hoje: DataLocal,
 ): GrupoNaLista[] {
   const cardsAtivos = cards.filter((card) => !card.arquivado)
-  const serieDoCard = new Map(cardsAtivos.map((card) => [card.id, card.seriesId]))
-  const datasDaSerie = new Map<string, DataLocal[]>()
-  for (const card of cardsAtivos) {
-    const datas = datasDaSerie.get(card.seriesId) ?? []
-    if (!datas.includes(card.data)) datas.push(card.data)
-    datasDaSerie.set(card.seriesId, datas)
-  }
-  const contagem = new Map<string, { pendentes: number; feitos: number }>()
+  const cardPorId = new Map(cardsAtivos.map((card) => [card.id, card]))
+  const itensDoCard = new Map<string, ItemParaLista[]>()
   for (const item of itens) {
-    const seriesId = serieDoCard.get(item.cardId)
-    if (!seriesId || (item.status !== 'pendente' && item.status !== 'concluido')) continue
-    const atual = contagem.get(seriesId) ?? { pendentes: 0, feitos: 0 }
-    if (item.status === 'pendente') atual.pendentes++
-    else atual.feitos++
-    contagem.set(seriesId, atual)
+    if (!cardPorId.has(item.cardId)) continue
+    if (item.status !== 'pendente' && item.status !== 'concluido') continue
+    itensDoCard.set(item.cardId, [...(itensDoCard.get(item.cardId) ?? []), item])
+  }
+  const cardsDaSerie = new Map<string, typeof cardsAtivos>()
+  for (const card of cardsAtivos) {
+    cardsDaSerie.set(card.seriesId, [...(cardsDaSerie.get(card.seriesId) ?? []), card])
   }
   return series.flatMap((serie) => {
-    const datas = datasDaSerie.get(serie.id)
-    const destino = datas && diaDeDestinoDoGrupo(datas, hoje)
-    if (!datas || !destino) return []
-    const { pendentes, feitos } = contagem.get(serie.id) ?? { pendentes: 0, feitos: 0 }
-    return [{ serie, pendentes, feitos, dias: datas.length, destino }]
+    const doGrupo = cardsDaSerie.get(serie.id)
+    if (!doGrupo) return []
+    const datas = [...new Set(doGrupo.map((card) => card.data))]
+    const destino = diaDeDestinoDoGrupo(datas, hoje)
+    if (!destino) return []
+    const porDia = [...doGrupo].sort((a, b) => a.data.localeCompare(b.data))
+    const itensPendentes = porDia.flatMap((card) =>
+      sortForDisplay(
+        (itensDoCard.get(card.id) ?? []).filter((item) => item.status === 'pendente'),
+      ).map((item) => ({ item, data: card.data })),
+    )
+    const itensFeitos = porDia
+      .flatMap((card) =>
+        (itensDoCard.get(card.id) ?? [])
+          .filter((item) => item.status === 'concluido')
+          .map((item) => ({
+            item,
+            data: item.concluidoEm ? paraDataLocal(new Date(item.concluidoEm)) : card.data,
+            momento: item.concluidoEm ?? card.data,
+          })),
+      )
+      .sort((a, b) => b.momento.localeCompare(a.momento))
+      .map(({ item, data }) => ({ item, data }))
+    const diasComCard = [...porDia].reverse().map((card) => {
+      const doCard = itensDoCard.get(card.id) ?? []
+      return {
+        data: card.data,
+        feitos: doCard.filter((item) => item.status === 'concluido').length,
+        total: doCard.length,
+      }
+    })
+    return [
+      {
+        serie,
+        pendentes: itensPendentes.length,
+        feitos: itensFeitos.length,
+        dias: datas.length,
+        destino,
+        itensPendentes,
+        diasComCard,
+        itensFeitos,
+      },
+    ]
   })
 }
 
@@ -382,4 +456,16 @@ export function textoResumoDoGrupo({
   }
   partes.push(`${dias} ${dias === 1 ? 'dia' : 'dias'}`)
   return partes.join(' · ')
+}
+
+/** "hoje", "amanhã" ou "dd/MM". */
+export function rotuloDoDia(data: DataLocal, hoje: DataLocal) {
+  const relativo = nomeRelativo(data, hoje)
+  return relativo === 'hoje' || relativo === 'amanhã' ? relativo : diaCurto(data)
+}
+
+/** Fração feita (feitos ÷ feitos+pendentes), de 0 a 1; `undefined` sem itens. */
+export function fracaoFeita({ pendentes, feitos }: Pick<GrupoNaLista, 'pendentes' | 'feitos'>) {
+  const total = pendentes + feitos
+  return total === 0 ? undefined : feitos / total
 }

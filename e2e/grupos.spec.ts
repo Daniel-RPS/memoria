@@ -85,10 +85,10 @@ test('lista por categoria, com o contador da barra e o resumo de cada grupo', as
   await expect(linkGrupos(page).locator('[data-contador]')).toHaveText('2')
   await expect(linkGrupos(page)).toHaveAttribute('aria-description', '2 grupos')
 
-  await expect(bloco(page, 'Lar').getByRole('link', { name: /Casa/ })).toHaveText(
+  await expect(bloco(page, 'Lar').getByRole('button', { name: /Casa/ })).toHaveText(
     /Casa1 pendente · 1 feito · 2 dias/,
   )
-  await expect(bloco(page, 'Sem categoria').getByRole('link', { name: /Estudos/ })).toHaveText(
+  await expect(bloco(page, 'Sem categoria').getByRole('button', { name: /Estudos/ })).toHaveText(
     /Estudos1 pendente · 1 dia/,
   )
   // "Sem categoria" vem por último.
@@ -99,7 +99,7 @@ test('lista por categoria, com o contador da barra e o resumo de cada grupo', as
 
   await page.getByRole('searchbox', { name: 'Buscar grupos' }).fill('lar')
   await expect(bloco(page, 'Sem categoria')).toBeHidden()
-  await expect(bloco(page, 'Lar').getByRole('link', { name: /Casa/ })).toBeVisible()
+  await expect(bloco(page, 'Lar').getByRole('button', { name: /Casa/ })).toBeVisible()
   await page.getByRole('searchbox', { name: 'Buscar grupos' }).fill('')
   await expect(bloco(page, 'Sem categoria')).toBeVisible()
   await page.getByRole('searchbox', { name: 'Buscar grupos' }).blur()
@@ -129,7 +129,7 @@ test('criar um grupo em outra janela sobe o contador e a lista sem recarregar', 
   await expect(linkGrupos(page).locator('[data-contador]')).toHaveText('3')
   await expect(page.getByText('3 grupos', { exact: true })).toBeVisible()
   await expect(
-    bloco(page, 'Sem categoria').getByRole('link', { name: /Mercado.*nenhum item · 1 dia/ }),
+    bloco(page, 'Sem categoria').getByRole('button', { name: /Mercado.*nenhum item · 1 dia/ }),
   ).toBeVisible()
 })
 
@@ -144,20 +144,26 @@ test('arquivar Casa em todos os dias tira da aba e desce o contador', async ({ p
   await expect(linkGrupos(page).locator('[data-contador]')).toHaveText('1')
   await linkGrupos(page).click()
   await expect(page.getByText('1 grupo', { exact: true })).toBeVisible()
-  await expect(lista(page).getByRole('link', { name: /Casa/ })).toHaveCount(0)
+  await expect(lista(page).getByRole('button', { name: /Casa/ })).toHaveCount(0)
   await expect(bloco(page, 'Lar')).toBeHidden()
 })
 
-test('clicar no grupo abre o dia certo', async ({ page }) => {
+test('Abrir no dia abre o dia de destino do grupo', async ({ page }) => {
   await abrirGrupos(page)
   // Casa tem card hoje; Estudos só amanhã (o próximo).
-  await lista(page).getByRole('link', { name: /Casa/ }).click()
+  await lista(page).getByRole('button', { name: /Casa/ }).click()
+  await lista(page)
+    .getByRole('link', { name: /Abrir no dia/ })
+    .click()
   await expect(page).toHaveURL(new RegExp(`/dia/${HOJE}$`))
   await expect(page.getByRole('region', { name: 'Grupo Casa' })).toBeVisible()
 
   await linkGrupos(page).click()
   await lista(page)
-    .getByRole('link', { name: /Estudos/ })
+    .getByRole('button', { name: /Estudos/ })
+    .click()
+  await lista(page)
+    .getByRole('link', { name: /Abrir no dia/ })
     .click()
   await expect(page).toHaveURL(new RegExp(`/dia/${AMANHA}$`))
   await expect(page.getByRole('region', { name: 'Grupo Estudos' })).toBeVisible()

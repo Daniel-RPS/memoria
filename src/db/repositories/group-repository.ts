@@ -33,7 +33,7 @@ import { prioridadeDe, SEM_PRIORIDADE } from '@/domain/prioridade'
 import { marcaDe, SEM_ANDAMENTO } from '@/lib/andamento'
 import { somarDias } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
-import { mesmoTituloDeSerie } from '@/lib/grupos'
+import { mesmoTituloDeSerie, type ItemParaLista } from '@/lib/grupos'
 import { destinoDoAdiamento } from '@/lib/mover'
 import {
   inverterMudancas,
@@ -300,7 +300,19 @@ export async function carregarGruposParaLista() {
   return {
     series,
     cards: cards.map(({ id, seriesId, data, arquivado }) => ({ id, seriesId, data, arquivado })),
-    itens: itens.map(({ cardId, status }) => ({ cardId, status })),
+    itens: itens.map((item): ItemParaLista => ({
+      id: item.id,
+      cardId: item.cardId,
+      status: item.status,
+      titulo: item.titulo,
+      ordem: item.ordem,
+      concluidoEm: item.concluidoEm,
+      emAndamento: item.emAndamento,
+      emAndamentoDesde: item.emAndamentoDesde,
+      prioridade: item.prioridade,
+      prioridadeDesde: item.prioridadeDesde,
+      ordemNoTopo: item.ordemNoTopo,
+    })),
   }
 }
 

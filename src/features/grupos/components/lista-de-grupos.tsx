@@ -1,10 +1,10 @@
-import { Link } from 'react-router'
-import { cn } from 'cn'
+import { useState } from 'react'
 import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { AcoesDasSecoes, SecaoRecolhivel } from '@/components/secao-recolhivel'
-import { useCorNaTela } from '@/hooks/use-cor-na-tela'
+import { useCorDeTraco, useCorNaTela } from '@/hooks/use-cor-na-tela'
 import { useSecoesRecolhidas } from '@/hooks/use-secoes-recolhidas'
-import { textoResumoDoGrupo, type BlocoDeGrupos, type GrupoNaLista } from '@/lib/grupos'
+import type { BlocoDeGrupos } from '@/lib/grupos'
+import { CartaoDoGrupo } from '@/features/grupos/components/cartao-do-grupo'
 
 interface ListaDeGruposProps {
   blocos: BlocoDeGrupos[]
@@ -14,10 +14,21 @@ interface ListaDeGruposProps {
 
 const idDoBloco = ({ categoria }: BlocoDeGrupos) => categoria?.id ?? 'sem-categoria'
 
-/** Um bloco recolhível por categoria, com os grupos em linhas simples. */
+/** Um bloco recolhível por categoria, com os grupos em cartões que abrem o conteúdo. */
 export function ListaDeGrupos({ blocos, isFiltrando }: ListaDeGruposProps) {
   const corNaTela = useCorNaTela()
+  const corDeTraco = useCorDeTraco()
   const secoes = useSecoesRecolhidas('grupos', isFiltrando)
+  // Cartões abertos: só em memória enquanto a tela está aberta; todos começam fechados.
+  const [abertos, setAbertos] = useState<ReadonlySet<string>>(() => new Set())
+
+  function handleAlternarCartao(seriesId: string) {
+    setAbertos((atuais) => {
+      const novos = new Set(atuais)
+      if (!novos.delete(seriesId)) novos.add(seriesId)
+      return novos
+    })
+  }
   const ids = blocos.map(idDoBloco)
 
   if (blocos.length === 0) return null
@@ -43,46 +54,20 @@ export function ListaDeGrupos({ blocos, isFiltrando }: ListaDeGruposProps) {
             isAberta={secoes.isAberta(id)}
             onAlternar={() => secoes.handleAlternar(id)}
           >
-            <ul className="divide-y divide-pauta">
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] items-start gap-3">
               {grupos.map((grupo) => (
-                <LinhaDoGrupo key={grupo.serie.id} grupo={grupo} cor={cor} />
+                <CartaoDoGrupo
+                  key={grupo.serie.id}
+                  grupo={grupo}
+                  cor={categoria ? corDeTraco(categoria.cor) : 'var(--grafite)'}
+                  isAberto={abertos.has(grupo.serie.id)}
+                  onAlternar={() => handleAlternarCartao(grupo.serie.id)}
+                />
               ))}
             </ul>
           </SecaoRecolhivel>
         )
       })}
     </div>
-  )
-}
-
-interface LinhaDoGrupoProps {
-  grupo: GrupoNaLista
-  /** Cor da categoria já ajustada ao tema; `null` = sem categoria. */
-  cor: string | null
-}
-
-/** Bolinha na cor da categoria, nome e o resumo apagado; a linha abre o dia do grupo. */
-function LinhaDoGrupo({ grupo, cor }: LinhaDoGrupoProps) {
-  return (
-    <li>
-      <Link
-        to={`/dia/${grupo.destino}`}
-        className="flex items-baseline gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-caneta motion-reduce:transition-none"
-      >
-        <span
-          aria-hidden
-          data-cor={cor ?? undefined}
-          className={cn(
-            'size-2.5 shrink-0 translate-y-[-0.05em] rounded-full',
-            !cor && 'border border-grafite/50',
-          )}
-          style={cor ? { backgroundColor: cor } : undefined}
-        />
-        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <span className="font-medium break-words">{grupo.serie.titulo}</span>
-          <span className="text-sm text-grafite">{textoResumoDoGrupo(grupo)}</span>
-        </span>
-      </Link>
-    </li>
   )
 }
