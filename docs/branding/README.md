@@ -90,24 +90,24 @@ Detalhes em [`tipografia.md`](tipografia.md).
 
 ## Logo
 
-| Versão                | Arquivo                                                                                         | Tamanho               | Uso                                                         |
-| --------------------- | ----------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------- |
-| Completa, tema claro  | [`logo/logo-memoria-clara.png`](logo/logo-memoria-clara.png)                                    | 864×218               | Barra lateral no claro ("Memor" em `#1A1625`)               |
-| Completa, tema escuro | [`logo/logo-memoria.png`](logo/logo-memoria.png)                                                | 864×218               | Barra lateral no escuro ("Memor" branco)                    |
-| Símbolo, tema claro   | [`logo/simbolo-memoria-claro.png`](logo/simbolo-memoria-claro.png)                              | 218×218               | Barra recolhida no claro; ícone "MemorIA" no seletor        |
-| Símbolo, tema escuro  | [`logo/simbolo-memoria.png`](logo/simbolo-memoria.png)                                          | 218×218               | Barra recolhida no escuro; ícone "MemorIA" no seletor       |
-| Favicon               | [`logo/favicon.ico`](logo/favicon.ico) (16/32/48), [`logo/favicon-32.png`](logo/favicon-32.png) | 32×32                 | Aba do navegador (símbolo sobre ficha `#111019`)            |
-| Ícone de atalho       | [`logo/apple-touch-icon.png`](logo/apple-touch-icon.png)                                        | 180×180               | Atalho na tela inicial                                      |
-| Original              | [`logo/logo-original.png`](logo/logo-original.png)                                              | 1190×885, fundo opaco | Arte de origem (`img/logo.png`), de onde saíram os recortes |
+| Versão                | Arquivo                                                                                         | Tamanho                           | Uso                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------- |
+| Símbolo, tema claro   | [`logo/simbolo-memoria-claro.png`](logo/simbolo-memoria-claro.png)                              | 512×512                           | Barra lateral (expandida e recolhida) no claro; ícone "MemorIA" no seletor  |
+| Símbolo, tema escuro  | [`logo/simbolo-memoria.png`](logo/simbolo-memoria.png)                                          | 512×512                           | Barra lateral (expandida e recolhida) no escuro; ícone "MemorIA" no seletor |
+| Completa, tema claro  | [`logo/logo-memoria-clara.png`](logo/logo-memoria-clara.png)                                    | 864×218                           | Documentação e branding em fundo claro ("Memor" em `#1A1625`)               |
+| Completa, tema escuro | [`logo/logo-memoria.png`](logo/logo-memoria.png)                                                | 864×218                           | Documentação e branding em fundo escuro ("Memor" branco)                    |
+| Favicon               | [`logo/favicon.ico`](logo/favicon.ico) (16/32/48), [`logo/favicon-32.png`](logo/favicon-32.png) | 32×32                             | Aba do navegador (símbolo sobre ficha `#111019`)                            |
+| Ícone de atalho       | [`logo/apple-touch-icon.png`](logo/apple-touch-icon.png)                                        | 180×180                           | Atalho na tela inicial                                                      |
+| Originais             | [`logo/logo.jpg`](logo/logo.jpg), [`logo/isotipo.jpg`](logo/isotipo.jpg)                        | 1200×896 e 2400×1792, fundo opaco | Artes de origem (`img/logo.jpg` e `img/isotipo.jpg`), de onde saem recortes |
 
-**Formato:** todas as versões são **PNG**, sem SVG. Por isso não há `currentColor`. A troca por tema funciona com **dois pares de arquivo**: o `LogoDaBarra` (`src/app/barra-lateral.tsx`) renderiza os dois, e o CSS (`dark:`) mostra o do tema ativo e esconde o outro (`invisible`, que também o tira do leitor de tela). "IA" e o símbolo são violeta (≈ `#8B3DFF`, a caneta) nos dois temas.
+**Formato:** na barra lateral (`LogoDaBarra`, `src/app/barra-lateral.tsx`), o símbolo ("M" geométrico em fita 3D) é **PNG transparente de 512×512** (um por tema, trocados por CSS `dark:`) e o nome **"MemorIA"** ao lado é **SVG vetorial** ("Memor" com `fill="currentColor"`, seguindo `--barra-texto` por CSS sem re-render nem transição no tema, e "IA" com `fill-caneta`). No símbolo, a fita direita vai do violeta vivo (`#8B38FF`) ao brilho lilás (`#BE7AFD`), o topo vai de `#6535C4` a `#842FFE`, as pernas são `#431B96` e `#523578` e as dobras escuras (`#301871` a `#3F1F62`) ganham leve reforço de gama (`γ = 0,80`) na versão escura para manter contraste sobre `--barra` (`#121017`).
 
 **Regras de uso.** As regras de tamanho seguem o uso real no app; as demais são recomendações para quem for reaproveitar:
 
-- **Tema:** a versão "clara" vai sobre fundo claro, a outra sobre fundo escuro.
+- **Tema:** no símbolo e nas versões completas em PNG, a versão "clara" vai sobre fundo claro e a outra sobre fundo escuro; no app, "Memor" muda sozinho por CSS (`currentColor`).
 - **Tamanho mínimo:** a completa com **32 px** de altura (tamanho na barra lateral, `h-8`). Menor que isso, use o **símbolo**, que vai até **16 px** (favicon).
 - **Área de respiro:** no mínimo metade da altura da logo em volta (16 px para a logo de 32 px).
-- **Não esticar:** mantenha a proporção 864×218 (≈ 4:1) na completa e 1:1 no símbolo.
+- **Não esticar:** mantenha a proporção 864×218 (≈ 4:1) na completa e 1:1 no símbolo (512×512).
 - **Não trocar cores**, não aplicar sombra nem contorno, não recriar com texto.
 - **Originais:** `img/` e `src/assets/` não devem ser alterados; esta pasta tem só cópias.
 
@@ -127,7 +127,7 @@ Encontrados durante o levantamento. **Nada foi corrigido**; fica registrado para
 8. **Não há token de sucesso.** `toast.success` usa o aviso neutro do Sonner (cores de popover). Não existe verde de marca.
 9. **Dependência `next-themes` sobrando.** `src/components/ui/sonner.tsx` (gerado pelo shadcn) chama `useTheme()` do `next-themes`, mas o app passa o tema certo por prop no `LayoutApp`, então funciona. O pacote só existe por causa desse arquivo.
 10. **Sem fonte monoespaçada própria.** `font-mono` (1 uso) cai na fonte do sistema e varia por computador. Não é problema; só não faz parte da marca.
-11. **Logo só em PNG.** Não há SVG nem versão vetorial. Para impressão ou tamanhos grandes, a maior fonte é `img/logo.png` (1190×885, fundo opaco).
+11. **Símbolo da logo em PNG.** O nome "MemorIA" na barra é SVG vetorial (`currentColor` + `fill-caneta`), mas o símbolo "M" em fita 3D usa degradê e brilho internos e por isso fica em PNG (`512×512`). Para impressão ou tamanhos grandes, a maior fonte é `img/isotipo.jpg` (2400×1792, fundo opaco).
 
 ## Conferência
 

@@ -533,8 +533,9 @@
 
       <h2>Logo</h2>
       <p class="sub">
-        Imagem PNG com fundo transparente, um par por tema. "Memor" muda de cor com o tema (#1A1625
-        no claro, branco no escuro); "IA" e o símbolo são violeta nos dois.
+        Símbolo ("M" em fita 3D) em PNG 512×512 com fundo transparente, um par por tema, e nome
+        "MemorIA" em SVG na barra lateral ("Memor" em <code>currentColor</code> =
+        <code>--barra-texto</code> e "IA" em <code>--caneta</code>).
       </p>
       <div class="logos">
         <div class="ficha">
@@ -568,7 +569,7 @@
             <img src="logo/favicon-32.png" alt="Favicon" style="height: 16px" />
           </div>
           <div class="rotulo">
-            <strong>Símbolo · tema claro</strong><code>simbolo-memoria-claro.png</code> · 218×218 ·
+            <strong>Símbolo · tema claro</strong><code>simbolo-memoria-claro.png</code> · 512×512 ·
             64, 32 e favicon 16 px
           </div>
         </div>
@@ -586,7 +587,7 @@
             />
           </div>
           <div class="rotulo">
-            <strong>Símbolo · tema escuro e ícone</strong><code>simbolo-memoria.png</code> ·
+            <strong>Símbolo · tema escuro e ícone</strong><code>simbolo-memoria.png</code> 512×512 ·
             <code>apple-touch-icon.png</code> 180×180
           </div>
         </div>
@@ -607,14 +608,15 @@
         <div class="ficha">
           <ul class="regras">
             <li>
-              Use o par do tema: <strong>clara</strong> sobre fundo claro, a outra sobre fundo
-              escuro.
+              Use o par do tema: <strong>claro</strong> sobre fundo claro, o outro sobre fundo
+              escuro (com leve reforço nas dobras escuras); na barra, "Memor" segue
+              <code>currentColor</code>.
             </li>
             <li>
               Completa com no mínimo <strong>32 px</strong> de altura (o tamanho na barra lateral);
               menor que isso, use o <strong>símbolo</strong> (até 16 px, como no favicon).
             </li>
-            <li>Não estique: mantenha a proporção 864×218 (≈ 4:1) e 1:1 no símbolo.</li>
+            <li>Não estique: mantenha a proporção 864×218 (≈ 4:1) e 1:1 no símbolo (512×512).</li>
             <li>Não troque as cores, não aplique sombra nem contorno, não recrie com texto.</li>
             <li>
               Não altere os originais em <code>img/</code> e <code>src/assets/</code>; esta pasta
@@ -1088,10 +1090,10 @@
           }
         },
         "logo": {
-          "memorClaro": "#1a1625",
-          "memorEscuro": "#fcfdff",
-          "IA": "gradiente violeta ≈ #8b3dff (amostras de #7a22ff a #9a50ff)",
-          "simbolo": "violetas ≈ #8b3dff e lavandas claras; folha branca",
+          "memorClaro": "#111019 (currentColor = --barra-texto; #1a1625 no PNG de docs)",
+          "memorEscuro": "#ece8f5 (currentColor = --barra-texto; #fcfdff no PNG de docs)",
+          "IA": "var(--caneta) #8b3dff / #a274ff (#7b2deb a #8b3dff na arte original)",
+          "simbolo": "M em fita 3D: fita #8b38ff com brilho #be7afd, topos #6535c4/#842ffe, pernas #431b96/#523578 e dobras #301871 a #3f1f62 (γ=0,80 no escuro)",
           "fichaDoFavicon": "#111019 (tinta)"
         },
         "mapaDeConclusoes": {

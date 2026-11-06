@@ -102,10 +102,16 @@ test('logo: "Memor" escuro no claro e branco no escuro, expandida e recolhida', 
   for (const tema of ['Claro', 'Escuro'] as const) {
     const isClaro = tema === 'Claro'
     await seletorDeTema(page).getByRole('radio', { name: tema }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-tema', isClaro ? 'claro' : 'escuro')
     await expect(logoAnunciada(page)).toHaveCount(1)
     await expect(logoAnunciada(page)).toHaveAttribute(
       'src',
-      isClaro ? /logo-memoria-clara/ : /logo-memoria\.png/,
+      isClaro ? /simbolo-memoria-claro/ : /simbolo-memoria\.png/,
+    )
+    const nome = page.locator('aside [data-logo-nome]')
+    await expect.poll(() => nome.evaluate((svg) => getComputedStyle(svg).opacity)).toBe('1')
+    expect(await nome.evaluate((svg) => getComputedStyle(svg).color)).toBe(
+      isClaro ? 'rgb(17, 16, 25)' : 'rgb(236, 232, 245)',
     )
     await page.screenshot({
       path: `e2e/capturas/tema-logo-${tema.toLowerCase()}-expandida.png`,
@@ -118,7 +124,7 @@ test('logo: "Memor" escuro no claro e branco no escuro, expandida e recolhida', 
       isClaro ? /simbolo-memoria-claro/ : /simbolo-memoria\.png/,
     )
     await expect(page.locator('aside').getByRole('button', { name: 'Aparência' })).toBeVisible()
-    // Espera a barra terminar de estreitar e a logo completa sumir antes da captura.
+    // Espera a barra terminar de estreitar e o nome sumir antes da captura.
     await expect
       .poll(() =>
         page
@@ -127,13 +133,7 @@ test('logo: "Memor" escuro no claro e branco no escuro, expandida e recolhida', 
           .evaluate((barra) => barra.getBoundingClientRect().width),
       )
       .toBe(64)
-    await expect
-      .poll(() =>
-        logoAnunciada(page)
-          .locator('xpath=preceding-sibling::img')
-          .evaluate((img) => getComputedStyle(img).opacity),
-      )
-      .toBe('0')
+    await expect.poll(() => nome.evaluate((svg) => getComputedStyle(svg).opacity)).toBe('0')
     await page.screenshot({
       path: `e2e/capturas/tema-logo-${tema.toLowerCase()}-recolhida.png`,
       clip: { x: 0, y: 0, width: 90, height: 120 },
@@ -214,6 +214,97 @@ test('duas abas: trocar o tema numa muda a outra', async ({ page, context }) => 
   )
   await seletorDeTema(outra).getByRole('radio', { name: 'Claro' }).click()
   await expect.poll(() => temaDoHtml(page)).toBe('claro')
+})
+
+test('5 cliques rápidos no tema terminam no último, sem animações empilhadas', async ({ page }) => {
+  await page.goto('/inicio')
+  await seletorDeTema(page).waitFor()
+  const resultado = await page.evaluate(async () => {
+    const botao = (nome: string) =>
+      document.querySelector<HTMLButtonElement>(`aside [role=radiogroup] [aria-label="${nome}"]`)!
+    const inicio = performance.now()
+    for (const nome of ['Escuro', 'Claro', 'Escuro', 'Claro', 'Escuro']) botao(nome).click()
+    const cliques = performance.now() - inicio
+    const animacoes = document
+      .getAnimations()
+      .filter((animacao) =>
+        String((animacao.effect as KeyframeEffect | null)?.pseudoElement ?? '').includes(
+          'view-transition',
+        ),
+      )
+    return { cliques, maxCrossfades: new Set(animacoes.map((a) => a.startTime)).size }
+  })
+  expect(resultado.cliques).toBeLessThan(200)
+  expect(resultado.maxCrossfades).toBeLessThanOrEqual(1)
+  await expect.poll(() => temaDoHtml(page)).toBe('escuro')
+  await expect(seletorDeTema(page).getByRole('radio', { name: 'Escuro' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await page.reload()
+  expect(await temaDoHtml(page)).toBe('escuro')
+})
+
+test('com movimento reduzido, a troca de tema é instantânea', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/inicio')
+  await seletorDeTema(page).waitFor()
+  const depoisDoClique = await page.evaluate(() => {
+    document
+      .querySelector<HTMLButtonElement>('aside [role=radiogroup] [aria-label="Escuro"]')!
+      .click()
+    return {
+      tema: document.documentElement.dataset.tema,
+      crossfades: document
+        .getAnimations()
+        .filter((animacao) =>
+          String((animacao.effect as KeyframeEffect | null)?.pseudoElement ?? '').includes(
+            'view-transition',
+          ),
+        ).length,
+      fundo: getComputedStyle(document.documentElement).backgroundColor,
+    }
+  })
+  expect(depoisDoClique.tema).toBe('escuro')
+  expect(depoisDoClique.crossfades).toBe(0)
+  expect(depoisDoClique.fundo).not.toBe('rgb(244, 242, 248)')
+})
+
+test('arrastar uma tarefa no Dia continua funcionando nos dois temas', async ({ page }) => {
+  await page.goto(`/dia/${SEGUNDA}`)
+  await page.evaluate(async (data) => {
+    const caminho = '/src/db/repositories/task-repository.ts'
+    const tarefas = (await import(/* @vite-ignore */ caminho)) as {
+      criarTarefa: (dados: { titulo: string; data: string }) => Promise<unknown>
+    }
+    for (const titulo of ['Alfa', 'Beta', 'Gama']) await tarefas.criarTarefa({ titulo, data })
+  }, SEGUNDA)
+  const ordem = () =>
+    page
+      .locator('[data-flip-id]')
+      .evaluateAll((linhas) =>
+        linhas.map((linha) => /Alfa|Beta|Gama/.exec(linha.textContent ?? '')?.[0] ?? ''),
+      )
+  await expect(page.getByText('Gama')).toBeVisible()
+  for (const [tema, esperado] of [
+    ['Escuro', ['Gama', 'Alfa', 'Beta']],
+    ['Claro', ['Beta', 'Gama', 'Alfa']],
+  ] as const) {
+    await seletorDeTema(page).getByRole('radio', { name: tema }).click()
+    const atual = await ordem()
+    const ultimo = atual[atual.length - 1]
+    await page.waitForTimeout(400)
+    const de = (await page
+      .getByRole('button', { name: `Mover ${ultimo}`, exact: true })
+      .boundingBox())!
+    const para = (await page.getByText(atual[0], { exact: true }).boundingBox())!
+    await page.mouse.move(de.x + de.width / 2, de.y + de.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(de.x + de.width / 2, de.y + de.height / 2 - 6, { steps: 4 })
+    await page.mouse.move(para.x + 30, para.y + 2, { steps: 20 })
+    await page.mouse.up()
+    await expect.poll(ordem).toEqual([...esperado])
+  }
 })
 
 test('capturas de todas as telas nos dois temas', async ({ page }) => {

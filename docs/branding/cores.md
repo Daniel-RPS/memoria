@@ -65,14 +65,14 @@ rgb e hsl de cada um estão no [`tokens.json`](tokens.json).
 
 ### Logo
 
-A logo é **imagem PNG**, não SVG nem texto: as cores abaixo foram **amostradas dos arquivos** de `src/assets/` (pixel mais frequente de cada parte).
+Na barra lateral, o nome **"MemorIA"** é SVG (`"Memor"` em `currentColor` = `--barra-texto` e `"IA"` em `--caneta`) e o **símbolo** ("M" em fita 3D) é PNG transparente `512×512` em `src/assets/`.
 
-| Parte                      | Tema claro (`logo-memoria-clara.png`)                    | Tema escuro (`logo-memoria.png`) |
-| -------------------------- | -------------------------------------------------------- | -------------------------------- |
-| "Memor"                    | `#1A1625` (quase a tinta)                                | `#FCFDFF` (branco)               |
-| "IA"                       | gradiente violeta ≈ `#8B3DFF` (de `#7A22FF` a `#9A50FF`) | igual                            |
-| Símbolo                    | violetas ≈ `#8B3DFF`, lavandas claras e folha branca     | igual                            |
-| Favicon / apple-touch-icon | símbolo sobre ficha `#111019` (tinta)                    | igual                            |
+| Parte                      | Tema claro (`simbolo-memoria-claro.png`)                                                                               | Tema escuro (`simbolo-memoria.png`)                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| "Memor"                    | `--barra-texto` `#111019` (tinta; `#1A1625` no PNG de docs)                                                            | `--barra-texto` `#ECE8F5` (tinta; `#FCFDFF` no PNG)   |
+| "IA"                       | `--caneta` `#8B3DFF` (`#7B2DEB`–`#8B3DFF` na arte original)                                                            | `--caneta` `#A274FF` (`#8B3DFF` no PNG de docs)       |
+| Símbolo ("M" em fita 3D)   | fita `#8B38FF` com brilho `#BE7AFD`, topos `#6535C4`/`#842FFE`, pernas `#431B96`/`#523578`, dobras `#301871`–`#3F1F62` | igual, com leve reforço (`γ = 0,80`) nos tons escuros |
+| Favicon / apple-touch-icon | símbolo sobre ficha `#111019` (tinta)                                                                                  | igual                                                 |
 
 ### Alerta, sucesso e erro
 
