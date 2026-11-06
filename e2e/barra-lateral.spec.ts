@@ -194,9 +194,9 @@ test('teclado: Tab chega no grupo, Enter/Espaço alternam, setas andam nas visõ
   await expect(grupo).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(grupo).toHaveAttribute('aria-expanded', 'false')
-  // Fechado, Tab pula as visões e vai direto para Procedimentos.
+  // Fechado, Tab pula as visões e vai direto para Grupos.
   await page.keyboard.press('Tab')
-  await expect(navegacao(page).getByRole('link', { name: 'Procedimentos' })).toBeFocused()
+  await expect(navegacao(page).getByRole('link', { name: 'Grupos', exact: true })).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   await page.keyboard.press('Space')
   await expect(grupo).toHaveAttribute('aria-expanded', 'true')

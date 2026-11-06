@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import type { DataLocal, GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
+import type { Category, DataLocal, GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
 import { sortForDisplay } from '@/domain/ordem-de-exibicao'
 import { deDataLocal } from '@/lib/datas'
 import { normalizar } from '@/lib/procedimentos'
@@ -243,4 +243,143 @@ export function preencherCadeias<T extends Pick<GroupItem, 'id' | 'origemItemId'
     return atual.cadeiaId ?? atual.id
   }
   return itens.map((item) => ({ ...item, cadeiaId: item.cadeiaId ?? cadeiaDe(item) }))
+}
+
+/** Um grupo (série) na aba Grupos, com as contagens dos cards que estão no calendário. */
+export interface GrupoNaLista {
+  serie: GroupSeries
+  pendentes: number
+  feitos: number
+  /** Quantos dias têm card do grupo (não arquivado). */
+  dias: number
+  /** Dia que a linha abre: hoje, senão o próximo com card, senão o mais recente. */
+  destino: DataLocal
+}
+
+/** Um bloco da aba Grupos: uma categoria (ou "Sem categoria", `categoria` nula). */
+export interface BlocoDeGrupos {
+  categoria: Category | null
+  grupos: GrupoNaLista[]
+}
+
+export interface ListaDeGrupos {
+  /** Total de grupos, sem a busca (o mesmo número da barra lateral). */
+  total: number
+  /** Só os blocos com grupos (com a busca, só os que têm resultado). */
+  blocos: BlocoDeGrupos[]
+}
+
+export interface DadosDaListaDeGrupos {
+  series: GroupSeries[]
+  cards: Pick<GroupCard, 'id' | 'seriesId' | 'data' | 'arquivado'>[]
+  itens: Pick<GroupItem, 'cardId' | 'status'>[]
+  /** Categorias de grupo na ordem definida pelo usuário (`montarCategorias`). */
+  categorias: Category[]
+}
+
+/** Hoje, se há card hoje; senão o próximo dia com card; senão o mais recente. */
+export function diaDeDestinoDoGrupo(datas: DataLocal[], hoje: DataLocal): DataLocal | undefined {
+  if (datas.includes(hoje)) return hoje
+  const futuras = datas.filter((data) => data > hoje).sort()
+  if (futuras.length > 0) return futuras[0]
+  return [...datas].sort().at(-1)
+}
+
+const porTituloDaSerie = (a: GrupoNaLista, b: GrupoNaLista) =>
+  a.serie.titulo.localeCompare(b.serie.titulo, 'pt-BR', { sensitivity: 'base' })
+
+/** Séries com pelo menos um card no calendário (não arquivado), com contagens e destino. */
+function gruposAtivos(
+  { series, cards, itens }: Omit<DadosDaListaDeGrupos, 'categorias'>,
+  hoje: DataLocal,
+): GrupoNaLista[] {
+  const cardsAtivos = cards.filter((card) => !card.arquivado)
+  const serieDoCard = new Map(cardsAtivos.map((card) => [card.id, card.seriesId]))
+  const datasDaSerie = new Map<string, DataLocal[]>()
+  for (const card of cardsAtivos) {
+    const datas = datasDaSerie.get(card.seriesId) ?? []
+    if (!datas.includes(card.data)) datas.push(card.data)
+    datasDaSerie.set(card.seriesId, datas)
+  }
+  const contagem = new Map<string, { pendentes: number; feitos: number }>()
+  for (const item of itens) {
+    const seriesId = serieDoCard.get(item.cardId)
+    if (!seriesId || (item.status !== 'pendente' && item.status !== 'concluido')) continue
+    const atual = contagem.get(seriesId) ?? { pendentes: 0, feitos: 0 }
+    if (item.status === 'pendente') atual.pendentes++
+    else atual.feitos++
+    contagem.set(seriesId, atual)
+  }
+  return series.flatMap((serie) => {
+    const datas = datasDaSerie.get(serie.id)
+    const destino = datas && diaDeDestinoDoGrupo(datas, hoje)
+    if (!datas || !destino) return []
+    const { pendentes, feitos } = contagem.get(serie.id) ?? { pendentes: 0, feitos: 0 }
+    return [{ serie, pendentes, feitos, dias: datas.length, destino }]
+  })
+}
+
+/** Quantos grupos existem no app (séries com algum card fora de Arquivados). */
+export function contarGrupos(dados: Omit<DadosDaListaDeGrupos, 'categorias'>, hoje: DataLocal) {
+  return gruposAtivos(dados, hoje).length
+}
+
+/**
+ * A aba Grupos: um bloco por categoria, na ordem das categorias, e "Sem categoria" por último
+ * (só se tiver grupos); dentro do bloco, ordem alfabética. A busca olha o nome do grupo e o da
+ * categoria, sem diferenciar acento e maiúscula.
+ */
+export function montarListaDeGrupos(
+  dados: DadosDaListaDeGrupos,
+  hoje: DataLocal,
+  termo = '',
+): ListaDeGrupos {
+  const grupos = gruposAtivos(dados, hoje)
+  const busca = normalizar(termo)
+  const idsDasCategorias = new Set(dados.categorias.map((categoria) => categoria.id))
+  const encontra = (grupo: GrupoNaLista, categoria: Category | null) =>
+    !busca ||
+    normalizar(grupo.serie.titulo).includes(busca) ||
+    (categoria !== null && normalizar(categoria.nome).includes(busca))
+  const blocoDe = (categoria: Category | null, doBloco: GrupoNaLista[]): BlocoDeGrupos => ({
+    categoria,
+    grupos: doBloco.filter((grupo) => encontra(grupo, categoria)).sort(porTituloDaSerie),
+  })
+  const blocos = [
+    ...dados.categorias.map((categoria) =>
+      blocoDe(
+        categoria,
+        grupos.filter((grupo) => grupo.serie.categoryId === categoria.id),
+      ),
+    ),
+    blocoDe(
+      null,
+      grupos.filter(
+        (grupo) => !grupo.serie.categoryId || !idsDasCategorias.has(grupo.serie.categoryId),
+      ),
+    ),
+  ]
+  return { total: grupos.length, blocos: blocos.filter((bloco) => bloco.grupos.length > 0) }
+}
+
+/** "1 grupo", "12 grupos". */
+export function textoTotalDeGrupos(total: number) {
+  return `${total} ${total === 1 ? 'grupo' : 'grupos'}`
+}
+
+/** "3 pendentes · 5 feitos · 4 dias"; sem pendentes, "tudo feito"; sem itens, "nenhum item". */
+export function textoResumoDoGrupo({
+  pendentes,
+  feitos,
+  dias,
+}: Pick<GrupoNaLista, 'pendentes' | 'feitos' | 'dias'>) {
+  const partes: string[] = []
+  if (pendentes === 0 && feitos === 0) partes.push('nenhum item')
+  else if (pendentes === 0) partes.push('tudo feito')
+  else {
+    partes.push(`${pendentes} ${pendentes === 1 ? 'pendente' : 'pendentes'}`)
+    if (feitos > 0) partes.push(`${feitos} ${feitos === 1 ? 'feito' : 'feitos'}`)
+  }
+  partes.push(`${dias} ${dias === 1 ? 'dia' : 'dias'}`)
+  return partes.join(' · ')
 }

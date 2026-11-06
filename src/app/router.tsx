@@ -6,6 +6,7 @@ import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
 import { DadosPage } from '@/features/dados/dados-page'
 import { DiaPage } from '@/features/dia/dia-page'
+import { GruposPage } from '@/features/grupos/grupos-page'
 import { InicioPage } from '@/features/inicio/inicio-page'
 import { MesPage } from '@/features/mes/mes-page'
 import { NotaPage } from '@/features/notas/nota-page'
@@ -26,6 +27,7 @@ export const rotas: RouteObject[] = [
       { path: '/semana/:data', element: <SemanaPage /> },
       { path: '/mes/:data', element: <MesPage /> },
       { path: '/ano/:ano', element: <AnoPage /> },
+      { path: '/grupos', element: <GruposPage /> },
       { path: '/procedimentos', element: <ProcedimentosPage /> },
       { path: '/procedimentos/novo', element: <NovoProcedimentoPage /> },
       { path: '/procedimentos/:id', element: <ProcedimentoPage /> },

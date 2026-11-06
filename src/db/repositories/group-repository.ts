@@ -290,6 +290,20 @@ export async function carregarSeriesParaEscolher() {
   return { series, cards, itens }
 }
 
+/** Séries, cards e itens (só os campos usados) para a aba Grupos e o contador da barra. */
+export async function carregarGruposParaLista() {
+  const [series, cards, itens] = await Promise.all([
+    db.groupSeries.toArray(),
+    db.groupCards.toArray(),
+    db.groupItems.toArray(),
+  ])
+  return {
+    series,
+    cards: cards.map(({ id, seriesId, data, arquivado }) => ({ id, seriesId, data, arquivado })),
+    itens: itens.map(({ cardId, status }) => ({ cardId, status })),
+  }
+}
+
 /** Renomeia a série: vale para o card em todos os dias. Nome de outra série é recusado. */
 export async function renomearGrupo(seriesId: string, titulo: string) {
   await db.transaction('rw', db.groupSeries, async () => {

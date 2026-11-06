@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CalendarRange,
   ChartColumn,
+  FolderKanban,
   HardDriveDownload,
   House,
   ListOrdered,
@@ -24,6 +25,7 @@ import {
 } from '@/app/grupo-calendario'
 import { useGrupoCalendarioAberto } from '@/app/use-grupo-calendario-aberto'
 import { useTotalArquivados } from '@/hooks/use-arquivados'
+import { useTotalDeGrupos } from '@/hooks/use-lista-de-grupos'
 import { useLembreteDeBackup } from '@/hooks/use-lembrete-de-backup'
 import { SeletorAparencia } from '@/app/seletor-aparencia'
 import logoMemoriaClara from '@/assets/logo-memoria-clara.png'
@@ -31,6 +33,7 @@ import logoMemoria from '@/assets/logo-memoria.png'
 import simboloMemoriaClaro from '@/assets/simbolo-memoria-claro.png'
 import simboloMemoria from '@/assets/simbolo-memoria.png'
 import { hoje } from '@/lib/datas'
+import { textoTotalDeGrupos } from '@/lib/grupos'
 
 interface LinkTelaProps {
   para: string
@@ -41,6 +44,8 @@ interface LinkTelaProps {
   aviso?: string
   /** Total à direita, discreto; some quando é 0 (e com a barra recolhida). */
   contador?: number
+  /** Como o contador é lido (ex.: "2 grupos"); padrão "N itens". */
+  textoDoContador?: (total: number) => string
   children: string
 }
 
@@ -54,6 +59,7 @@ function LinkTela({
   isRecolhida,
   aviso,
   contador,
+  textoDoContador = (total) => `${total} ${total === 1 ? 'item' : 'itens'}`,
   children,
 }: LinkTelaProps) {
   return (
@@ -64,9 +70,7 @@ function LinkTela({
       <Link
         to={para}
         aria-current={isAtiva ? 'page' : undefined}
-        aria-description={
-          aviso ?? (contador ? `${contador} ${contador === 1 ? 'item' : 'itens'}` : undefined)
-        }
+        aria-description={aviso ?? (contador ? textoDoContador(contador) : undefined)}
         className={cn(
           // O ícone fica no lugar enquanto a barra estreita: muda só o recuo, e o nome some
           // por opacidade (continua sendo o nome acessível do link).
@@ -202,6 +206,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const isNoBackup = useMatch('/backup') !== null
   const isNosArquivados = useMatch('/arquivados') !== null
   const isNosDados = useMatch('/dados') !== null
+  const isNosGrupos = useMatch('/grupos') !== null
   const isNasNotas = useMatch({ path: '/notas', end: false }) !== null
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
   // "Semana", "Mês" e "Ano" abrem o período da data que está aberta; "Dia" abre hoje.
@@ -222,6 +227,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   ]
   const lembreteDeBackup = useLembreteDeBackup()
   const totalArquivados = useTotalArquivados()
+  const totalDeGrupos = useTotalDeGrupos()
   const telas: {
     para: string
     icone: LucideIcon
@@ -229,7 +235,16 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
     nome: string
     aviso?: string
     contador?: number
+    textoDoContador?: (total: number) => string
   }[] = [
+    {
+      para: '/grupos',
+      icone: FolderKanban,
+      isAtiva: isNosGrupos,
+      nome: 'Grupos',
+      contador: totalDeGrupos,
+      textoDoContador: textoTotalDeGrupos,
+    },
     {
       para: '/procedimentos',
       icone: ListOrdered,
@@ -315,6 +330,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
               isRecolhida={isRecolhida}
               aviso={tela.aviso}
               contador={tela.contador}
+              textoDoContador={tela.textoDoContador}
             >
               {tela.nome}
             </LinkTela>
