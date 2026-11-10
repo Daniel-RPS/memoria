@@ -17,7 +17,6 @@ export type AnexoDaCaptura =
 
 interface CategoriaDaCaptura {
   categoryId?: string
-  subcategoryId?: string
 }
 
 export type NovaCaptura =
@@ -61,7 +60,7 @@ export type ResultadoCaptura =
  */
 export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
   if (dados.tipo === 'tarefa') {
-    const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
+    const categoria = { categoryId: dados.categoryId }
     return db.transaction('rw', [db.tasks, db.groupCards, db.attachments, db.notes], async () => {
       const tarefa = await criarTarefa({ titulo: dados.titulo, data: dados.data, ...categoria })
       const dono = { tipo: 'task' as const, id: tarefa.id }
@@ -79,7 +78,7 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
     const adicionados = await adicionarItensNaSerie(dados.seriesId, dados.data, itens)
     return { tipo: 'em-grupo', ...adicionados }
   }
-  const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
+  const categoria = { categoryId: dados.categoryId }
   return db.transaction(
     'rw',
     [db.tasks, db.groupSeries, db.groupCards, db.groupItems],

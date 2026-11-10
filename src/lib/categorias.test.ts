@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import type { Category, Subcategory } from '@/db/types'
+import type { Category } from '@/db/types'
 import {
   classificarTarefa,
-  corDaSubcategoria,
+  maesDasSubcategorias,
   montarCategorias,
   preencherOrdem,
+  religarACategoriaMae,
   separarPorTipo,
   somarUso,
   textoDoUso,
 } from '@/lib/categorias'
-import { isCorValida, PALETA_CATEGORIAS, variacaoCor } from '@/lib/cores'
+import { isCorValida, PALETA_CATEGORIAS } from '@/lib/cores'
 
 const base = { atualizadoEm: '' }
 const casa: Category = {
@@ -30,47 +31,10 @@ const trabalho: Category = {
   ordem: 2,
   criadoEm: '2',
 }
-const jardim: Subcategory = {
-  ...base,
-  id: 'jardim',
-  categoryId: 'casa',
-  nome: 'Jardim',
-  ordem: 1,
-  criadoEm: '3',
-}
-const cozinha: Subcategory = {
-  ...base,
-  id: 'cozinha',
-  categoryId: 'casa',
-  nome: 'Cozinha',
-  ordem: 2,
-  criadoEm: '4',
-}
-const contas: Subcategory = {
-  ...base,
-  id: 'contas',
-  categoryId: 'casa',
-  nome: 'Contas',
-  cor: '#2f8a57',
-  ordem: 3,
-  criadoEm: '5',
-}
 
-const arvore = montarCategorias([trabalho, casa], [cozinha, contas, jardim])
+const categorias = montarCategorias([trabalho, casa])
 
-describe('variacaoCor', () => {
-  it('gera tons diferentes e válidos para posições vizinhas', () => {
-    const tons = [0, 1, 2, 3].map((indice) => variacaoCor('#3366c2', indice))
-    expect(new Set(tons).size).toBe(4)
-    expect(tons.every(isCorValida)).toBe(true)
-    expect(tons).not.toContain('#3366c2')
-  })
-
-  it('clareia na posição 0 e escurece na 1', () => {
-    expect(variacaoCor('#000000', 0)).toBe('#4d4d4d')
-    expect(variacaoCor('#ffffff', 1)).toBe('#c7c7c7')
-  })
-
+describe('paleta', () => {
   it('a paleta só tem cores válidas e sem repetição', () => {
     const hexes = PALETA_CATEGORIAS.map((cor) => cor.hex)
     expect(hexes.every(isCorValida)).toBe(true)
@@ -78,78 +42,80 @@ describe('variacaoCor', () => {
   })
 })
 
-describe('montarCategorias e cores de subcategoria', () => {
-  it('ordena categorias e subcategorias pela ordem do usuário', () => {
-    expect(arvore.map((categoria) => categoria.nome)).toEqual(['Casa', 'trabalho'])
-    expect(arvore[0].subcategorias.map((sub) => sub.nome)).toEqual(['Jardim', 'Cozinha', 'Contas'])
+describe('montarCategorias', () => {
+  it('ordena as categorias pela ordem do usuário', () => {
+    expect(categorias.map((categoria) => categoria.nome)).toEqual(['Casa', 'trabalho'])
   })
 
-  it('usa a cor própria ou um tom estável pela ordem de criação', () => {
-    expect(corDaSubcategoria(arvore[0], 'jardim')).toBe(variacaoCor('#3366c2', 0))
-    expect(corDaSubcategoria(arvore[0], 'cozinha')).toBe(variacaoCor('#3366c2', 1))
-    expect(corDaSubcategoria(arvore[0], 'contas')).toBe('#2f8a57')
-  })
-
-  it('a ordem do usuário vale mesmo contra o nome, e reordenar não troca os tons', () => {
-    const invertida = montarCategorias(
-      [
-        { ...casa, ordem: 5 },
-        { ...trabalho, ordem: 1 },
-      ],
-      [
-        { ...jardim, ordem: 9 },
-        { ...cozinha, ordem: 1 },
-      ],
-    )
+  it('a ordem do usuário vale mesmo contra o nome', () => {
+    const invertida = montarCategorias([
+      { ...casa, ordem: 5 },
+      { ...trabalho, ordem: 1 },
+    ])
     expect(invertida.map((categoria) => categoria.nome)).toEqual(['trabalho', 'Casa'])
-    expect(invertida[1].subcategorias.map((sub) => sub.nome)).toEqual(['Cozinha', 'Jardim'])
-    expect(corDaSubcategoria(invertida[1], 'jardim')).toBe(variacaoCor('#3366c2', 0))
   })
 })
 
 describe('classificarTarefa', () => {
-  it('dá cor e rótulo da categoria ou da subcategoria', () => {
-    expect(classificarTarefa({ categoryId: 'trab' }, arvore)).toEqual({
+  it('dá cor, rótulo e ícone da categoria', () => {
+    expect(classificarTarefa({ categoryId: 'trab' }, categorias)).toEqual({
       cor: '#c8402f',
       rotulo: 'trabalho',
-    })
-    expect(classificarTarefa({ categoryId: 'casa', subcategoryId: 'jardim' }, arvore)).toEqual({
-      cor: variacaoCor('#3366c2', 0),
-      rotulo: 'Casa › Jardim',
     })
   })
 
   it('ignora categoria que não existe mais', () => {
-    expect(classificarTarefa({ categoryId: 'sumiu' }, arvore)).toBeNull()
-    expect(classificarTarefa({}, arvore)).toBeNull()
+    expect(classificarTarefa({ categoryId: 'sumiu' }, categorias)).toBeNull()
+    expect(classificarTarefa({}, categorias)).toBeNull()
+  })
+})
+
+describe('religarACategoriaMae (migração v13 e backup antigo)', () => {
+  const maeDe = maesDasSubcategorias([
+    { id: 'jardim', categoryId: 'casa' },
+    { id: 'reunioes', categoryId: 'trab' },
+  ])
+
+  it('item com subcategoria passa a usar só a categoria-mãe', () => {
+    expect(
+      religarACategoriaMae({ id: 't', categoryId: 'casa', subcategoryId: 'jardim' }, maeDe),
+    ).toEqual({ id: 't', categoryId: 'casa' })
+  })
+
+  it('subcategoria sem a categoria gravada ganha a mãe', () => {
+    expect(religarACategoriaMae({ id: 't', subcategoryId: 'reunioes' }, maeDe)).toEqual({
+      id: 't',
+      categoryId: 'trab',
+    })
+  })
+
+  it('item só com categoria fica intacto', () => {
+    expect(religarACategoriaMae({ id: 't', categoryId: 'casa' }, maeDe)).toEqual({
+      id: 't',
+      categoryId: 'casa',
+    })
+  })
+
+  it('item sem categoria fica intacto (subcategoria desconhecida também não inventa categoria)', () => {
+    const semCategoria: { id: string; categoryId?: string } = { id: 't' }
+    expect(religarACategoriaMae(semCategoria, maeDe)).toEqual({ id: 't' })
+    expect(religarACategoriaMae({ id: 't', subcategoryId: 'sumiu' }, maeDe)).toEqual({ id: 't' })
   })
 })
 
 describe('preencherOrdem', () => {
   const semOrdem = <T extends { ordem: number }>({ ordem: _ordem, ...resto }: T) => resto
 
-  it('categorias por nome e subcategorias por criação, sem perder dados', () => {
-    const { categorias, subcategorias } = preencherOrdem(
-      [semOrdem(trabalho), semOrdem(casa)],
-      [semOrdem(contas), semOrdem(jardim), semOrdem(cozinha)],
-    )
-    expect(categorias).toEqual([
+  it('categorias sem ordem ficam em ordem alfabética, sem perder dados', () => {
+    expect(preencherOrdem([semOrdem(trabalho), semOrdem(casa)])).toEqual([
       { ...trabalho, ordem: 2 },
       { ...casa, ordem: 1 },
     ])
-    expect(subcategorias).toEqual(
-      expect.arrayContaining([
-        { ...jardim, ordem: 1 },
-        { ...cozinha, ordem: 2 },
-        { ...contas, ordem: 3 },
-      ]),
-    )
-    expect(subcategorias).toHaveLength(3)
   })
 
   it('mantém quem já tem ordem e põe os outros depois', () => {
-    const { categorias } = preencherOrdem([{ ...trabalho, ordem: 7 }, semOrdem(casa)], [])
-    expect(categorias.map((categoria) => categoria.ordem)).toEqual([7, 8])
+    const resultado = preencherOrdem([{ ...trabalho, ordem: 7 }, semOrdem(casa)])
+    expect(resultado.map((categoria) => categoria.ordem)).toEqual([7, 8])
   })
 })
 
@@ -179,14 +145,6 @@ describe('separarPorTipo (migração v9 e backup antigo)', () => {
     cor: '#3366c2',
     ordem,
   })
-  const subGithub: Subcategory = {
-    ...comum,
-    id: 'sub',
-    categoryId: 'github',
-    nome: 'Ações',
-    cor: '#2f8a57',
-    ordem: 1,
-  }
 
   it('classifica pelo uso: só grupo, só procedimento e sem uso', () => {
     const resultado = separarPorTipo({
@@ -196,7 +154,6 @@ describe('separarPorTipo (migração v9 e backup antigo)', () => {
         semTipo('vazia', 'Vazia', 3),
         semTipo('trabalho', 'Trabalho', 4),
       ],
-      subcategorias: [],
       tarefas: [{ categoryId: 'casa' }],
       grupos: [{ categoryId: 'trabalho' }],
       procedimentos: [{ categoryId: 'receitas' }],
@@ -207,42 +164,30 @@ describe('separarPorTipo (migração v9 e backup antigo)', () => {
       { id: 'vazia', tipo: 'grupo', ordem: 2 },
       { id: 'trabalho', tipo: 'grupo', ordem: 3 },
     ])
-    expect(resultado.subcategorias).toEqual([])
   })
 
-  it('usada pelos dois: divide em duas (mesmo nome e cor), copia subcategorias e religa', () => {
-    const procedimento = { id: 'p', categoryId: 'github', subcategoryId: 'sub' }
-    const semSub = { id: 'p2', categoryId: 'github' }
+  it('usada pelos dois: divide em duas (mesmo nome e cor) e religa os procedimentos', () => {
     const resultado = separarPorTipo({
       categorias: [semTipo('github', 'Github', 1)],
-      subcategorias: [subGithub],
-      tarefas: [{ categoryId: 'github', subcategoryId: 'sub' }],
+      tarefas: [{ categoryId: 'github' }],
       grupos: [],
-      procedimentos: [procedimento, semSub],
+      procedimentos: [{ id: 'p', categoryId: 'github' }],
     })
     const [original, copia] = resultado.categorias
     expect(original).toMatchObject({ id: 'github', nome: 'Github', tipo: 'grupo', ordem: 1 })
     expect(copia).toMatchObject({ nome: 'Github', cor: '#3366c2', tipo: 'procedimento', ordem: 1 })
     expect(copia.id).not.toBe('github')
-
-    const subcopia = resultado.subcategorias.find((item) => item.id !== 'sub')
-    expect(resultado.subcategorias).toHaveLength(2)
-    expect(subcopia).toMatchObject({ categoryId: copia.id, nome: 'Ações', cor: '#2f8a57' })
-    expect(resultado.procedimentos).toEqual([
-      { id: 'p', categoryId: copia.id, subcategoryId: subcopia?.id },
-      { id: 'p2', categoryId: copia.id },
-    ])
+    expect(resultado.procedimentos).toEqual([{ id: 'p', categoryId: copia.id }])
   })
 
   it('quem já tem tipo fica como está', () => {
-    const categorias = [{ ...casa }, { ...trabalho, tipo: 'procedimento' as const }]
+    const lista = [{ ...casa }, { ...trabalho, tipo: 'procedimento' as const }]
     const resultado = separarPorTipo({
-      categorias,
-      subcategorias: [],
+      categorias: lista,
       tarefas: [{ categoryId: 'trab' }],
       grupos: [],
       procedimentos: [],
     })
-    expect(resultado.categorias).toBe(categorias)
+    expect(resultado.categorias).toBe(lista)
   })
 })

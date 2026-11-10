@@ -5,7 +5,7 @@ import {
   desfazerCaptura,
   type ResultadoCaptura,
 } from '@/db/repositories/captura-repository'
-import { criarCategoria, criarSubcategoria } from '@/db/repositories/category-repository'
+import { criarCategoria } from '@/db/repositories/category-repository'
 import { arquivarGrupo, criarGrupo, criarItem } from '@/db/repositories/group-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { ErroDeValidacao } from '@/lib/erros'
@@ -28,9 +28,8 @@ describe('captura rápida (repositório)', () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
   })
 
-  it('cria tarefa com categoria, subcategoria e dia, no fim do dia', async () => {
+  it('cria tarefa com categoria e dia, no fim do dia', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
     await criarTarefa({ titulo: 'Já estava', data: AMANHA })
 
     const resultado = await capturar({
@@ -38,7 +37,6 @@ describe('captura rápida (repositório)', () => {
       titulo: 'Podar a roseira',
       data: AMANHA,
       categoryId: casa.id,
-      subcategoryId: jardim.id,
     })
 
     expect(await db.tasks.get(idDe(resultado))).toMatchObject({
@@ -47,7 +45,6 @@ describe('captura rápida (repositório)', () => {
       dataOriginal: AMANHA,
       status: 'pendente',
       categoryId: casa.id,
-      subcategoryId: jardim.id,
       ordem: 2,
     })
   })

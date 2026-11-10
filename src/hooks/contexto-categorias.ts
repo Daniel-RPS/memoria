@@ -1,8 +1,8 @@
 import { createContext, useContext } from 'react'
-import type { CategoriaComSubcategorias } from '@/lib/categorias'
+import type { Category } from '@/db/types'
 
 /** Categorias disponíveis para as linhas de tarefa (dia e semana), sem repassar por props. */
-export const ContextoCategorias = createContext<CategoriaComSubcategorias[]>([])
+export const ContextoCategorias = createContext<Category[]>([])
 
 export function useCategoriasDoContexto() {
   return useContext(ContextoCategorias)

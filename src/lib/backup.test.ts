@@ -24,7 +24,6 @@ function backupVazio(): Backup {
     exportadoEm: '2026-10-30T12:00:00.000Z',
     tabelas: {
       categories: [],
-      subcategories: [],
       tasks: [],
       subtasks: [],
       procedures: [],
@@ -178,12 +177,12 @@ describe('lerBackup', () => {
     const resultado = lerBackup(JSON.stringify(arquivo), VERSAO_BANCO)
     expect(resultado.isValido).toBe(true)
     if (!resultado.isValido) return
-    const { categories, subcategories } = resultado.backup.tabelas
-    expect(categories.map(({ id, ordem }) => ({ id, ordem }))).toEqual([
+    const { tabelas } = resultado.backup
+    expect(tabelas.categories.map(({ id, ordem }) => ({ id, ordem }))).toEqual([
       { id: 'b', ordem: 2 },
       { id: 'a', ordem: 1 },
     ])
-    expect(subcategories[0].ordem).toBe(1)
+    expect(tabelas).not.toHaveProperty('subcategories')
   })
 
   it('backup do formato 5, sem tipo de categoria, é classificado pela regra da migração', () => {

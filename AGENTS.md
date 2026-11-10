@@ -64,7 +64,8 @@ App pessoal de organização em formato de calendário: tarefas, grupos (cards c
 - Item de grupo não tem categoria própria: segue a do grupo (`GroupSeries.categoryId`, opcional, só dá cor)
 - Perder categoria ao converter (tarefa → grupo de outra categoria/sem; item → solta, de grupo com categoria) = aviso com Desfazer: regra em `src/domain/categoria-no-grupo.ts`, conversão na UI SÓ por `colocarNoGrupoComDesfazer`/`tirarDoGrupoComDesfazer`/`moverLote` + `avisarConversao`/`avisarLote` (detalhes em `docs/agentes/grupos-e-mover.md`)
 - `Category.tipo` = `grupo` (grupos e tarefas soltas) ou `procedimento`; nome único e `ordem` valem dentro do tipo
-- Excluir categoria NUNCA apaga tarefas, grupos nem procedimentos: só limpa `categoryId`/`subcategoryId`
+- Categoria tem UM nível: subcategorias foram removidas em 10/11/2026 (não reintroduza sem o usuário pedir)
+- Excluir categoria NUNCA apaga tarefas, grupos nem procedimentos: só limpa `categoryId`
 - Excluir tarefa, item ou card NUNCA apaga notas: elas ficam avulsas
 - Marcar a ÚLTIMA subetapa pendente conclui o dono (tarefa ou item)
 - Em andamento e prioridade só valem para pendente; concluir remove as duas marcas

@@ -31,15 +31,6 @@ export interface Category extends EntidadeBase {
   icone?: Icone
 }
 
-export interface Subcategory extends EntidadeBase {
-  categoryId: string
-  nome: string
-  /** Sem cor própria, a interface usa uma variação da cor da categoria. */
-  cor?: string
-  /** Posição dentro da categoria (aceita decimais). */
-  ordem: number
-}
-
 /**
  * Posição escolhida arrastando dentro de um bloco do topo (prioridade e/ou em andamento). Só vale
  * enquanto `chave` for a do bloco com as mesmas marcas (`chaveDoTopo`): marcar de novo ou
@@ -56,7 +47,6 @@ export interface Task extends EntidadeBase {
   titulo: string
   data: DataLocal
   categoryId?: string
-  subcategoryId?: string
   /** Aceita decimais: inserir entre 1 e 2 grava 1.5 sem renumerar o dia. */
   ordem: number
   status: TaskStatus
@@ -90,7 +80,6 @@ export interface GroupSeries extends EntidadeBase {
   /** Único entre as séries, sem diferenciar acento e maiúscula. */
   titulo: string
   categoryId?: string
-  subcategoryId?: string
 }
 
 /** O card de uma série num dia. No máximo um card por série e dia. */
@@ -173,7 +162,6 @@ export interface Procedure extends EntidadeBase {
   titulo: string
   icone?: Icone
   categoryId?: string
-  subcategoryId?: string
   etapas: Etapa[]
   /** Arquivado: fora da aba Procedimentos e dos seletores, sem apagar. */
   arquivado?: boolean

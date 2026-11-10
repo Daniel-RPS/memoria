@@ -9,7 +9,7 @@ import {
   tirarDoGrupoComDesfazer,
 } from '@/db/repositories/lote-repository'
 import { adicionarAnexo } from '@/db/repositories/attachment-repository'
-import { criarCategoria, criarSubcategoria } from '@/db/repositories/category-repository'
+import { criarCategoria } from '@/db/repositories/category-repository'
 import { textoDoAviso } from '@/domain/categoria-no-grupo'
 import { criarNota } from '@/db/repositories/note-repository'
 import { definirPrioridade } from '@/db/repositories/prioridade-repository'
@@ -222,18 +222,16 @@ describe('categoria ao entrar no grupo ou sair dele', () => {
   async function cenario() {
     const trabalho = await criarCategoria({ nome: 'Trabalho' })
     const casa = await criarCategoria({ nome: 'Casa' })
-    const reunioes = await criarSubcategoria({ categoryId: trabalho.id, nome: 'Reuniões' })
     const cardCasa = await criarGrupo({ titulo: 'Casa', data: DIA, categoryId: casa.id })
-    return { trabalho, casa, reunioes, cardCasa }
+    return { trabalho, casa, cardCasa }
   }
 
-  it('desfazer restaura categoria, subcategoria, dia, posição e anexos', async () => {
-    const { trabalho, reunioes, cardCasa } = await cenario()
+  it('desfazer restaura categoria, dia, posição e anexos', async () => {
+    const { trabalho, cardCasa } = await cenario()
     const [, ligar] = await criarSoltas(['Antes', 'x'])
     await db.tasks.update(ligar.id, {
       titulo: 'Ligar para Fulano',
       categoryId: trabalho.id,
-      subcategoryId: reunioes.id,
     })
     await criarSoltas(['Depois'])
     await adicionarAnexo({
@@ -248,7 +246,7 @@ describe('categoria ao entrar no grupo ou sair dele', () => {
     expect(await db.tasks.get(ligar.id)).toBeUndefined()
     expect(await titulosDoCard('Casa')).toEqual(['Ligar para Fulano'])
     expect(textoDoAviso(resultado.avisos)).toBe(
-      '"Ligar para Fulano" foi para o grupo Casa e deixou a categoria Trabalho › Reuniões.',
+      '"Ligar para Fulano" foi para o grupo Casa e deixou a categoria Trabalho.',
     )
 
     await resultado.desfazer()

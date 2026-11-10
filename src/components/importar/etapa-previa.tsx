@@ -28,7 +28,6 @@ import {
 const esquemaCategoria = z.object({
   isDaOrigem: z.boolean(),
   categoryId: z.string(),
-  subcategoryId: z.string(),
 })
 
 const esquemaOpcoes = z.object({
@@ -47,14 +46,10 @@ const EXPLICACAO_DA_ACAO: Record<AcaoParaDuplicado, string> = {
   substituir: 'Atualiza o que já existe (o “Desfazer” devolve como estava).',
 }
 
-function paraDestino({
-  isDaOrigem,
-  categoryId,
-  subcategoryId,
-}: CategoriaInput): CategoriaDoDestino {
+function paraDestino({ isDaOrigem, categoryId }: CategoriaInput): CategoriaDoDestino {
   if (isDaOrigem) return { modo: 'da-origem' }
   if (!categoryId) return { modo: 'nenhuma' }
-  return { modo: 'escolhida', categoryId, subcategoryId: subcategoryId || undefined }
+  return { modo: 'escolhida', categoryId }
 }
 
 /** Etapa 3: o que será criado, onde e como; "Importar" grava tudo de uma vez. */
@@ -67,8 +62,8 @@ export function EtapaPrevia({ importacao }: { importacao: ReturnType<typeof useI
     defaultValues: {
       data: hoje,
       acao: 'pular',
-      grupo: { isDaOrigem: false, categoryId: '', subcategoryId: '' },
-      procedimento: { isDaOrigem: false, categoryId: '', subcategoryId: '' },
+      grupo: { isDaOrigem: false, categoryId: '' },
+      procedimento: { isDaOrigem: false, categoryId: '' },
     },
   })
   const [data, acao] = useWatch({ control, name: ['data', 'acao'] })
@@ -233,16 +228,9 @@ function CampoDeCategoria({ control, nome, tipo, legenda, daOrigem }: CampoDeCat
               <CampoCategoria
                 tipo={tipo}
                 rotulo={legenda}
-                atual={{
-                  categoryId: field.value.categoryId || undefined,
-                  subcategoryId: field.value.subcategoryId || undefined,
-                }}
-                onEscolher={({ categoryId, subcategoryId }) =>
-                  field.onChange({
-                    ...field.value,
-                    categoryId: categoryId ?? '',
-                    subcategoryId: subcategoryId ?? '',
-                  })
+                atual={{ categoryId: field.value.categoryId || undefined }}
+                onEscolher={({ categoryId }) =>
+                  field.onChange({ ...field.value, categoryId: categoryId ?? '' })
                 }
                 className="max-w-72"
               />

@@ -40,14 +40,9 @@ interface ModuloProcedimentos {
 interface ModuloBanco {
   db: {
     categories: { toArray: () => Promise<{ id: string; nome: string; cor: string }[]> }
-    subcategories: { toArray: () => Promise<{ id: string; nome: string }[]> }
-    groupSeries: {
-      toArray: () => Promise<{ titulo: string; categoryId?: string; subcategoryId?: string }[]>
-    }
+    groupSeries: { toArray: () => Promise<{ titulo: string; categoryId?: string }[]> }
     groupItems: { toArray: () => Promise<{ titulo: string; ordem: number }[]> }
-    procedures: {
-      toArray: () => Promise<{ titulo: string; categoryId?: string; subcategoryId?: string }[]>
-    }
+    procedures: { toArray: () => Promise<{ titulo: string; categoryId?: string }[]> }
   }
 }
 
@@ -59,16 +54,14 @@ async function lerBanco(page: Page) {
   return page.evaluate(async () => {
     const caminho = '/src/db/database.ts'
     const { db } = (await import(/* @vite-ignore */ caminho)) as ModuloBanco
-    const [categorias, subcategorias, series, itens, procedimentos] = await Promise.all([
+    const [categorias, series, itens, procedimentos] = await Promise.all([
       db.categories.toArray(),
-      db.subcategories.toArray(),
       db.groupSeries.toArray(),
       db.groupItems.toArray(),
       db.procedures.toArray(),
     ])
     return {
       categorias,
-      subcategorias,
       series,
       itens: itens.sort((a, b) => a.ordem - b.ordem).map((item) => item.titulo),
       procedimentos,
@@ -161,7 +154,9 @@ test('Semana: pelo menu ⋯ do card, cria "Trabalho" com cor, aplica e aparece e
   await capturar(page, '1-depois-categorias')
 })
 
-test('Procedimento: cria uma subcategoria pelo seletor e ela fica aplicada', async ({ page }) => {
+test('Procedimento: seletor em lista plana cria uma categoria e ela fica aplicada', async ({
+  page,
+}) => {
   await page.goto('/procedimentos')
   const id = await page.evaluate(async () => {
     const caminhoCategorias = '/src/db/repositories/category-repository.ts'
@@ -185,18 +180,24 @@ test('Procedimento: cria uma subcategoria pelo seletor e ela fica aplicada', asy
   await capturar(page, '2-antes')
 
   await campo.click()
-  await page.getByRole('menuitemradio', { name: 'Casa' }).hover()
-  await page.getByRole('menuitem', { name: 'Nova subcategoria em Casa' }).click()
-  await page.getByRole('textbox', { name: 'Nova subcategoria' }).fill('Jardim')
+  await expect(page.getByRole('menuitemradio')).toHaveText(['Sem categoria', 'Casa'])
+  await expect(page.getByRole('menu').getByText(/subcategoria/i)).toHaveCount(0)
+  await page.getByRole('menuitem', { name: 'Nova categoria' }).click()
+  await page.getByRole('textbox', { name: 'Nova categoria' }).fill('Jardim')
   await capturar(page, '2-formulario')
-  await page.getByRole('textbox', { name: 'Nova subcategoria' }).press('Enter')
+  await page.getByRole('textbox', { name: 'Nova categoria' }).press('Enter')
 
-  await expect(campo).toHaveText('Casa › Jardim')
+  await expect(campo).toHaveText('Jardim')
   await expect(page.getByRole('status')).toHaveText('Salvo')
   await capturar(page, '2-depois')
   const banco = await lerBanco(page)
-  expect(banco.subcategorias.map((subcategoria) => subcategoria.nome)).toEqual(['Jardim'])
-  expect(banco.procedimentos[0].subcategoryId).toBe(banco.subcategorias[0].id)
+  const jardim = banco.categorias.find((categoria) => categoria.nome === 'Jardim')
+  expect(banco.procedimentos[0].categoryId).toBe(jardim?.id)
+
+  // Navegação do próprio app: aparece em Categorias sem recarregar.
+  await irPara(page, 'Categorias')
+  const lista = page.getByRole('list', { name: 'Categorias de Procedimentos' })
+  await expect(lista.getByRole('button', { name: 'Jardim', exact: true })).toBeVisible()
 })
 
 test('Semana: renomeia o card e adiciona, renomeia e exclui um item', async ({ page }) => {

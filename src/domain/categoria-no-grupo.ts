@@ -5,10 +5,9 @@
  * muda; aqui só se decide QUANDO avisar e com que texto. Sem banco: o repositório aplica.
  */
 
-/** Categoria e subcategoria de uma tarefa ou de uma série de grupo. */
+/** Categoria de uma tarefa ou de uma série de grupo. */
 export interface ParDeCategoria {
   categoryId?: string | undefined
-  subcategoryId?: string | undefined
 }
 
 /** O que a linha tinha e o que ficou valendo depois da conversão. */
@@ -18,29 +17,22 @@ export interface MudancaDeCategoria {
 }
 
 /**
- * Tarefa solta → item do grupo. Avisa só se a tarefa tinha categoria e ela (ou a subcategoria)
- * se perde: grupo de outra categoria, sem categoria ou com outra subcategoria/sem a dela. Só
- * GANHAR subcategoria (tarefa "Trabalho" em grupo "Trabalho › Reuniões") não perde nada: sem aviso.
+ * Tarefa solta → item do grupo. Avisa só se a tarefa tinha categoria e ela se perde: grupo de
+ * outra categoria ou sem categoria.
  */
 export function mudancaAoEntrarNoGrupo(
   tarefa: ParDeCategoria,
   serie: ParDeCategoria,
 ): MudancaDeCategoria | null {
   if (!tarefa.categoryId) return null
-  const isMesmaCategoria = tarefa.categoryId === serie.categoryId
-  const isSubcategoriaMantida =
-    tarefa.subcategoryId === undefined || tarefa.subcategoryId === serie.subcategoryId
-  if (isMesmaCategoria && isSubcategoriaMantida) return null
-  return {
-    de: { categoryId: tarefa.categoryId, subcategoryId: tarefa.subcategoryId },
-    para: { categoryId: serie.categoryId, subcategoryId: serie.subcategoryId },
-  }
+  if (tarefa.categoryId === serie.categoryId) return null
+  return { de: { categoryId: tarefa.categoryId }, para: { categoryId: serie.categoryId } }
 }
 
 /** Item → tarefa solta: a tarefa nasce sem categoria, então avisa se o grupo tinha uma. */
 export function mudancaAoSairDoGrupo(serie: ParDeCategoria): MudancaDeCategoria | null {
   if (!serie.categoryId) return null
-  return { de: { categoryId: serie.categoryId, subcategoryId: serie.subcategoryId }, para: {} }
+  return { de: { categoryId: serie.categoryId }, para: {} }
 }
 
 /** Um aviso pronto para virar texto: quem mudou, em que grupo e os nomes das categorias. */
@@ -48,21 +40,18 @@ export interface AvisoDeCategoria {
   sentido: 'entrou' | 'saiu'
   titulo: string
   grupo: string
-  /** Nome do que se perdeu ("Trabalho" ou "Trabalho › Reuniões"). */
+  /** Nome da categoria perdida ("Trabalho"). */
   perdida: string
   /** A linha terminou sem categoria. */
   isSemCategoria: boolean
 }
 
-/** Nomes por id (categorias e subcategorias juntas: ids são UUIDs, não colidem). */
+/** Nomes das categorias por id. */
 export type NomesDeCategoria = ReadonlyMap<string, string>
 
-/** "Trabalho" ou "Trabalho › Reuniões"; id que sumiu fica de fora. */
+/** Nome da categoria; id que sumiu = vazio. */
 export function nomeDoPar(par: ParDeCategoria, nomes: NomesDeCategoria) {
-  const categoria = par.categoryId ? nomes.get(par.categoryId) : undefined
-  const subcategoria = par.subcategoryId ? nomes.get(par.subcategoryId) : undefined
-  if (!categoria) return ''
-  return subcategoria ? `${categoria} › ${subcategoria}` : categoria
+  return (par.categoryId && nomes.get(par.categoryId)) || ''
 }
 
 export function montarAviso(

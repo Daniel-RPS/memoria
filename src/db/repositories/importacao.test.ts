@@ -47,7 +47,6 @@ async function importar(
 async function contarTudo() {
   const tabelas = [
     db.categories,
-    db.subcategories,
     db.tasks,
     db.subtasks,
     db.groupSeries,

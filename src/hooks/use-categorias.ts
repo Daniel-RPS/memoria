@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listarCategorias } from '@/db/repositories/category-repository'
-import type { TipoCategoria } from '@/db/types'
-import { categoriasDoTipo, type CategoriaComSubcategorias } from '@/lib/categorias'
+import type { Category, TipoCategoria } from '@/db/types'
+import { categoriasDoTipo } from '@/lib/categorias'
 
-const NENHUMA: CategoriaComSubcategorias[] = []
+const NENHUMA: Category[] = []
 
 /**
- * Categorias com subcategorias, atualizadas sozinhas. Com `tipo`, só as daquele tipo (para
+ * Categorias na ordem do usuário, atualizadas sozinhas. Com `tipo`, só as daquele tipo (para
  * escolher); sem, todas (para achar a cor de qualquer item pelo id).
  */
 export function useCategorias(tipo?: TipoCategoria) {

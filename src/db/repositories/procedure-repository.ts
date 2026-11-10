@@ -21,20 +21,18 @@ function camposGravados(dados: DadosProcedimento) {
     // `undefined` ao salvar = "Sem ícone": o Dexie tira o campo do registro.
     icone: dados.icone,
     categoryId,
-    subcategoryId: categoryId ? dados.subcategoryId || undefined : undefined,
     etapas: numerarEtapas(dados.etapas),
   }
 }
 
 export async function criarProcedimento(dados: DadosProcedimento): Promise<Procedure> {
   const momento = agora()
-  const { categoryId, subcategoryId, icone, ...campos } = camposGravados(dados)
+  const { categoryId, icone, ...campos } = camposGravados(dados)
   const procedimento: Procedure = {
     id: crypto.randomUUID(),
     ...campos,
     ...(icone ? { icone } : {}),
     ...(categoryId ? { categoryId } : {}),
-    ...(subcategoryId ? { subcategoryId } : {}),
     criadoEm: momento,
     atualizadoEm: momento,
   }
@@ -42,7 +40,7 @@ export async function criarProcedimento(dados: DadosProcedimento): Promise<Proce
   return procedimento
 }
 
-/** Grava título, categoria, subcategoria e etapas (a lista inteira, na ordem da tela). */
+/** Grava título, categoria e etapas (a lista inteira, na ordem da tela). */
 export async function salvarProcedimento(id: string, dados: DadosProcedimento) {
   const atualizados = await db.procedures.update(id, {
     ...camposGravados(dados),

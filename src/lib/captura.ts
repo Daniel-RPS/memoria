@@ -94,7 +94,6 @@ export const esquemaCaptura = z
     itens: z.array(z.string()),
     tipo: z.enum(['tarefa', 'grupo']),
     categoryId: z.string().optional(),
-    subcategoryId: z.string().optional(),
     /** Grupo que já existe escolhido na Tarefa: o texto vira item dele. */
     seriesId: z.string().optional(),
     data: z.string().refine(isDataLocalValida, 'Escolha um dia.'),

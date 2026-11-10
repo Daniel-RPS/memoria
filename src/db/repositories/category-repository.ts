@@ -1,5 +1,5 @@
 import { db } from '@/db/database'
-import type { Category, Icone, Subcategory, TipoCategoria } from '@/db/types'
+import type { Category, Icone, TipoCategoria } from '@/db/types'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 import { limparCategoriaDasSessoes } from '@/domain/tempo'
 import { isMesmoNome, montarCategorias, NOMES_DO_TIPO, outroTipo, somarUso } from '@/lib/categorias'
@@ -33,24 +33,16 @@ function exigirNomeLivre(nome: string, doTipo: Category[], idIgnorado?: string) 
 }
 
 /**
- * Todas as categorias (dos dois tipos) com suas subcategorias, na ordem do usuário. As telas
- * buscam a cor pelo id em todas; quem escolhe categoria filtra pelo tipo.
+ * Todas as categorias (dos dois tipos), na ordem do usuário. As telas buscam a cor pelo id em
+ * todas; quem escolhe categoria filtra pelo tipo.
  */
 export async function listarCategorias() {
-  const [categorias, subcategorias] = await Promise.all([
-    db.categories.toArray(),
-    db.subcategories.toArray(),
-  ])
-  return montarCategorias(categorias, subcategorias)
+  return montarCategorias(await db.categories.toArray())
 }
 
-/** Últimas cores personalizadas (fora da paleta) usadas em categorias e subcategorias. */
+/** Últimas cores personalizadas (fora da paleta) usadas em categorias. */
 export async function listarCoresRecentes() {
-  const [categorias, subcategorias] = await Promise.all([
-    db.categories.toArray(),
-    db.subcategories.toArray(),
-  ])
-  return coresRecentes([...categorias, ...subcategorias])
+  return coresRecentes(await db.categories.toArray())
 }
 
 /**
@@ -131,7 +123,7 @@ export async function reordenarCategoria(idsEmOrdem: string[], idMovido: string)
 }
 
 /**
- * Passa a categoria (com as subcategorias) para o outro tipo, no fim da lista dele. Os itens
+ * Passa a categoria para o outro tipo, no fim da lista dele. Os itens
  * do tipo antigo que a usavam (tarefas e grupos, ou procedimentos) ficam sem categoria.
  * Recusa com `ErroDeValidacao` se o outro tipo já tem uma categoria com o mesmo nome.
  */
@@ -150,11 +142,7 @@ export async function moverCategoriaDeTipo(id: string) {
         )
       }
       const momento = agora()
-      const semCategoria = {
-        categoryId: undefined,
-        subcategoryId: undefined,
-        atualizadoEm: momento,
-      }
+      const semCategoria = { categoryId: undefined, atualizadoEm: momento }
       const tabelas = categoria.tipo === 'grupo' ? [db.tasks, db.groupSeries] : [db.procedures]
       for (const tabela of tabelas) {
         await tabela.where('categoryId').equals(id).modify(semCategoria)
@@ -172,25 +160,20 @@ export async function moverCategoriaDeTipo(id: string) {
 }
 
 /**
- * Exclui a categoria e as subcategorias dela. Tarefas, grupos, procedimentos e sessões de tempo
- * NÃO são apagados: só ficam sem categoria.
+ * Exclui a categoria. Tarefas, grupos, procedimentos e sessões de tempo NÃO são apagados: só
+ * ficam sem categoria.
  */
 export async function excluirCategoria(id: string) {
   await db.transaction(
     'rw',
-    [db.categories, db.subcategories, db.tasks, db.procedures, db.groupSeries, db.sessions],
+    [db.categories, db.tasks, db.procedures, db.groupSeries, db.sessions],
     async () => {
       const momento = agora()
-      const semCategoria = {
-        categoryId: undefined,
-        subcategoryId: undefined,
-        atualizadoEm: momento,
-      }
+      const semCategoria = { categoryId: undefined, atualizadoEm: momento }
       await db.tasks.where('categoryId').equals(id).modify(semCategoria)
       await db.groupSeries.where('categoryId').equals(id).modify(semCategoria)
       await db.procedures.where('categoryId').equals(id).modify(semCategoria)
       await limparCategoriaDasSessoes(id, momento)
-      await db.subcategories.where('categoryId').equals(id).delete()
       await db.categories.delete(id)
     },
   )
@@ -198,11 +181,11 @@ export async function excluirCategoria(id: string) {
 
 /**
  * Cria uma categoria de Grupo a partir de uma de Procedimentos ("Usar de Procedimentos"):
- * mesmo nome, cor, ícone e subcategorias (nome, cor e ordem), mas independente da original.
+ * mesmo nome, cor e ícone, mas independente da original.
  * Nome já usado em Grupos lança `ErroDeValidacao`, como em `criarCategoria`.
  */
 export async function criarDeCategoriaDeProcedimento(idOrigem: string): Promise<Category> {
-  return db.transaction('rw', db.categories, db.subcategories, async () => {
+  return db.transaction('rw', db.categories, async () => {
     const origem = await db.categories.get(idOrigem)
     if (!origem || origem.tipo !== 'procedimento') {
       throw new ErroDeValidacao('Essa categoria de Procedimentos não existe mais.')
@@ -221,98 +204,6 @@ export async function criarDeCategoriaDeProcedimento(idOrigem: string): Promise<
       atualizadoEm: momento,
     }
     await db.categories.add(categoria)
-    const subcategorias = await db.subcategories.where('categoryId').equals(idOrigem).toArray()
-    await db.subcategories.bulkAdd(
-      subcategorias.map(({ nome, cor, ordem }): Subcategory => ({
-        id: crypto.randomUUID(),
-        categoryId: categoria.id,
-        nome,
-        ...(cor ? { cor } : {}),
-        ordem,
-        criadoEm: momento,
-        atualizadoEm: momento,
-      })),
-    )
     return categoria
   })
-}
-
-/** Cria a subcategoria no fim da categoria. Sem `cor`, usa o tom automático da categoria. */
-export async function criarSubcategoria(dados: {
-  categoryId: string
-  nome: string
-  cor?: string
-}): Promise<Subcategory> {
-  const nome = nomeValido(dados.nome)
-  return db.transaction('rw', db.subcategories, async () => {
-    const irmas = await db.subcategories.where('categoryId').equals(dados.categoryId).toArray()
-    if (irmas.some((subcategoria) => isMesmoNome(subcategoria.nome, nome))) {
-      throw new ErroDeValidacao('Já existe uma subcategoria com esse nome nesta categoria.')
-    }
-    const momento = agora()
-    const subcategoria: Subcategory = {
-      id: crypto.randomUUID(),
-      categoryId: dados.categoryId,
-      nome,
-      ...(dados.cor ? { cor: dados.cor } : {}),
-      ordem: maiorOrdem(irmas) + 1,
-      criadoEm: momento,
-      atualizadoEm: momento,
-    }
-    await db.subcategories.add(subcategoria)
-    return subcategoria
-  })
-}
-
-/** `cor: null` volta a usar a variação automática da cor da categoria. */
-export async function atualizarSubcategoria(
-  id: string,
-  mudancas: { nome?: string; cor?: string | null },
-) {
-  const nome = mudancas.nome === undefined ? undefined : nomeValido(mudancas.nome)
-  const { cor } = mudancas
-  await db.transaction('rw', db.subcategories, async () => {
-    const atual = await db.subcategories.get(id)
-    if (!atual) return
-    if (nome !== undefined) {
-      const irmas = await db.subcategories.where('categoryId').equals(atual.categoryId).toArray()
-      if (irmas.some((irma) => irma.id !== id && isMesmoNome(irma.nome, nome))) {
-        throw new ErroDeValidacao('Já existe uma subcategoria com esse nome nesta categoria.')
-      }
-    }
-    await db.subcategories.update(id, {
-      ...(nome !== undefined && { nome }),
-      ...(cor !== undefined && { cor: cor ?? undefined }),
-      atualizadoEm: agora(),
-    })
-  })
-}
-
-/** Grava a nova posição de `idMovido` entre as subcategorias de uma categoria. */
-export async function reordenarSubcategoria(idsEmOrdem: string[], idMovido: string) {
-  await db.transaction('rw', db.subcategories, () =>
-    gravarNovaPosicao(db.subcategories, idsEmOrdem, idMovido),
-  )
-}
-
-/** Exclui a subcategoria; tarefas, grupos e procedimentos continuam na categoria-mãe. */
-export async function excluirSubcategoria(id: string) {
-  await db.transaction(
-    'rw',
-    [db.subcategories, db.tasks, db.groupSeries, db.procedures],
-    async () => {
-      const subcategoria = await db.subcategories.get(id)
-      if (!subcategoria) return
-      const semSubcategoria = { subcategoryId: undefined, atualizadoEm: agora() }
-      const daSubcategoria = (item: { subcategoryId?: string }) => item.subcategoryId === id
-      for (const tabela of [db.tasks, db.groupSeries, db.procedures] as const) {
-        await tabela
-          .where('categoryId')
-          .equals(subcategoria.categoryId)
-          .filter(daSubcategoria)
-          .modify(semSubcategoria)
-      }
-      await db.subcategories.delete(id)
-    },
-  )
 }

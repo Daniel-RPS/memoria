@@ -36,7 +36,6 @@ export interface NovaTarefa {
   titulo: string
   data: DataLocal
   categoryId?: string
-  subcategoryId?: string
 }
 
 export async function criarTarefa(dados: NovaTarefa): Promise<Task> {
@@ -49,7 +48,6 @@ export async function criarTarefa(dados: NovaTarefa): Promise<Task> {
       data: dados.data,
       dataOriginal: dados.data,
       categoryId: dados.categoryId,
-      subcategoryId: dados.categoryId ? dados.subcategoryId : undefined,
       ordem: maiorOrdem + 1,
       status: 'pendente',
       criadoEm: momento,
@@ -91,16 +89,12 @@ export async function definirConclusao(id: string, concluida: boolean) {
   })
 }
 
-/** Define a categoria (e opcionalmente a subcategoria); sem `categoryId`, tira a categoria. */
-export async function definirCategoria(
-  id: string,
-  categoria: { categoryId?: string; subcategoryId?: string },
-) {
+/** Define a categoria; sem `categoryId`, tira a categoria. */
+export async function definirCategoria(id: string, categoria: { categoryId?: string }) {
   const momento = agora()
   await db.transaction('rw', [db.tasks, db.sessions], async () => {
     await db.tasks.update(id, {
       categoryId: categoria.categoryId,
-      subcategoryId: categoria.categoryId ? categoria.subcategoryId : undefined,
       atualizadoEm: momento,
     })
     await atualizarCategoriaDasSessoesDaTarefa(id, categoria.categoryId, momento)

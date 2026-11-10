@@ -2,18 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from '@/db/database'
 import {
   atualizarCategoria,
-  atualizarSubcategoria,
   contarUsoDasCategorias,
   criarCategoria,
   criarDeCategoriaDeProcedimento,
-  criarSubcategoria,
   definirIconeDaCategoria,
   excluirCategoria,
-  excluirSubcategoria,
   listarCategorias,
   moverCategoriaDeTipo,
   reordenarCategoria,
-  reordenarSubcategoria,
 } from '@/db/repositories/category-repository'
 import { criarGrupo } from '@/db/repositories/group-repository'
 import { criarProcedimento } from '@/db/repositories/procedure-repository'
@@ -42,23 +38,11 @@ describe('category-repository', () => {
   it('recusa nome repetido, sem diferenciar maiúsculas e acentos', async () => {
     await criarCategoria({ nome: 'Saúde' })
     await expect(criarCategoria({ nome: ' saude ' })).rejects.toBeInstanceOf(ErroDeValidacao)
-
-    const casa = await criarCategoria({ nome: 'Casa' })
-    await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    await expect(criarSubcategoria({ categoryId: casa.id, nome: 'jardim' })).rejects.toThrow(
-      'Já existe uma subcategoria com esse nome nesta categoria.',
-    )
   })
 
-  it('excluir categoria mantém as tarefas, só tira a categoria, e apaga as subcategorias', async () => {
+  it('excluir categoria mantém as tarefas e só tira a categoria', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const tarefa = await criarTarefa({
-      titulo: 'Podar',
-      data: DIA,
-      categoryId: casa.id,
-      subcategoryId: jardim.id,
-    })
+    const tarefa = await criarTarefa({ titulo: 'Podar', data: DIA, categoryId: casa.id })
     expect((await contarUsoDasCategorias()).get(casa.id)?.tarefas).toBe(1)
 
     await excluirCategoria(casa.id)
@@ -66,62 +50,26 @@ describe('category-repository', () => {
     const depois = await db.tasks.get(tarefa.id)
     expect(depois?.titulo).toBe('Podar')
     expect(depois?.categoryId).toBeUndefined()
-    expect(depois?.subcategoryId).toBeUndefined()
-    expect(await db.subcategories.count()).toBe(0)
     expect(await listarCategorias()).toEqual([])
   })
 
-  it('excluir subcategoria deixa a tarefa na categoria-mãe', async () => {
+  it('definirCategoria sem categoria tira a categoria', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const tarefa = await criarTarefa({ titulo: 'Regar', data: DIA })
-    await definirCategoria(tarefa.id, { categoryId: casa.id, subcategoryId: jardim.id })
-
-    await excluirSubcategoria(jardim.id)
-
-    const depois = await db.tasks.get(tarefa.id)
-    expect(depois?.categoryId).toBe(casa.id)
-    expect(depois?.subcategoryId).toBeUndefined()
-  })
-
-  it('subcategoria volta ao tom automático com cor null', async () => {
-    const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    await atualizarSubcategoria(jardim.id, { cor: '#2f8a57' })
-    expect((await db.subcategories.get(jardim.id))?.cor).toBe('#2f8a57')
-
-    await atualizarSubcategoria(jardim.id, { cor: null })
-    expect((await db.subcategories.get(jardim.id))?.cor).toBeUndefined()
-  })
-
-  it('definirCategoria sem categoria limpa também a subcategoria', async () => {
-    const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const tarefa = await criarTarefa({
-      titulo: 'Varrer',
-      data: DIA,
-      categoryId: casa.id,
-      subcategoryId: jardim.id,
-    })
+    const tarefa = await criarTarefa({ titulo: 'Varrer', data: DIA, categoryId: casa.id })
 
     await definirCategoria(tarefa.id, {})
 
-    const depois = await db.tasks.get(tarefa.id)
-    expect(depois?.categoryId).toBeUndefined()
-    expect(depois?.subcategoryId).toBeUndefined()
+    expect((await db.tasks.get(tarefa.id))?.categoryId).toBeUndefined()
   })
 
-  it('recusa nome vazio (só espaços) em categoria e subcategoria', async () => {
+  it('recusa nome vazio (só espaços)', async () => {
     await expect(criarCategoria({ nome: '   ' })).rejects.toThrow('Escreva um nome.')
     const casa = await criarCategoria({ nome: 'Casa' })
-    await expect(criarSubcategoria({ categoryId: casa.id, nome: '' })).rejects.toBeInstanceOf(
-      ErroDeValidacao,
-    )
     await expect(atualizarCategoria(casa.id, { nome: ' ' })).rejects.toBeInstanceOf(ErroDeValidacao)
     expect(await db.categories.count()).toBe(1)
   })
 
-  it('renomear para um nome já usado no mesmo nível é recusado; em outra categoria pode', async () => {
+  it('renomear para um nome já usado é recusado; só mudar maiúsculas pode', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
     const trabalho = await criarCategoria({ nome: 'Trabalho' })
     await expect(atualizarCategoria(trabalho.id, { nome: 'CASA' })).rejects.toThrow(
@@ -129,29 +77,16 @@ describe('category-repository', () => {
     )
     await atualizarCategoria(casa.id, { nome: 'casa' })
     expect((await db.categories.get(casa.id))?.nome).toBe('casa')
-
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const contas = await criarSubcategoria({ categoryId: casa.id, nome: 'Contas' })
-    await expect(atualizarSubcategoria(contas.id, { nome: 'jardim' })).rejects.toBeInstanceOf(
-      ErroDeValidacao,
-    )
-    await criarSubcategoria({ categoryId: trabalho.id, nome: 'Jardim' })
-    expect((await db.subcategories.get(jardim.id))?.nome).toBe('Jardim')
   })
 
   it('cria no fim da lista e com a cor escolhida', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
     const trabalho = await criarCategoria({ nome: 'Trabalho', cor: '#5b4fbf' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const contas = await criarSubcategoria({ categoryId: casa.id, nome: 'Contas', cor: '#2f8a57' })
     expect(trabalho.ordem).toBeGreaterThan(casa.ordem)
     expect(trabalho.cor).toBe('#5b4fbf')
-    expect(contas.ordem).toBeGreaterThan(jardim.ordem)
-    expect(jardim.cor).toBeUndefined()
-    expect(contas.cor).toBe('#2f8a57')
   })
 
-  it('reordenar categorias e subcategorias persiste a ordem', async () => {
+  it('reordenar categorias persiste a ordem', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
     const saude = await criarCategoria({ nome: 'Saúde' })
     const trabalho = await criarCategoria({ nome: 'Trabalho' })
@@ -161,21 +96,11 @@ describe('category-repository', () => {
       'Casa',
       'Saúde',
     ])
-
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const contas = await criarSubcategoria({ categoryId: casa.id, nome: 'Contas' })
-    await reordenarSubcategoria([contas.id, jardim.id], contas.id)
-    const [, deCasa] = await listarCategorias()
-    expect(deCasa.subcategorias.map((subcategoria) => subcategoria.nome)).toEqual([
-      'Contas',
-      'Jardim',
-    ])
   })
 
   it('excluir categoria deixa tarefas, grupos e procedimentos sem categoria', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const daCategoria = { categoryId: casa.id, subcategoryId: jardim.id }
+    const daCategoria = { categoryId: casa.id }
     const tarefa = await criarTarefa({ titulo: 'Podar', data: DIA, ...daCategoria })
     const card = await criarGrupo({ titulo: 'Quintal', data: DIA, ...daCategoria })
     const procedimento = await criarProcedimento({ titulo: 'Adubar', ...daCategoria, etapas: [] })
@@ -190,39 +115,8 @@ describe('category-repository', () => {
     ]) {
       expect(item).toBeDefined()
       expect(item?.categoryId).toBeUndefined()
-      expect(item?.subcategoryId).toBeUndefined()
     }
     expect(await db.groupCards.count()).toBe(1)
-    expect(await db.subcategories.count()).toBe(0)
-  })
-
-  it('excluir subcategoria tira só a subcategoria de tarefas, grupos e procedimentos', async () => {
-    const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const contas = await criarSubcategoria({ categoryId: casa.id, nome: 'Contas' })
-    const naJardim = { categoryId: casa.id, subcategoryId: jardim.id }
-    const tarefa = await criarTarefa({ titulo: 'Podar', data: DIA, ...naJardim })
-    const outra = await criarTarefa({
-      titulo: 'Pagar luz',
-      data: DIA,
-      categoryId: casa.id,
-      subcategoryId: contas.id,
-    })
-    const card = await criarGrupo({ titulo: 'Quintal', data: DIA, ...naJardim })
-    const procedimento = await criarProcedimento({ titulo: 'Adubar', ...naJardim, etapas: [] })
-
-    await excluirSubcategoria(jardim.id)
-
-    const serie = await db.groupSeries.get(card.seriesId)
-    for (const item of [
-      await db.tasks.get(tarefa.id),
-      serie,
-      await db.procedures.get(procedimento.id),
-    ]) {
-      expect(item?.categoryId).toBe(casa.id)
-      expect(item?.subcategoryId).toBeUndefined()
-    }
-    expect((await db.tasks.get(outra.id))?.subcategoryId).toBe(contas.id)
   })
 
   it('conta tarefas, grupos e procedimentos de cada categoria', async () => {
@@ -284,18 +178,14 @@ describe('category-repository', () => {
     it('mover de tipo deixa sem categoria os itens que a usavam e vai para o fim do outro tipo', async () => {
       await criarCategoria({ nome: 'Receitas', tipo: 'procedimento' })
       const casa = await criarCategoria({ nome: 'Casa', tipo: 'grupo' })
-      const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
       const tarefa = await criarTarefa({ titulo: 'Varrer', data: DIA })
-      await definirCategoria(tarefa.id, { categoryId: casa.id, subcategoryId: jardim.id })
+      await definirCategoria(tarefa.id, { categoryId: casa.id })
       const card = await criarGrupo({ titulo: 'Mercado', data: DIA, categoryId: casa.id })
 
       await moverCategoriaDeTipo(casa.id)
 
       expect(await db.categories.get(casa.id)).toMatchObject({ tipo: 'procedimento', ordem: 2 })
-      expect(await db.subcategories.get(jardim.id)).toMatchObject({ categoryId: casa.id })
-      const tarefaDepois = await db.tasks.get(tarefa.id)
-      expect(tarefaDepois?.categoryId).toBeUndefined()
-      expect(tarefaDepois?.subcategoryId).toBeUndefined()
+      expect((await db.tasks.get(tarefa.id))?.categoryId).toBeUndefined()
       expect((await db.groupSeries.get(card.seriesId))?.categoryId).toBeUndefined()
     })
 
@@ -317,15 +207,13 @@ describe('category-repository', () => {
   })
 
   describe('criarDeCategoriaDeProcedimento', () => {
-    it('copia nome, cor, ícone e subcategorias, independente da original', async () => {
+    it('copia nome, cor e ícone, independente da original', async () => {
       const origem = await criarCategoria({
         nome: 'Cloudflare',
         cor: '#F38020',
         tipo: 'procedimento',
       })
       await definirIconeDaCategoria(origem.id, { tipo: 'marca', valor: 'cloudflare' })
-      await criarSubcategoria({ categoryId: origem.id, nome: 'DNS', cor: '#123456' })
-      await criarSubcategoria({ categoryId: origem.id, nome: 'Workers' })
 
       const copia = await criarDeCategoriaDeProcedimento(origem.id)
       expect(copia).toMatchObject({
@@ -335,14 +223,7 @@ describe('category-repository', () => {
         icone: { tipo: 'marca', valor: 'cloudflare' },
       })
       expect(copia.id).not.toBe(origem.id)
-      const subs = await db.subcategories.where('categoryId').equals(copia.id).sortBy('ordem')
-      expect(subs.map((sub) => [sub.nome, sub.cor])).toEqual([
-        ['DNS', '#123456'],
-        ['Workers', undefined],
-      ])
-      // A original continua em Procedimentos, com as próprias subcategorias.
       expect((await db.categories.get(origem.id))?.tipo).toBe('procedimento')
-      expect(await db.subcategories.where('categoryId').equals(origem.id).count()).toBe(2)
     })
 
     it('nome já usado em Grupos é recusado; o chip aparece como "já existe"', async () => {

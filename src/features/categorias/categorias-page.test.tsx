@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
-import { criarCategoria, criarSubcategoria } from '@/db/repositories/category-repository'
+import { criarCategoria } from '@/db/repositories/category-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { renderizarApp } from '@/test/renderizar-app'
 
@@ -15,7 +15,7 @@ describe('Página de categorias', () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
   })
 
-  it('cria uma categoria em cada seção e a subcategoria pelo "+"', async () => {
+  it('cria uma categoria em cada seção, sem subcategorias', async () => {
     const usuario = userEvent.setup()
     renderizarCategorias()
 
@@ -37,14 +37,7 @@ describe('Página de categorias', () => {
         (await db.categories.toArray()).map(({ nome, tipo }) => `${tipo}:${nome}`).sort(),
       ).toEqual(['grupo:Casa', 'procedimento:Receitas']),
     )
-
-    await usuario.click(screen.getByRole('button', { name: 'Nova subcategoria em Casa' }))
-    await usuario.type(
-      screen.getByRole('textbox', { name: 'Nova subcategoria de Casa' }),
-      'Jardim{Enter}',
-    )
-    const subcategorias = await screen.findByRole('list', { name: 'Subcategorias de Casa' })
-    expect(within(subcategorias).getByRole('button', { name: 'Jardim' })).toBeInTheDocument()
+    expect(screen.queryByText(/subcategoria/i)).not.toBeInTheDocument()
   })
 
   it('avisa quando o nome já existe no mesmo tipo e aceita no outro', async () => {
@@ -180,26 +173,5 @@ describe('Página de categorias', () => {
 
     expect(screen.queryByRole('textbox', { name: 'Código hexadecimal da cor' })).toBeNull()
     expect((await db.categories.toArray())[0].cor).toBe('#c8402f')
-  })
-
-  it('excluir subcategoria pede confirmação e a tarefa fica na categoria-mãe', async () => {
-    const usuario = userEvent.setup()
-    const casa = await criarCategoria({ nome: 'Casa' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const tarefa = await criarTarefa({
-      titulo: 'Podar',
-      data: '2026-10-30',
-      categoryId: casa.id,
-      subcategoryId: jardim.id,
-    })
-    renderizarCategorias()
-
-    await usuario.click(await screen.findByRole('button', { name: 'Excluir Jardim' }))
-    await usuario.click(await screen.findByRole('button', { name: 'Excluir subcategoria' }))
-
-    await waitFor(async () => expect(await db.subcategories.count()).toBe(0))
-    const depois = await db.tasks.get(tarefa.id)
-    expect(depois?.categoryId).toBe(casa.id)
-    expect(depois?.subcategoryId).toBeUndefined()
   })
 })

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { GroupCard, GroupItem, GroupSeries, Note, Procedure, Subtask, Task } from '@/db/types'
+import type {
+  Category,
+  GroupCard,
+  GroupItem,
+  GroupSeries,
+  Note,
+  Procedure,
+  Subtask,
+  Task,
+} from '@/db/types'
 import {
   agruparPorPeriodo,
   alvosDosItens,
@@ -13,19 +22,17 @@ import {
   textoDoAviso,
   type DadosDoArquivo,
 } from '@/lib/arquivados'
-import type { CategoriaComSubcategorias } from '@/lib/categorias'
 
 const HOJE = '2026-11-03'
 const base = { criadoEm: '2026-10-01T12:00:00.000Z', atualizadoEm: '2026-10-01T12:00:00.000Z' }
 
-const casa: CategoriaComSubcategorias = {
+const casa: Category = {
   ...base,
   id: 'casa',
   nome: 'Casa',
   cor: '#336699',
   tipo: 'grupo',
   ordem: 1,
-  subcategorias: [],
 }
 
 function tarefa(extra: Partial<Task> = {}): Task {

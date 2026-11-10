@@ -19,7 +19,6 @@ export function versaoDoBanco() {
 export async function exportarDados(): Promise<Backup> {
   const tabelas = await db.transaction('r', db.tables, async () => ({
     categories: await db.categories.toArray(),
-    subcategories: await db.subcategories.toArray(),
     tasks: await db.tasks.toArray(),
     subtasks: await db.subtasks.toArray(),
     procedures: await db.procedures.toArray(),
@@ -51,7 +50,6 @@ export async function importarDados(backup: Backup) {
   await db.transaction('rw', db.tables, async () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
     await db.categories.bulkAdd(tabelas.categories)
-    await db.subcategories.bulkAdd(tabelas.subcategories)
     await db.tasks.bulkAdd(tabelas.tasks)
     await db.subtasks.bulkAdd(tabelas.subtasks)
     await db.procedures.bulkAdd(tabelas.procedures)

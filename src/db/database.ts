@@ -7,12 +7,16 @@ import type {
   GroupSeries,
   Note,
   Procedure,
-  Subcategory,
   Subtask,
   Task,
   TimeSession,
 } from '@/db/types'
-import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
+import {
+  maesDasSubcategorias,
+  preencherOrdem,
+  religarACategoriaMae,
+  separarPorTipo,
+} from '@/lib/categorias'
 import { preencherCadeias } from '@/lib/grupos'
 import { converterGruposAntigos, type CardAntigo, type TarefaAntiga } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo, type ProcedimentoAntigo } from '@/lib/migracao-procedimentos'
@@ -24,7 +28,6 @@ import { converterNotaAntiga, type NotaAntiga } from '@/lib/notas'
  */
 export class MemoriaDatabase extends Dexie {
   categories!: EntityTable<Category, 'id'>
-  subcategories!: EntityTable<Subcategory, 'id'>
   tasks!: EntityTable<Task, 'id'>
   subtasks!: EntityTable<Subtask, 'id'>
   procedures!: EntityTable<Procedure, 'id'>
@@ -131,42 +134,31 @@ export class MemoriaDatabase extends Dexie {
         await transacao.table('notes').filter(isDonoRemovido).delete()
         await transacao.table('attachments').filter(isDonoRemovido).delete()
       })
-    // v8: categorias e subcategorias ganham `ordem` (sem índice; ordenadas em memória).
-    // As existentes ficam na ordem mostrada antes: categorias por nome, subcategorias por criação.
+    // v8: categorias ganham `ordem` (sem índice; ordenadas em memória), na ordem mostrada antes.
     this.version(8)
       .stores({})
       .upgrade(async (transacao) => {
-        const { categorias, subcategorias } = preencherOrdem(
-          await transacao.table('categories').toArray(),
-          await transacao.table('subcategories').toArray(),
-        )
-        await transacao.table('categories').bulkPut(categorias)
-        await transacao.table('subcategories').bulkPut(subcategorias)
+        await transacao
+          .table('categories')
+          .bulkPut(preencherOrdem(await transacao.table('categories').toArray()))
       })
     // v9: categorias ganham `tipo` (grupo ou procedimento; sem índice), classificadas pelo uso.
-    // Usada pelos dois vira duas: a cópia leva as subcategorias e os procedimentos.
+    // Usada pelos dois vira duas: a cópia leva os procedimentos.
     this.version(9)
       .stores({})
       .upgrade(async (transacao) => {
-        const [categorias, subcategorias, tarefas, grupos, procedimentos] = await Promise.all(
-          ['categories', 'subcategories', 'tasks', 'groupSeries', 'procedures'].map((nome) =>
+        const [categorias, tarefas, grupos, procedimentos] = await Promise.all(
+          ['categories', 'tasks', 'groupSeries', 'procedures'].map((nome) =>
             transacao.table(nome).toArray(),
           ),
         )
         const separado = separarPorTipo({
           categorias,
-          subcategorias,
           tarefas,
           grupos,
           procedimentos: procedimentos as Procedure[],
         })
-        const idsAntigos = new Set(subcategorias.map((subcategoria) => subcategoria.id))
         await transacao.table('categories').bulkPut(separado.categorias)
-        await transacao
-          .table('subcategories')
-          .bulkAdd(
-            separado.subcategorias.filter((subcategoria) => !idsAntigos.has(subcategoria.id)),
-          )
         await transacao
           .table('procedures')
           .bulkPut(separado.procedimentos.filter((item, indice) => item !== procedimentos[indice]))
@@ -257,6 +249,23 @@ export class MemoriaDatabase extends Dexie {
         ]
         if (sessoes.length > 0) {
           await transacao.table('sessions').bulkAdd(sessoes)
+        }
+      })
+    // v13: sem subcategorias. Tarefas, grupos e procedimentos que usavam uma ficam na
+    // categoria-mãe (`religarACategoriaMae`) e a tabela é apagada.
+    this.version(13)
+      .stores({ subcategories: null })
+      .upgrade(async (transacao) => {
+        const maeDe = maesDasSubcategorias(await transacao.table('subcategories').toArray())
+        for (const tabela of ['tasks', 'groupSeries', 'procedures']) {
+          await transacao
+            .table(tabela)
+            .filter((item: { subcategoryId?: string }) => 'subcategoryId' in item)
+            .modify((item: { categoryId?: string; subcategoryId?: string }) => {
+              const religado = religarACategoriaMae(item, maeDe)
+              delete item.subcategoryId
+              if (religado.categoryId) item.categoryId = religado.categoryId
+            })
         }
       })
   }

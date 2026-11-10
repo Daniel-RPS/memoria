@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import type { Attachment, DataLocal, Dono, TipoDono } from '@/db/types'
-import { preencherOrdem, separarPorTipo } from '@/lib/categorias'
+import {
+  maesDasSubcategorias,
+  preencherOrdem,
+  religarACategoriaMae,
+  separarPorTipo,
+} from '@/lib/categorias'
 import { diasEntre, hoje } from '@/lib/datas'
 import { converterGruposAntigos } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
@@ -11,7 +16,7 @@ import { converterNotaAntiga } from '@/lib/notas'
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 13
+export const FORMATO_ATUAL = 14
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -30,13 +35,8 @@ const categoria = z.object({
   ordem: z.number().optional(),
   icone,
 })
-const subcategoria = z.object({
-  ...base,
-  categoryId: id,
-  nome: texto,
-  cor: texto.optional(),
-  ordem: z.number().optional(),
-})
+// Até o formato 13: subcategorias. Ao ler, quem usava uma fica na categoria-mãe e elas somem.
+const subcategoriaAntiga = z.object({ id, categoryId: id })
 
 // Formato 13: posição arrastada dentro do bloco do topo (prioridade/em andamento).
 const ordemNoTopo = z.object({ chave: texto, posicao: z.number() }).optional().catch(undefined)
@@ -118,7 +118,7 @@ const procedimento = z.object({
   ...base,
   titulo: texto,
   categoryId: texto.optional(),
-  // Formato 5.
+  // Formatos 5 a 13; religada à categoria-mãe ao ler.
   subcategoryId: texto.optional(),
   etapas: z.array(z.object({ id, texto, ordem: z.number() })),
   icone,
@@ -201,7 +201,7 @@ export const esquemaBackup = z.object({
   tabelas: z
     .object({
       categories: z.array(categoria),
-      subcategories: z.array(subcategoria),
+      subcategories: z.array(subcategoriaAntiga).optional(),
       tasks: z.array(tarefa),
       subtasks: z.array(subtarefa),
       procedures: z.array(z.union([procedimento, procedimentoAntigo])),
@@ -216,11 +216,19 @@ export const esquemaBackup = z.object({
       // Formato 12: sessões de tempo.
       sessions: z.array(sessaoDeTempo).default([]),
     })
-    .transform(({ groupInstances, tasks, notes, attachments, ...tabelas }) => {
+    .transform(({ groupInstances, subcategories, ...lidas }) => {
+      const maeDe = maesDasSubcategorias(subcategories ?? [])
+      const religar = <T extends { categoryId?: string; subcategoryId?: string }>(itens: T[]) =>
+        itens.map((item) => religarACategoriaMae(item, maeDe))
+      const { tasks, notes, attachments, ...tabelas } = {
+        ...lidas,
+        tasks: religar(lidas.tasks),
+        groupSeries: religar(lidas.groupSeries),
+        procedures: religar(lidas.procedures),
+      }
       const { cards, itens, soltas } = converterGruposAntigos(groupInstances ?? [], tasks)
-      const comOrdem = preencherOrdem(tabelas.categories, tabelas.subcategories)
-      const { categorias, subcategorias, procedimentos } = separarPorTipo({
-        ...comOrdem,
+      const { categorias, procedimentos } = separarPorTipo({
+        categorias: preencherOrdem(tabelas.categories),
         tarefas: soltas,
         grupos: tabelas.groupSeries,
         procedimentos: tabelas.procedures,
@@ -228,7 +236,6 @@ export const esquemaBackup = z.object({
       return {
         ...tabelas,
         categories: categorias,
-        subcategories: subcategorias,
         procedures: procedimentos,
         notes: notes.flatMap((nota) => {
           if (nota.dono && !isDonoAtual(nota.dono)) return []
@@ -257,7 +264,6 @@ export const NOMES_DAS_TABELAS: Record<NomeTabela, [string, string]> = {
   tasks: ['tarefa', 'tarefas'],
   subtasks: ['subtarefa', 'subtarefas'],
   categories: ['categoria', 'categorias'],
-  subcategories: ['subcategoria', 'subcategorias'],
   procedures: ['procedimento', 'procedimentos'],
   notes: ['nota', 'notas'],
   attachments: ['anexo', 'anexos'],

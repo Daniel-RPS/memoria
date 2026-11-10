@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { CampoCategoria } from '@/components/seletor-categoria/campo-categoria'
@@ -41,11 +41,9 @@ export function FormularioProcedimento({
     register,
     control,
     subscribe,
-    setValue,
     handleSubmit,
     formState: { errors },
   } = formulario
-  const subcategoryId = useWatch({ control, name: 'subcategoryId' })
 
   const onAlterarRef = useRef(onAlterar)
   useEffect(() => {
@@ -117,16 +115,8 @@ export function FormularioProcedimento({
                   <CampoCategoria
                     tipo="procedimento"
                     id="categoria"
-                    atual={{
-                      categoryId: field.value || undefined,
-                      subcategoryId: subcategoryId || undefined,
-                    }}
-                    onEscolher={(categoria) => {
-                      setValue('subcategoryId', categoria.subcategoryId ?? '', {
-                        shouldDirty: true,
-                      })
-                      field.onChange(categoria.categoryId ?? '')
-                    }}
+                    atual={{ categoryId: field.value || undefined }}
+                    onEscolher={(categoria) => field.onChange(categoria.categoryId ?? '')}
                   />
                 )}
               />

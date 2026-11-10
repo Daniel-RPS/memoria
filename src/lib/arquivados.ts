@@ -1,6 +1,7 @@
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type {
+  Category,
   DataLocal,
   GroupCard,
   GroupItem,
@@ -10,7 +11,6 @@ import type {
   Subtask,
   Task,
 } from '@/db/types'
-import { corDaSubcategoria, type CategoriaComSubcategorias } from '@/lib/categorias'
 import { deDataLocal, diasEntre } from '@/lib/datas'
 import { diaDoMomento } from '@/lib/estatisticas'
 import {
@@ -72,7 +72,7 @@ export interface ItemArquivado {
   detalhe: string
   arquivadoEm: string
   categoryId?: string
-  /** Cor da categoria ou subcategoria; sem categoria = neutra. */
+  /** Cor da categoria; sem categoria = neutra. */
   cor?: string
   categoriaNome?: string
   /** Dia que a tarefa ou o card tinha (base do "Voltar para…"). */
@@ -120,7 +120,7 @@ export interface DadosDoArquivo {
   procedimentos: Procedure[]
   /** Quem são os donos das notas arquivadas. */
   vinculos: DadosDosVinculos
-  categorias: CategoriaComSubcategorias[]
+  categorias: Category[]
 }
 
 function textoDoDia(data: DataLocal) {
@@ -131,17 +131,14 @@ function plural(quantidade: number, singular: string, pluralDe: string) {
   return `${quantidade} ${quantidade === 1 ? singular : pluralDe}`
 }
 
-/** Cor e nome da categoria de um alvo (a subcategoria dá a cor, se houver). */
-function categoriaDe(
-  categorias: Map<string, CategoriaComSubcategorias>,
-  alvo: { categoryId?: string; subcategoryId?: string },
-) {
+/** Cor e nome da categoria de um alvo. */
+function categoriaDe(categorias: Map<string, Category>, alvo: { categoryId?: string }) {
   const categoria = alvo.categoryId ? categorias.get(alvo.categoryId) : undefined
   if (!categoria) return {}
   return {
     categoryId: categoria.id,
     categoriaNome: categoria.nome,
-    cor: alvo.subcategoryId ? corDaSubcategoria(categoria, alvo.subcategoryId) : categoria.cor,
+    cor: categoria.cor,
   }
 }
 

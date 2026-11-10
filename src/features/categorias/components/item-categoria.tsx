@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ArrowRightLeft, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { ArrowRightLeft, MoreHorizontal, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
 import { AlcaArrastar } from '@/components/alca-arrastar'
-import { CampoNovoItem } from '@/components/campo-novo-item'
 import { SeletorIcone } from '@/components/icones/seletor-icone'
-import { ListaOrdenavel } from '@/components/lista-ordenavel'
 import { SeletorCor } from '@/components/seletor-cor'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Button } from '@/components/ui/button'
@@ -25,54 +23,40 @@ import {
   textoDoUso,
   totalDoUso,
   usoNoTipo,
-  type CategoriaComSubcategorias,
   type UsoDaCategoria,
 } from '@/lib/categorias'
+import type { Category } from '@/db/types'
 import { ConfirmarExclusao } from '@/features/categorias/components/confirmar-exclusao'
-import { ItemSubcategoria } from '@/features/categorias/components/item-subcategoria'
 import { mostrarErroAoSalvar } from '@/features/categorias/mostrar-erro'
 
 interface ItemCategoriaProps {
-  categoria: CategoriaComSubcategorias
+  categoria: Category
   /** Só o uso que conta no tipo da categoria (`usoNoTipo`). */
   uso: UsoDaCategoria
 }
 
-/** "4 tarefas · 1 grupo ficam “Sem categoria”…" e o que acontece com as subcategorias. */
-function descreverExclusao(categoria: CategoriaComSubcategorias, uso: UsoDaCategoria) {
+/** "4 tarefas · 1 grupo ficam “Sem categoria”; nada é apagado." */
+function descreverExclusao(uso: UsoDaCategoria) {
   const total = totalDoUso(uso)
-  const itens =
-    total === 0
-      ? 'Nenhum item usa esta categoria.'
-      : `${textoDoUso(uso)} ${total === 1 ? 'fica' : 'ficam'} “Sem categoria”; nada é apagado.`
-  const quantidade = categoria.subcategorias.length
-  if (quantidade === 0) return itens
-  if (quantidade === 1) return `${itens} A subcategoria também será excluída.`
-  return `${itens} As ${quantidade} subcategorias também serão excluídas.`
+  if (total === 0) return 'Nenhum item usa esta categoria.'
+  return `${textoDoUso(uso)} ${total === 1 ? 'fica' : 'ficam'} “Sem categoria”; nada é apagado.`
 }
 
 /** "2 grupos ficarão “Sem categoria”…" ao trocar de tipo. */
-function descreverMudancaDeTipo(categoria: CategoriaComSubcategorias, uso: UsoDaCategoria) {
+function descreverMudancaDeTipo(categoria: Category, uso: UsoDaCategoria) {
   const total = totalDoUso(uso)
   const destino = NOMES_DO_TIPO[outroTipo(categoria.tipo)].plural
   return `${textoDoUso(uso)} ${total === 1 ? 'ficará' : 'ficarão'} “Sem categoria”: a categoria passa a valer só em ${destino}. Nada é apagado.`
 }
 
 /**
- * Categoria arrastável pela alça: cor, ícone (emoji ou marca), nome editável, "+" de subcategoria, uso e menu ⋯
- * (mover para o outro tipo, excluir), com as subcategorias (também reordenáveis) abaixo.
+ * Categoria arrastável pela alça: cor, ícone (emoji ou marca), nome editável, uso e menu ⋯
+ * (mover para o outro tipo, excluir).
  */
 export function ItemCategoria({ categoria, uso }: ItemCategoriaProps) {
-  const {
-    atualizarCategoria,
-    definirIconeDaCategoria,
-    criarSubcategoria,
-    excluirCategoria,
-    moverCategoriaDeTipo,
-    reordenarSubcategoria,
-  } = useAcoesCategoria()
+  const { atualizarCategoria, definirIconeDaCategoria, excluirCategoria, moverCategoriaDeTipo } =
+    useAcoesCategoria()
   const [isEditando, setIsEditando] = useState(false)
-  const [isCriandoSubcategoria, setIsCriandoSubcategoria] = useState(false)
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isConfirmandoMudanca, setIsConfirmandoMudanca] = useState(false)
   const {
@@ -151,19 +135,6 @@ export function ItemCategoria({ categoria, uso }: ItemCategoriaProps) {
             onCancelar={() => setIsEditando(false)}
             className="font-semibold"
           />
-          {!isEditando && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              aria-label={`Nova subcategoria em ${categoria.nome}`}
-              title="Nova subcategoria"
-              aria-expanded={isCriandoSubcategoria}
-              onClick={() => setIsCriandoSubcategoria(true)}
-              className="shrink-0 text-grafite hover:text-violeta-profundo"
-            >
-              <Plus />
-            </Button>
-          )}
         </div>
         <span className="shrink-0 text-sm text-grafite tabular-nums">{textoDoUso(usoDoTipo)}</span>
         <DropdownMenu modal={false}>
@@ -189,36 +160,9 @@ export function ItemCategoria({ categoria, uso }: ItemCategoriaProps) {
         </DropdownMenu>
       </div>
 
-      {(categoria.subcategorias.length > 0 || isCriandoSubcategoria) && (
-        <div className="pb-1.5 pl-14">
-          <ListaOrdenavel
-            itens={categoria.subcategorias}
-            rotulo={`Subcategorias de ${categoria.nome}`}
-            onReordenar={reordenarSubcategoria}
-            renderItem={(subcategoria) => (
-              <ItemSubcategoria
-                key={subcategoria.id}
-                categoria={categoria}
-                subcategoria={subcategoria}
-              />
-            )}
-          />
-          {isCriandoSubcategoria && (
-            <CampoNovoItem
-              autoFocus
-              rotulo="Nova subcategoria"
-              nomeAcessivel={`Nova subcategoria de ${categoria.nome}`}
-              tamanho="compacto"
-              onCriar={(nome) => criarSubcategoria({ categoryId: categoria.id, nome })}
-              onSairVazio={() => setIsCriandoSubcategoria(false)}
-            />
-          )}
-        </div>
-      )}
-
       <ConfirmarExclusao
         titulo={`Excluir “${categoria.nome}”?`}
-        descricao={descreverExclusao(categoria, usoDoTipo)}
+        descricao={descreverExclusao(usoDoTipo)}
         rotuloAcao="Excluir categoria"
         isAberto={isConfirmandoExclusao}
         onMudarAberto={setIsConfirmandoExclusao}

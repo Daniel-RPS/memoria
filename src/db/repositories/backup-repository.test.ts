@@ -8,10 +8,8 @@ import {
 } from '@/db/repositories/backup-repository'
 import {
   criarCategoria,
-  criarSubcategoria,
   listarCategorias,
   reordenarCategoria,
-  reordenarSubcategoria,
 } from '@/db/repositories/category-repository'
 import { criarNota } from '@/db/repositories/note-repository'
 import { criarProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
@@ -22,13 +20,7 @@ import { lerBackup } from '@/lib/backup'
 
 async function popularBanco() {
   const casa = await criarCategoria({ nome: 'Casa' })
-  const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-  const tarefa = await criarTarefa({
-    titulo: 'Podar',
-    data: '2026-10-28',
-    categoryId: casa.id,
-    subcategoryId: jardim.id,
-  })
+  const tarefa = await criarTarefa({ titulo: 'Podar', data: '2026-10-28', categoryId: casa.id })
   await moverTarefas([tarefa.id], '2026-10-30')
   await criarSubtarefa({ taskId: tarefa.id, titulo: 'Comprar tesoura' })
   const procedimento = await criarProcedimento({
@@ -106,21 +98,14 @@ describe('backup', () => {
     ])
   })
 
-  it('exporta e importa a ordem das categorias e a subcategoria do procedimento', async () => {
+  it('exporta e importa a ordem das categorias, sem subcategorias no arquivo', async () => {
     const casa = await criarCategoria({ nome: 'Casa' })
     const trabalho = await criarCategoria({ nome: 'Trabalho' })
-    const jardim = await criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    const contas = await criarSubcategoria({ categoryId: casa.id, nome: 'Contas' })
     await reordenarCategoria([trabalho.id, casa.id], trabalho.id)
-    await reordenarSubcategoria([contas.id, jardim.id], contas.id)
-    await criarProcedimento({
-      titulo: 'Adubar',
-      categoryId: casa.id,
-      subcategoryId: jardim.id,
-      etapas: [],
-    })
+    await criarProcedimento({ titulo: 'Adubar', categoryId: casa.id, etapas: [] })
     const arquivo = JSON.stringify(await exportarDados())
     expect(JSON.parse(arquivo).tabelas.categories[0]).toHaveProperty('ordem')
+    expect(JSON.parse(arquivo).tabelas).not.toHaveProperty('subcategories')
 
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
     const leitura = lerBackup(arquivo, versaoDoBanco())
@@ -129,8 +114,75 @@ describe('backup', () => {
 
     const categorias = await listarCategorias()
     expect(categorias.map((categoria) => categoria.nome)).toEqual(['Trabalho', 'Casa'])
-    expect(categorias[1].subcategorias.map((sub) => sub.nome)).toEqual(['Contas', 'Jardim'])
-    expect((await db.procedures.toArray())[0]).toMatchObject({ subcategoryId: jardim.id })
+    expect((await db.procedures.toArray())[0]).toMatchObject({ categoryId: casa.id })
+  })
+
+  it('importa backup antigo com subcategorias: os itens ficam na categoria-mãe, sem erro', async () => {
+    const base = { criadoEm: '1', atualizadoEm: '1' }
+    const arquivo = {
+      app: 'MemorIA',
+      formato: 13,
+      versaoBanco: 12,
+      exportadoEm: '2026-11-09T12:00:00.000Z',
+      tabelas: {
+        categories: [
+          { ...base, id: 'trab', nome: 'Trabalho', cor: '#5b4fbf', tipo: 'grupo', ordem: 1 },
+          { ...base, id: 'infra', nome: 'Infra', cor: '#0e7490', tipo: 'procedimento', ordem: 1 },
+        ],
+        subcategories: [
+          { ...base, id: 'reunioes', categoryId: 'trab', nome: 'Reuniões', ordem: 1 },
+          { ...base, id: 'srv', categoryId: 'infra', nome: 'Servidores', cor: '#123456', ordem: 1 },
+        ],
+        tasks: [
+          {
+            ...base,
+            id: 't',
+            titulo: 'Pauta',
+            data: '2026-11-09',
+            dataOriginal: '2026-11-09',
+            ordem: 1,
+            status: 'pendente',
+            categoryId: 'trab',
+            subcategoryId: 'reunioes',
+          },
+        ],
+        subtasks: [],
+        procedures: [
+          {
+            ...base,
+            id: 'p',
+            titulo: 'Subir',
+            categoryId: 'infra',
+            subcategoryId: 'srv',
+            etapas: [],
+          },
+        ],
+        notes: [],
+        attachments: [],
+        groupSeries: [{ ...base, id: 's', titulo: 'Sprint', subcategoryId: 'reunioes' }],
+        groupCards: [],
+        groupItems: [],
+        sessions: [],
+      },
+    }
+    const leitura = lerBackup(JSON.stringify(arquivo), versaoDoBanco())
+    if (!leitura.isValido) throw new Error(leitura.mensagem)
+    await importarDados(leitura.backup)
+
+    expect(await db.tasks.get('t')).toMatchObject({ titulo: 'Pauta', categoryId: 'trab' })
+    expect(await db.groupSeries.get('s')).toMatchObject({ titulo: 'Sprint', categoryId: 'trab' })
+    expect(await db.procedures.get('p')).toMatchObject({ titulo: 'Subir', categoryId: 'infra' })
+    for (const registro of [
+      await db.tasks.get('t'),
+      await db.groupSeries.get('s'),
+      await db.procedures.get('p'),
+    ]) {
+      expect(registro).not.toHaveProperty('subcategoryId')
+    }
+    expect((await listarCategorias()).map((categoria) => categoria.nome)).toEqual([
+      'Infra',
+      'Trabalho',
+    ])
   })
 
   it('exporta e importa o tipo das categorias', async () => {
@@ -221,7 +273,6 @@ describe('backup', () => {
       tasks: 1,
       subtasks: 1,
       categories: 1,
-      subcategories: 1,
       procedures: 2,
       notes: 4,
       attachments: 1,

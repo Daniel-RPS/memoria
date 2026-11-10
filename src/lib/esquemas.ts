@@ -14,7 +14,7 @@ export type NovoItemInput = z.infer<typeof esquemaNovoItem>
 
 export const TAMANHO_MAXIMO_NOME_CATEGORIA = 60
 
-/** Nome de categoria ou subcategoria. */
+/** Nome de categoria. */
 export const esquemaNomeCategoria = z
   .string()
   .trim()

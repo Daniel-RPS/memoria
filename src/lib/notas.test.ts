@@ -104,10 +104,10 @@ function dadosDoExemplo(): DadosDosVinculos {
       }),
       item('deploy-2', 'h2', 'Fazer Deploy', { origemItemId: 'deploy-1', cadeiaId: 'deploy-1' }),
     ],
-    categorias: montarCategorias(
-      [categoria('cat-hostinger', 'Hostinger', 1), categoria('casa', 'Casa', 2)],
-      [],
-    ),
+    categorias: montarCategorias([
+      categoria('cat-hostinger', 'Hostinger', 1),
+      categoria('casa', 'Casa', 2),
+    ]),
   }
 }
 

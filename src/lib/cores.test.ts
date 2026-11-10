@@ -72,7 +72,7 @@ describe('coresRecentes', () => {
       { cor: '#3366c2', atualizadoEm: '9' }, // da paleta
       { cor: '#AA0000', atualizadoEm: '8' },
       { cor: '#aa0000', atualizadoEm: '7' },
-      { atualizadoEm: '6' }, // subcategoria no tom automático
+      { atualizadoEm: '6' }, // sem cor
       ...['#000001', '#000002', '#000003', '#000004', '#000005'].map((cor, indice) => ({
         cor,
         atualizadoEm: `5${indice}`,

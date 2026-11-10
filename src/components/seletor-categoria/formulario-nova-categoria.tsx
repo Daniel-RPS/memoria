@@ -11,7 +11,6 @@ import { esquemaNomeCategoria, TAMANHO_MAXIMO_NOME_CATEGORIA } from '@/lib/esque
 
 const esquemaNovaCategoria = z.object({
   nome: esquemaNomeCategoria,
-  /** Vazio = sem cor própria (subcategoria usa o tom da categoria). */
   cor: z.string(),
 })
 
@@ -25,15 +24,13 @@ export interface DadosNovaCategoria {
 interface FormularioNovaCategoriaProps {
   /** Nome acessível do campo e placeholder, ex.: "Nova categoria". */
   rotulo: string
-  /** Cor marcada ao abrir; vazio = automática (só com `isCorOpcional`). */
+  /** Cor marcada ao abrir. */
   corInicial: string
-  /** Subcategoria: a cor pode ficar no tom automático da categoria. */
-  isCorOpcional?: boolean
   rotuloBotao: string
   onCriar: (dados: DadosNovaCategoria) => Promise<unknown>
   /**
    * Categoria de Grupo: mostra "Usar de Procedimentos" (chips) e cria a partir do escolhido.
-   * Sem ele (Procedimentos, subcategoria), a seção não aparece.
+   * Sem ele (Procedimentos), a seção não aparece.
    */
   onUsarDeProcedimentos?: (idCategoria: string) => Promise<unknown>
   /** Esc com o campo aberto; sem ele, Esc só limpa. */
@@ -43,13 +40,12 @@ interface FormularioNovaCategoriaProps {
 }
 
 /**
- * Nome e cor de uma categoria ou subcategoria nova. Enter cria, Esc cancela. Nome vazio ou
+ * Nome e cor de uma categoria nova. Enter cria, Esc cancela. Nome vazio ou
  * repetido aparece como erro do campo. Funciona dentro de menus: as teclas não escapam para eles.
  */
 export function FormularioNovaCategoria({
   rotulo,
   corInicial,
-  isCorOpcional,
   rotuloBotao,
   onCriar,
   onUsarDeProcedimentos,
@@ -160,34 +156,16 @@ export function FormularioNovaCategoria({
         control={control}
         name="cor"
         render={({ field }) => (
-          <div className="flex flex-col gap-2">
-            <PaletaCores
-              rotulo={`Cor de ${rotulo.toLowerCase()}`}
-              selecionada={field.value || undefined}
-              tamanho="pequeno"
-              nomeAmostra={nomeDigitado.trim() || rotulo}
-              onEscolher={(cor) => {
-                field.onChange(cor)
-                setFocus('nome')
-              }}
-            />
-            {isCorOpcional && (
-              <button
-                type="button"
-                aria-pressed={!field.value}
-                onClick={() => {
-                  field.onChange('')
-                  setFocus('nome')
-                }}
-                className={cn(
-                  'w-fit rounded-sm px-1 text-left text-sm text-grafite hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta',
-                  !field.value && 'font-semibold text-tinta',
-                )}
-              >
-                {field.value ? 'Usar tom da categoria' : 'Usando tom da categoria'}
-              </button>
-            )}
-          </div>
+          <PaletaCores
+            rotulo={`Cor de ${rotulo.toLowerCase()}`}
+            selecionada={field.value || undefined}
+            tamanho="pequeno"
+            nomeAmostra={nomeDigitado.trim() || rotulo}
+            onEscolher={(cor) => {
+              field.onChange(cor)
+              setFocus('nome')
+            }}
+          />
         )}
       />
       <div className="flex items-center justify-between gap-2">

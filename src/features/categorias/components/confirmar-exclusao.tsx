@@ -22,7 +22,7 @@ interface ConfirmarExclusaoProps {
 }
 
 /**
- * Confirma a exclusão (ou a troca de tipo) de categoria ou subcategoria dizendo o que acontece
+ * Confirma a exclusão (ou a troca de tipo) de categoria dizendo o que acontece
  * com os itens.
  */
 export function ConfirmarExclusao({

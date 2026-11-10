@@ -10,7 +10,6 @@ import type {
   TipoVinculo,
   Vinculo,
 } from '@/db/types'
-import { corDaSubcategoria, type CategoriaComSubcategorias } from '@/lib/categorias'
 import { format, isSameYear } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { deDataLocal, diasEntre, nomeRelativo } from '@/lib/datas'
@@ -106,7 +105,7 @@ export interface DadosDosVinculos {
   /** Itens das cadeias ligadas. */
   itens: GroupItem[]
   /** Na ordem do usuário. */
-  categorias: CategoriaComSubcategorias[]
+  categorias: Category[]
 }
 
 /** Um trecho do caminho "Categoria › Grupo › Item"; `data` = dia que o link abre. */
@@ -121,7 +120,7 @@ export interface DonoDaNota {
   tipo: TipoVinculo | 'avulsa'
   /** Categoria do alvo (a do grupo, para o item). */
   categoria?: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>
-  /** Cor da faixa: subcategoria (ou variação), senão a categoria. */
+  /** Cor da faixa: a da categoria. */
   cor?: string
   /** Série do grupo (grupo e item). */
   serie?: Pick<GroupSeries, 'id' | 'titulo'>
@@ -174,13 +173,10 @@ export function indexarVinculos(dados: DadosDosVinculos, hoje: DataLocal) {
 
 export type IndiceDosVinculos = ReturnType<typeof indexarVinculos>
 
-function categoriaECor(
-  indice: IndiceDosVinculos,
-  alvo: { categoryId?: string; subcategoryId?: string },
-) {
+function categoriaECor(indice: IndiceDosVinculos, alvo: { categoryId?: string }) {
   const categoria = alvo.categoryId ? indice.categorias.get(alvo.categoryId) : undefined
   if (!categoria) return {}
-  const cor = alvo.subcategoryId ? corDaSubcategoria(categoria, alvo.subcategoryId) : categoria.cor
+  const { cor } = categoria
   return {
     categoria: {
       id: categoria.id,

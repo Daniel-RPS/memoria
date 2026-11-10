@@ -100,8 +100,8 @@ export function temasComPoucoContraste(hex: string): Tema[] {
 }
 
 /**
- * Até `limite` cores personalizadas (fora da paleta) das categorias e subcategorias, da
- * editada mais recentemente para a mais antiga, sem repetir. Derivadas do banco: aparecem nas
+ * Até `limite` cores personalizadas (fora da paleta) das categorias, da editada mais
+ * recentemente para a mais antiga, sem repetir. Derivadas do banco: aparecem nas
  * duas abas e entram no backup.
  */
 export function coresRecentes(
@@ -118,31 +118,8 @@ export function coresRecentes(
   return recentes
 }
 
-/**
- * Passos alternando entre mais claro (mistura com branco) e mais escuro (mistura com preto),
- * para subcategorias vizinhas ficarem distinguíveis entre si e da categoria.
- */
-const PASSOS_VARIACAO = [
-  { alvo: 255, quanto: 0.3 },
-  { alvo: 0, quanto: 0.22 },
-  { alvo: 255, quanto: 0.5 },
-  { alvo: 0, quanto: 0.38 },
-] as const
-
 function misturar(canal: number, alvo: number, quanto: number) {
   return Math.round(canal + (alvo - canal) * quanto)
-}
-
-/** Variação da cor da categoria para a subcategoria de posição `indice` (0, 1, 2...). */
-export function variacaoCor(hex: string, indice: number) {
-  const passo = PASSOS_VARIACAO[indice % PASSOS_VARIACAO.length]
-  const canais = [1, 3, 5].map((inicio) => parseInt(hex.slice(inicio, inicio + 2), 16))
-  return (
-    '#' +
-    canais
-      .map((canal) => misturar(canal, passo.alvo, passo.quanto).toString(16).padStart(2, '0'))
-      .join('')
-  )
 }
 
 /** Quanto a cor da categoria clareia no tema escuro (as da paleta foram feitas para o claro). */

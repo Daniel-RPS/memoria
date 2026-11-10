@@ -25,7 +25,7 @@ describe('MemoriaDatabase', () => {
     expect(doDia.map((tarefa) => tarefa.id)).toEqual(['a', 'b'])
   })
 
-  it('v8: preenche a ordem das categorias e subcategorias sem perder dados', async () => {
+  it('v8: preenche a ordem das categorias sem perder dados', async () => {
     // Banco como estava na v7 (sem `ordem`).
     const antigo = new Dexie('memoria-teste')
     antigo.version(7).stores({
@@ -77,13 +77,8 @@ describe('MemoriaDatabase', () => {
         tipo: 'grupo',
       },
     ])
-    expect(await banco.subcategories.get('s1')).toMatchObject({
-      nome: 'Zebra',
-      cor: '#2f8a57',
-      ordem: 1,
-    })
-    expect(await banco.subcategories.get('s2')).toMatchObject({ nome: 'Antiga', ordem: 2 })
-    expect(await banco.tasks.get('tarefa')).toMatchObject({ categoryId: 'c', subcategoryId: 's1' })
+    // A subcategoria some na v13: a tarefa fica na categoria-mãe.
+    expect(await banco.tasks.get('tarefa')).toMatchObject({ categoryId: 'c' })
   })
 
   it('v9: classifica as categorias pelo uso e divide a usada pelos dois tipos', async () => {
@@ -148,17 +143,9 @@ describe('MemoriaDatabase', () => {
       'procedimento:2:Receitas',
     ])
     const copia = categorias.find((item) => item.nome === 'Github' && item.tipo === 'procedimento')
-    const subcopia = await banco.subcategories
-      .where('categoryId')
-      .equals(copia?.id ?? '')
-      .first()
-    expect(subcopia).toMatchObject({ nome: 'Ações', ordem: 1 })
-    expect(await banco.subcategories.get('acoes')).toMatchObject({ categoryId: 'github' })
-    expect(await banco.procedures.get('p1')).toMatchObject({
-      titulo: 'Publicar',
-      categoryId: copia?.id,
-      subcategoryId: subcopia?.id,
-    })
+    const publicar = await banco.procedures.get('p1')
+    expect(publicar).toMatchObject({ titulo: 'Publicar', categoryId: copia?.id })
+    expect(publicar).not.toHaveProperty('subcategoryId')
     expect(await banco.procedures.get('p2')).toMatchObject({ categoryId: 'receitas' })
     expect(await banco.groupSeries.get('serie')).toMatchObject({ categoryId: 'github' })
     expect(await banco.tasks.get('tarefa')).toMatchObject({ categoryId: 'casa' })
@@ -296,6 +283,113 @@ describe('MemoriaDatabase', () => {
     expect((await banco.groupCards.get('c2'))?.arquivadoEm).toBeUndefined()
     expect((await banco.groupItems.get('i2'))?.arquivadoEm).toBeUndefined()
     expect(await banco.notes.get('n')).toEqual({ ...base, id: 'n', titulo: 'N', conteudo: 'x' })
-    expect(banco.verno).toBe(12)
+  })
+
+  it('v13: sem subcategorias; quem usava uma fica na categoria-mãe e nada se perde', async () => {
+    // Banco como estava na v12 (com a tabela de subcategorias).
+    const antigo = new Dexie('memoria-teste')
+    antigo.version(12).stores({
+      categories: 'id, nome',
+      subcategories: 'id, categoryId',
+      tasks: 'id, data, [data+ordem], status, categoryId, dataOriginal',
+      subtasks: 'id, taskId, [taskId+ordem]',
+      procedures: 'id, titulo, categoryId',
+      notes: 'id, [vinculo.tipo+vinculo.id]',
+      attachments: 'id, [dono.tipo+dono.id]',
+      groupSeries: 'id, titulo, categoryId',
+      groupCards: 'id, seriesId, data, [seriesId+data]',
+      groupItems: 'id, cardId, status, origemItemId, cadeiaId',
+      sessions: 'id, tarefaId, itemId, cadeiaId, grupoId, categoryId, inicio',
+    })
+    const base = { criadoEm: '1', atualizadoEm: '2' }
+    await antigo.table('categories').bulkAdd([
+      { ...base, id: 'trab', nome: 'Trabalho', cor: '#5b4fbf', tipo: 'grupo', ordem: 1 },
+      { ...base, id: 'infra', nome: 'Infra', cor: '#0e7490', tipo: 'procedimento', ordem: 1 },
+    ])
+    await antigo.table('subcategories').bulkAdd([
+      { ...base, id: 'reunioes', categoryId: 'trab', nome: 'Reuniões', ordem: 1 },
+      { ...base, id: 'servidores', categoryId: 'infra', nome: 'Servidores', ordem: 1 },
+    ])
+    const tarefa = { ...base, data: '2026-11-10', dataOriginal: '2026-11-10', status: 'pendente' }
+    await antigo.table('tasks').bulkAdd([
+      {
+        ...tarefa,
+        id: 'com-sub',
+        titulo: 'Pauta',
+        ordem: 1,
+        categoryId: 'trab',
+        subcategoryId: 'reunioes',
+      },
+      { ...tarefa, id: 'so-sub', titulo: 'Ata', ordem: 2, subcategoryId: 'reunioes' },
+      { ...tarefa, id: 'so-cat', titulo: 'Relatório', ordem: 3, categoryId: 'trab' },
+      { ...tarefa, id: 'sem', titulo: 'Solta', ordem: 4 },
+    ])
+    await antigo.table('groupSeries').add({
+      ...base,
+      id: 'sprint',
+      titulo: 'Sprint',
+      categoryId: 'trab',
+      subcategoryId: 'reunioes',
+    })
+    await antigo.table('groupCards').add({
+      ...base,
+      id: 'card',
+      seriesId: 'sprint',
+      data: '2026-11-10',
+      ordem: 1,
+      arquivado: false,
+    })
+    await antigo.table('groupItems').add({
+      ...base,
+      id: 'item',
+      cadeiaId: 'item',
+      cardId: 'card',
+      titulo: 'Daily',
+      ordem: 1,
+      status: 'pendente',
+      dataOriginal: '2026-11-10',
+    })
+    await antigo.table('procedures').add({
+      ...base,
+      id: 'subir',
+      titulo: 'Subir servidor',
+      categoryId: 'infra',
+      subcategoryId: 'servidores',
+      etapas: [],
+    })
+    await antigo.table('notes').add({
+      ...base,
+      id: 'n',
+      titulo: 'N',
+      conteudo: 'x',
+      vinculo: { tipo: 'grupo', id: 'sprint' },
+    })
+    antigo.close()
+
+    await banco.open()
+    expect(banco.verno).toBe(13)
+    expect(banco.tables.map((tabela) => tabela.name)).not.toContain('subcategories')
+    const tarefas = await banco.tasks.toCollection().sortBy('ordem')
+    expect(tarefas.map(({ id, categoryId }) => ({ id, categoryId }))).toEqual([
+      { id: 'com-sub', categoryId: 'trab' },
+      { id: 'so-sub', categoryId: 'trab' },
+      { id: 'so-cat', categoryId: 'trab' },
+      { id: 'sem', categoryId: undefined },
+    ])
+    for (const registro of [
+      ...tarefas,
+      await banco.groupSeries.get('sprint'),
+      await banco.procedures.get('subir'),
+    ]) {
+      expect(registro).not.toHaveProperty('subcategoryId')
+    }
+    expect(await banco.groupSeries.get('sprint')).toMatchObject({
+      titulo: 'Sprint',
+      categoryId: 'trab',
+    })
+    expect(await banco.procedures.get('subir')).toMatchObject({ categoryId: 'infra' })
+    expect(await banco.categories.count()).toBe(2)
+    expect(await banco.groupItems.get('item')).toMatchObject({ titulo: 'Daily' })
+    expect(await banco.notes.get('n')).toMatchObject({ vinculo: { tipo: 'grupo', id: 'sprint' } })
   })
 })

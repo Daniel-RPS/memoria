@@ -29,7 +29,6 @@ import { numerarEtapas } from '@/lib/procedimentos'
 
 const TODAS_AS_TABELAS = () => [
   db.categories,
-  db.subcategories,
   db.tasks,
   db.subtasks,
   db.groupSeries,
@@ -44,7 +43,7 @@ const TODAS_AS_TABELAS = () => [
 /** Categoria das entradas de um tipo (Grupos para tarefas e grupos; Procedimentos). */
 export type CategoriaDoDestino =
   | { modo: 'nenhuma' }
-  | { modo: 'escolhida'; categoryId: string; subcategoryId?: string }
+  | { modo: 'escolhida'; categoryId: string }
   /** Pelo nome que veio (rótulo, coluna, backup): usa a do tipo com esse nome ou cria. */
   | { modo: 'da-origem' }
 
@@ -121,7 +120,7 @@ export async function importarRascunho(
     async function categoriaPara(tipo: TipoCategoria, nomeDaOrigem?: string) {
       const destino = tipo === 'grupo' ? opcoes.categoriaDeGrupo : opcoes.categoriaDeProcedimento
       if (destino.modo === 'escolhida') {
-        return { categoryId: destino.categoryId, subcategoryId: destino.subcategoryId }
+        return { categoryId: destino.categoryId }
       }
       const nome = nomeDaOrigem?.trim()
       if (destino.modo === 'nenhuma' || !nome) return {}
@@ -226,7 +225,6 @@ export async function importarRascunho(
           etapas,
           // No formulário, categoria vazia = '' (sem categoria).
           categoryId: categoria.categoryId ?? '',
-          subcategoryId: categoria.subcategoryId,
         })
         desfazer.procedimentos.push(criado.id)
       }

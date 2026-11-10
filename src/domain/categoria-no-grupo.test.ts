@@ -10,15 +10,13 @@ import {
 const NOMES = new Map([
   ['trabalho', 'Trabalho'],
   ['casa', 'Casa'],
-  ['reunioes', 'Reuniões'],
-  ['ligacoes', 'Ligações'],
 ])
 
 describe('mudancaAoEntrarNoGrupo', () => {
   it('categoria A → grupo da categoria B: avisa (A → B)', () => {
     expect(mudancaAoEntrarNoGrupo({ categoryId: 'trabalho' }, { categoryId: 'casa' })).toEqual({
-      de: { categoryId: 'trabalho', subcategoryId: undefined },
-      para: { categoryId: 'casa', subcategoryId: undefined },
+      de: { categoryId: 'trabalho' },
+      para: { categoryId: 'casa' },
     })
   })
 
@@ -32,34 +30,11 @@ describe('mudancaAoEntrarNoGrupo', () => {
     expect(mudancaAoEntrarNoGrupo({ categoryId: 'trabalho' }, { categoryId: 'trabalho' })).toBe(
       null,
     )
-    expect(
-      mudancaAoEntrarNoGrupo(
-        { categoryId: 'trabalho', subcategoryId: 'reunioes' },
-        { categoryId: 'trabalho', subcategoryId: 'reunioes' },
-      ),
-    ).toBe(null)
   })
 
   it('tarefa sem categoria → qualquer grupo: sem aviso', () => {
     expect(mudancaAoEntrarNoGrupo({}, { categoryId: 'casa' })).toBe(null)
     expect(mudancaAoEntrarNoGrupo({}, {})).toBe(null)
-  })
-
-  it('mesma categoria com subcategoria diferente ou ausente no grupo conta como mudança', () => {
-    const tarefa = { categoryId: 'trabalho', subcategoryId: 'reunioes' }
-    expect(
-      mudancaAoEntrarNoGrupo(tarefa, { categoryId: 'trabalho', subcategoryId: 'ligacoes' }),
-    ).not.toBe(null)
-    expect(mudancaAoEntrarNoGrupo(tarefa, { categoryId: 'trabalho' })).not.toBe(null)
-  })
-
-  it('só ganhar subcategoria não perde nada: sem aviso', () => {
-    expect(
-      mudancaAoEntrarNoGrupo(
-        { categoryId: 'trabalho' },
-        { categoryId: 'trabalho', subcategoryId: 'reunioes' },
-      ),
-    ).toBe(null)
   })
 })
 
@@ -86,18 +61,6 @@ describe('textoDoAviso', () => {
     expect(textoDoAviso([entrou('Ligar para Fulano', { categoryId: 'trabalho' }, {})])).toBe(
       '"Ligar para Fulano" foi para o grupo Casa e ficou sem categoria.',
     )
-  })
-
-  it('perder só a subcategoria cita "Categoria › Subcategoria"', () => {
-    expect(
-      textoDoAviso([
-        entrou(
-          'Pauta',
-          { categoryId: 'trabalho', subcategoryId: 'reunioes' },
-          { categoryId: 'trabalho' },
-        ),
-      ]),
-    ).toBe('"Pauta" foi para o grupo Casa e deixou a categoria Trabalho › Reuniões.')
   })
 
   it('saiu do grupo com categoria', () => {

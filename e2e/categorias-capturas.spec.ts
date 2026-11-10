@@ -1,7 +1,8 @@
 import { test, type Page } from '@playwright/test'
 
 /**
- * Só capturas (sem asserções) da aba Categorias e dos seletores, nos dois temas e em duas
+ * Só capturas (sem asserções) da aba Categorias, dos seletores e de um card de grupo no Dia,
+ * nos dois temas e em duas
  * larguras, para comparar antes e depois de uma mudança. Rode com CAPTURA=antes ou depois;
  * as imagens ficam em e2e/capturas/categorias-<CAPTURA>-*.png.
  */
@@ -13,7 +14,6 @@ test.skip(!process.env.CAPTURA, 'Só roda pedindo capturas (CAPTURA=antes|depois
 
 interface ModuloCategorias {
   criarCategoria: (dados: { nome: string; cor?: string; tipo?: string }) => Promise<{ id: string }>
-  criarSubcategoria: (dados: { categoryId: string; nome: string }) => Promise<unknown>
 }
 
 async function semear(page: Page) {
@@ -36,8 +36,6 @@ async function semear(page: Page) {
       }) => Promise<{ id: string }>
     }
     const casa = await categorias.criarCategoria({ nome: 'Casa', cor: '#2f8a57', tipo: 'grupo' })
-    await categorias.criarSubcategoria({ categoryId: casa.id, nome: 'Jardim' })
-    await categorias.criarSubcategoria({ categoryId: casa.id, nome: 'Cozinha' })
     const trabalho = await categorias.criarCategoria({
       nome: 'Trabalho',
       cor: '#3366c2',
@@ -99,6 +97,10 @@ for (const tema of ['claro', 'escuro'] as const) {
     await page.evaluate(() => localStorage.setItem('memoria:barra-recolhida', 'false'))
 
     await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(`/dia/${HOJE}`)
+    await page.getByRole('button', { name: 'Mercado', exact: true }).waitFor()
+    await capturar(page, `card-dia-${tema}`)
+
     await page.goto('/inicio')
     await page.getByRole('button', { name: 'Sem categoria' }).click()
     await capturar(page, `seletor-inicio-${tema}`)

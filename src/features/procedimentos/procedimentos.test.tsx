@@ -137,28 +137,30 @@ describe('Procedimentos', () => {
     expect(await db.procedures.count()).toBe(0)
   })
 
-  it('o seletor de categoria cria uma subcategoria ali mesmo e ela fica aplicada', async () => {
+  it('o seletor de categoria é uma lista plana e cria uma categoria já aplicada', async () => {
     const usuario = userEvent.setup()
-    const casa = await criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
+    await criarCategoria({ nome: 'Casa', tipo: 'procedimento' })
     const procedimento = await criarProcedimento({ titulo: 'Regar', categoryId: '', etapas: [] })
     renderizarApp(`/procedimentos/${procedimento.id}`)
 
     await usuario.click(await screen.findByRole('button', { name: 'Categoria' }))
-    ;(await screen.findByRole('menuitem', { name: 'Nova subcategoria em Casa' })).focus()
+    expect((await screen.findAllByRole('menuitemradio')).map((opcao) => opcao.textContent)).toEqual(
+      ['Sem categoria', 'Casa'],
+    )
+    expect(screen.queryByText(/subcategoria/i)).not.toBeInTheDocument()
+    ;(await screen.findByRole('menuitem', { name: 'Nova categoria' })).focus()
     await usuario.keyboard('{Enter}')
     await usuario.type(
-      await screen.findByRole('textbox', { name: 'Nova subcategoria' }),
+      await screen.findByRole('textbox', { name: 'Nova categoria' }),
       'Jardim{Enter}',
     )
 
     await waitFor(async () => {
-      const [jardim] = await db.subcategories.toArray()
-      expect(await db.procedures.get(procedimento.id)).toMatchObject({
-        categoryId: casa.id,
-        subcategoryId: jardim?.id,
-      })
+      const jardim = (await db.categories.toArray()).find((item) => item.nome === 'Jardim')
+      expect(jardim).toMatchObject({ tipo: 'procedimento' })
+      expect(await db.procedures.get(procedimento.id)).toMatchObject({ categoryId: jardim?.id })
     })
-    expect(screen.getByRole('button', { name: 'Categoria' })).toHaveTextContent('Casa › Jardim')
+    expect(screen.getByRole('button', { name: 'Categoria' })).toHaveTextContent('Jardim')
   })
 
   it('cartão: título, 3 primeiras etapas, "+ N etapas" e contagem; sem etapas avisa', async () => {

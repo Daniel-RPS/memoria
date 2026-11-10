@@ -138,7 +138,6 @@ export interface NovoGrupo {
   titulo: string
   data: DataLocal
   categoryId?: string
-  subcategoryId?: string
 }
 
 /**
@@ -154,7 +153,6 @@ export async function criarGrupo(dados: NovoGrupo): Promise<GroupCard> {
         id: crypto.randomUUID(),
         titulo: dados.titulo.trim(),
         categoryId: dados.categoryId,
-        subcategoryId: dados.categoryId ? dados.subcategoryId : undefined,
         criadoEm: momento,
         atualizadoEm: momento,
       }
@@ -330,13 +328,12 @@ export async function renomearGrupo(seriesId: string, titulo: string) {
 /** Categoria da série (cor e filtro do card em todos os dias). */
 export async function definirCategoriaDoGrupo(
   seriesId: string,
-  categoria: { categoryId?: string; subcategoryId?: string },
+  categoria: { categoryId?: string },
 ) {
   const momento = agora()
   await db.transaction('rw', [db.groupSeries, db.sessions], async () => {
     await db.groupSeries.update(seriesId, {
       categoryId: categoria.categoryId,
-      subcategoryId: categoria.categoryId ? categoria.subcategoryId : undefined,
       atualizadoEm: momento,
     })
     await atualizarCategoriaDasSessoesDoGrupo(seriesId, categoria.categoryId, momento)

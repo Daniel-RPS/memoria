@@ -156,11 +156,10 @@ export async function carregarDadosDosVinculos(
   const idsDe = (tipo: Vinculo['tipo']) => [
     ...new Set(notas.flatMap((nota) => (nota.vinculo?.tipo === tipo ? [nota.vinculo.id] : []))),
   ]
-  const [tarefas, itens, categorias, subcategorias] = await Promise.all([
+  const [tarefas, itens, categorias] = await Promise.all([
     db.tasks.bulkGet(idsDe('tarefa')),
     db.groupItems.where('cadeiaId').anyOf(idsDe('item')).toArray(),
     db.categories.toArray(),
-    db.subcategories.toArray(),
   ])
   const cardsDosItens = await db.groupCards.bulkGet([...new Set(itens.map((item) => item.cardId))])
   const idsSeries = [
@@ -178,26 +177,25 @@ export async function carregarDadosDosVinculos(
     series: series.filter((serie) => serie !== undefined),
     cards,
     itens,
-    categorias: montarCategorias(categorias, subcategorias),
+    categorias: montarCategorias(categorias),
   }
 }
 
 /** Tudo o que pode receber uma nota ("Vincular a…"): tarefas, grupos e itens não arquivados. */
 export async function carregarAlvosParaVincular(): Promise<DadosDosVinculos> {
-  const [tarefas, series, cards, itens, categorias, subcategorias] = await Promise.all([
+  const [tarefas, series, cards, itens, categorias] = await Promise.all([
     db.tasks.filter((tarefa) => tarefa.status !== 'arquivada').toArray(),
     db.groupSeries.toArray(),
     db.groupCards.toArray(),
     db.groupItems.toArray(),
     db.categories.toArray(),
-    db.subcategories.toArray(),
   ])
   return {
     tarefas,
     series,
     cards,
     itens: itens.filter((item: GroupItem) => item.status !== 'arquivado'),
-    categorias: montarCategorias(categorias, subcategorias),
+    categorias: montarCategorias(categorias),
   }
 }
 

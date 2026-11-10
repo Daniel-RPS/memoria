@@ -72,9 +72,9 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     resolver: zodResolver(esquemaCaptura),
     defaultValues: valoresIniciais(hoje),
   })
-  const [tipo, data, categoryId, subcategoryId, seriesId, texto, itens] = useWatch({
+  const [tipo, data, categoryId, seriesId, texto, itens] = useWatch({
     control,
-    name: ['tipo', 'data', 'categoryId', 'subcategoryId', 'seriesId', 'texto', 'itens'],
+    name: ['tipo', 'data', 'categoryId', 'seriesId', 'texto', 'itens'],
   })
   const series = useSeriesParaEscolher(data)
   const modo = modoDoCampo(tipo, seriesId)
@@ -101,7 +101,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   async function handleCriar(dados: CapturaInput) {
     const modoAoCriar = modoDoCampo(dados.tipo, dados.seriesId)
     try {
-      const categoria = { categoryId: dados.categoryId, subcategoryId: dados.subcategoryId }
+      const categoria = { categoryId: dados.categoryId }
       if (modoAoCriar === 'tarefa') {
         const tarefa = dividirTexto(dados.texto)
         await capturar({ tipo: 'tarefa', data: dados.data, ...categoria, ...tarefa, anexos })
@@ -271,17 +271,9 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
           <CampoCategoria
             tipo="grupo"
             atual={
-              grupoEscolhido
-                ? {
-                    categoryId: grupoEscolhido.serie.categoryId,
-                    subcategoryId: grupoEscolhido.serie.subcategoryId,
-                  }
-                : { categoryId, subcategoryId }
+              grupoEscolhido ? { categoryId: grupoEscolhido.serie.categoryId } : { categoryId }
             }
-            onEscolher={(categoria) => {
-              setValue('categoryId', categoria.categoryId)
-              setValue('subcategoryId', categoria.subcategoryId)
-            }}
+            onEscolher={(categoria) => setValue('categoryId', categoria.categoryId)}
             motivoDesabilitado={modo === 'itens' ? 'Usa a categoria do grupo' : undefined}
             className="w-auto max-w-40 gap-2"
           />

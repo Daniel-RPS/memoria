@@ -50,7 +50,6 @@ const TABELAS = [
   db.groupItems,
   db.sessions,
   db.categories,
-  db.subcategories,
 ]
 
 /** Os registros como estavam: o suficiente para voltar atrás (inclusive depois de converter). */
@@ -131,13 +130,10 @@ async function restaurar(instantaneo: Instantaneo, movidos: string[]) {
   })
 }
 
-/** Nomes de todas as categorias e subcategorias, por id. */
+/** Nomes de todas as categorias, por id. */
 async function lerNomesDeCategoria() {
-  const [categorias, subcategorias] = await Promise.all([
-    db.categories.toArray(),
-    db.subcategories.toArray(),
-  ])
-  return new Map([...categorias, ...subcategorias].map((registro) => [registro.id, registro.nome]))
+  const categorias = await db.categories.toArray()
+  return new Map(categorias.map((categoria) => [categoria.id, categoria.nome]))
 }
 
 /**
