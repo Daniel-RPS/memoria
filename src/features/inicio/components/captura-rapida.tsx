@@ -25,6 +25,7 @@ import {
 import { ErroDeValidacao } from '@/lib/erros'
 import { AnexosEscolhidos, BotaoAnexar } from '@/features/inicio/components/anexos-da-captura'
 import { EscolhaDoDia } from '@/components/escolha-do-dia'
+import { EscolhaDoHorario } from '@/features/inicio/components/escolha-do-horario'
 import { EscolhaDoTipo } from '@/features/inicio/components/escolha-do-tipo'
 import {
   ItensDaCaptura,
@@ -72,9 +73,9 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     resolver: zodResolver(esquemaCaptura),
     defaultValues: valoresIniciais(hoje),
   })
-  const [tipo, data, categoryId, seriesId, texto, itens] = useWatch({
+  const [tipo, data, categoryId, seriesId, texto, itens, horario] = useWatch({
     control,
-    name: ['tipo', 'data', 'categoryId', 'seriesId', 'texto', 'itens'],
+    name: ['tipo', 'data', 'categoryId', 'seriesId', 'texto', 'itens', 'horario'],
   })
   const series = useSeriesParaEscolher(data)
   const modo = modoDoCampo(tipo, seriesId)
@@ -102,9 +103,18 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     const modoAoCriar = modoDoCampo(dados.tipo, dados.seriesId)
     try {
       const categoria = { categoryId: dados.categoryId }
+      // Grupo novo não tem horário: só a tarefa e os itens no grupo escolhido.
+      const comHorario = dados.horario ? { horario: dados.horario } : {}
       if (modoAoCriar === 'tarefa') {
         const tarefa = dividirTexto(dados.texto)
-        await capturar({ tipo: 'tarefa', data: dados.data, ...categoria, ...tarefa, anexos })
+        await capturar({
+          tipo: 'tarefa',
+          data: dados.data,
+          ...categoria,
+          ...tarefa,
+          ...comHorario,
+          anexos,
+        })
       } else if (modoAoCriar === 'grupo') {
         const titulo = primeiraLinha(dados.texto).trim()
         await capturar({
@@ -122,6 +132,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
             seriesId: dados.seriesId ?? '',
             data: dados.data,
             itens: dados.itens,
+            ...comHorario,
           },
           grupo?.serie.titulo,
         )
@@ -290,6 +301,9 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
             data={data}
             onEscolher={(novaData) => setValue('data', novaData)}
           />
+          {tipo === 'tarefa' && (
+            <EscolhaDoHorario horario={horario} onEscolher={(novo) => setValue('horario', novo)} />
+          )}
           <div className="ml-auto flex items-center gap-1">
             {modo === 'tarefa' && (
               <BotaoAnexar

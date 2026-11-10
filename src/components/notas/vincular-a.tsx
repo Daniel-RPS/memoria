@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { CircleCheck, Link2, ListChecks, Search, SquareCheck, Unlink } from 'lucide-react'
+import {
+  CircleCheck,
+  Link2,
+  ListChecks,
+  ListOrdered,
+  Search,
+  SquareCheck,
+  Unlink,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -8,15 +16,20 @@ import { useAlvosParaVincular } from '@/hooks/use-notas-vinculadas'
 import { diaCurto } from '@/lib/grupos'
 import { mesmoVinculo } from '@/lib/notas'
 
-const ICONE = { tarefa: CircleCheck, grupo: ListChecks, item: SquareCheck }
-const NOME = { tarefa: 'Tarefa', grupo: 'Grupo', item: 'Item' }
+const ICONE = {
+  tarefa: CircleCheck,
+  grupo: ListChecks,
+  item: SquareCheck,
+  procedimento: ListOrdered,
+}
+const NOME = { tarefa: 'Tarefa', grupo: 'Grupo', item: 'Item', procedimento: 'Procedimento' }
 
 interface VincularAProps {
   atual: Vinculo | undefined
   onVincular: (vinculo: Vinculo | undefined) => void
 }
 
-/** "Vincular a…" (busca tarefas, grupos e itens) e "Desvincular" (vira nota avulsa). */
+/** "Vincular a…" (busca tarefas, grupos, itens e procedimentos) e "Desvincular" (vira nota avulsa). */
 export function VincularA({ atual, onVincular }: VincularAProps) {
   const [isAberto, setIsAberto] = useState(false)
   const [termo, setTermo] = useState('')
@@ -38,7 +51,7 @@ export function VincularA({ atual, onVincular }: VincularAProps) {
         </PopoverTrigger>
         <PopoverContent align="start" collisionPadding={8} className="w-80 p-0">
           <label className="relative block border-b border-pauta">
-            <span className="sr-only">Buscar tarefa, grupo ou item</span>
+            <span className="sr-only">Buscar tarefa, grupo, item ou procedimento</span>
             <Search
               aria-hidden
               className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-grafite"
@@ -48,7 +61,7 @@ export function VincularA({ atual, onVincular }: VincularAProps) {
               type="search"
               value={termo}
               onChange={(evento) => setTermo(evento.target.value)}
-              placeholder="Tarefa, grupo ou item"
+              placeholder="Tarefa, grupo, item ou procedimento"
               className="h-10 rounded-none border-0 bg-transparent pl-9 shadow-none focus-visible:ring-0"
             />
           </label>

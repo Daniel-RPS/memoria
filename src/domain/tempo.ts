@@ -1177,8 +1177,9 @@ export interface AvisoSessaoLonga {
 }
 
 /**
- * Encontra sessões abertas que estão ligadas há 4h ou mais, ou que começaram num dia local
- * anterior a `agoraIso` (passaram da meia-noite).
+ * Encontra sessões abertas que estão ligadas há 4h ou mais DENTRO de hoje. A sessão que começou
+ * num dia anterior não avisa: a virada do dia (`pararAndamentoForaDeHoje`) a fecha sozinha às
+ * 23:59:59 do dia em que começou.
  */
 export function encontrarSessoesLongas(
   dados: Pick<DadosDeTempo, 'sessoes' | 'tarefas' | 'itens' | 'cards' | 'series' | 'categorias'>,
@@ -1192,9 +1193,8 @@ export function encontrarSessoesLongas(
     if (sessao.fim !== undefined) continue
     const duracaoMs = duracaoDaSessaoMs(sessao, agoraIso)
     const diaInicio = diaLocalDoMomento(sessao.inicio)
-    const passouDaMeiaNoite =
-      diaInicio !== undefined && diaHoje !== undefined && diaInicio < diaHoje
-    if (duracaoMs < LIMITE_SESSAO_LONGA_MS && !passouDaMeiaNoite) continue
+    const isDeOutroDia = diaInicio !== undefined && diaHoje !== undefined && diaInicio < diaHoje
+    if (duracaoMs < LIMITE_SESSAO_LONGA_MS || isDeOutroDia) continue
 
     const alvo = resolverAlvo(sessao)
     const tempoTexto = formatarDuracaoAviso(duracaoMs)
@@ -1347,6 +1347,8 @@ export async function abrirSessoesParaAlvos(
 export async function fecharSessoesAbertasDe(
   alvos: { tarefas?: string[]; itens?: string[]; cadeias?: string[] },
   momento: string,
+  /** Fim de cada sessão (ex.: 23:59:59 do dia, na virada); ausente = `momento`. */
+  fimDe?: (sessao: TimeSession) => string,
 ): Promise<TimeSession[]> {
   const setTarefas = new Set(alvos.tarefas ?? [])
   const setItens = new Set(alvos.itens ?? [])
@@ -1367,7 +1369,7 @@ export async function fecharSessoesAbertasDe(
   await db.sessions.bulkPut(
     abertas.map((sessao) => ({
       ...sessao,
-      fim: momento,
+      fim: fimDe ? fimDe(sessao) : momento,
       atualizadoEm: momento,
     })),
   )

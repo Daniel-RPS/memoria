@@ -149,6 +149,8 @@ describe('lerBackup', () => {
           { id: 'p1', texto: 'Conectar', ordem: 0 },
           { id: 'p2', texto: 'Copiar', ordem: 1 },
         ],
+        // Formato 15: sem `ordem` no arquivo, preenchida pelo título.
+        ordem: 1,
         ...base,
       },
     ])

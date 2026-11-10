@@ -87,6 +87,7 @@ export async function trocarVinculoDasNotas(de: Vinculo, para: Vinculo) {
 async function existeAlvo(vinculo: Vinculo) {
   if (vinculo.tipo === 'tarefa') return (await db.tasks.get(vinculo.id)) !== undefined
   if (vinculo.tipo === 'grupo') return (await db.groupSeries.get(vinculo.id)) !== undefined
+  if (vinculo.tipo === 'procedimento') return (await db.procedures.get(vinculo.id)) !== undefined
   return (await db.groupItems.where('cadeiaId').equals(vinculo.id).count()) > 0
 }
 
@@ -96,8 +97,8 @@ function semRepetir(vinculos: Vinculo[]) {
 
 /**
  * Depois de excluir: as notas de alvos que deixaram de existir viram avulsas (nunca são
- * apagadas). Roda dentro da transação de quem chama (com `notes`, `tasks`, `groupSeries` e
- * `groupItems`).
+ * apagadas). Roda dentro da transação de quem chama (com `notes` e as tabelas dos alvos:
+ * `tasks`, `groupSeries` e `groupItems`, ou `procedures`).
  */
 export async function soltarNotasSemAlvo(candidatos: Vinculo[]) {
   for (const vinculo of semRepetir(candidatos)) {
@@ -156,10 +157,11 @@ export async function carregarDadosDosVinculos(
   const idsDe = (tipo: Vinculo['tipo']) => [
     ...new Set(notas.flatMap((nota) => (nota.vinculo?.tipo === tipo ? [nota.vinculo.id] : []))),
   ]
-  const [tarefas, itens, categorias] = await Promise.all([
+  const [tarefas, itens, categorias, procedimentos] = await Promise.all([
     db.tasks.bulkGet(idsDe('tarefa')),
     db.groupItems.where('cadeiaId').anyOf(idsDe('item')).toArray(),
     db.categories.toArray(),
+    db.procedures.bulkGet(idsDe('procedimento')),
   ])
   const cardsDosItens = await db.groupCards.bulkGet([...new Set(itens.map((item) => item.cardId))])
   const idsSeries = [
@@ -177,24 +179,30 @@ export async function carregarDadosDosVinculos(
     series: series.filter((serie) => serie !== undefined),
     cards,
     itens,
+    procedimentos: procedimentos.filter((procedimento) => procedimento !== undefined),
     categorias: montarCategorias(categorias),
   }
 }
 
-/** Tudo o que pode receber uma nota ("Vincular a…"): tarefas, grupos e itens não arquivados. */
+/**
+ * Tudo o que pode receber uma nota ("Vincular a…"): tarefas, grupos, itens e procedimentos não
+ * arquivados.
+ */
 export async function carregarAlvosParaVincular(): Promise<DadosDosVinculos> {
-  const [tarefas, series, cards, itens, categorias] = await Promise.all([
+  const [tarefas, series, cards, itens, categorias, procedimentos] = await Promise.all([
     db.tasks.filter((tarefa) => tarefa.status !== 'arquivada').toArray(),
     db.groupSeries.toArray(),
     db.groupCards.toArray(),
     db.groupItems.toArray(),
     db.categories.toArray(),
+    db.procedures.filter((procedimento) => !procedimento.arquivado).toArray(),
   ])
   return {
     tarefas,
     series,
     cards,
     itens: itens.filter((item: GroupItem) => item.status !== 'arquivado'),
+    procedimentos,
     categorias: montarCategorias(categorias),
   }
 }

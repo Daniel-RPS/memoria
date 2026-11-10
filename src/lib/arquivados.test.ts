@@ -99,6 +99,7 @@ const procedimento: Procedure = {
   ...base,
   id: 'p1',
   titulo: 'Renovar certificado',
+  ordem: 1,
   categoryId: 'casa',
   etapas: [
     { id: 'e1', texto: 'Abrir o portal', ordem: 0 },

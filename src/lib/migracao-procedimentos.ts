@@ -16,9 +16,10 @@ export interface ProcedimentoAntigo {
 /**
  * Converte para o modelo de etapas. Título, categoria e datas ficam; os passos de todas as
  * seções viram etapas na ordem, e cada subpasso vira uma etapa logo depois do seu passo.
- * O resto (descrição, código, alerta, campos variáveis, versão) não existe mais.
+ * O resto (descrição, código, alerta, campos variáveis, versão) não existe mais. A `ordem` da
+ * lista é preenchida depois (`preencherOrdemDosProcedimentos`).
  */
-export function converterProcedimentoAntigo(antigo: ProcedimentoAntigo): Procedure {
+export function converterProcedimentoAntigo(antigo: ProcedimentoAntigo): Omit<Procedure, 'ordem'> {
   const textos = antigo.secoes.flatMap((secao) =>
     secao.passos.flatMap((passo) => [passo, ...(passo.subpassos ?? [])]),
   )

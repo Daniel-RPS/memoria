@@ -6,6 +6,7 @@ import { AplicadorDoTema, AvisosDoApp, FundoDaAparencia } from '@/app/tema-do-la
 import { useBarraRecolhida } from '@/app/use-barra-recolhida'
 import { ProvedorPainelNotas } from '@/components/notas/provedor-painel-notas'
 import { AvisoSessaoLonga } from '@/components/aviso-sessao-longa'
+import { useViradaDoDia } from '@/hooks/use-virada-do-dia'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAtalhoCaptura } from '@/app/use-atalho-captura'
 import { useAtalhoDesfazer } from '@/hooks/use-mover-tarefas'
@@ -14,6 +15,7 @@ import { useAtalhoDesfazer } from '@/hooks/use-mover-tarefas'
 export function LayoutApp() {
   useAtalhoDesfazer()
   useAtalhoCaptura()
+  useViradaDoDia()
   const { isRecolhida, handleAlternar } = useBarraRecolhida()
   const isNaSemana = useMatch('/semana/:data') !== null
   const rotaMes = useMatch('/mes/:data')

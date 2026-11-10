@@ -7,6 +7,7 @@ import { CornerDownRight, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
 import { IndicadorPrioridade } from '@/components/indicador-prioridade'
+import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { contarPrioritarios } from '@/domain/prioridade'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
@@ -355,6 +356,7 @@ function LinhaItem({
   // Na Semana as subetapas começam recolhidas: só o "1/3".
   const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
   const [isFocandoNovaSubetapa, setIsFocandoNovaSubetapa] = useState(false)
+  const [isHorarioAberto, setIsHorarioAberto] = useState(false)
   const subetapas = useSubetapasDe(item.id)
   const progresso = progressoSubtarefas(subetapas)
   const idPainel = useId()
@@ -427,6 +429,17 @@ function LinhaItem({
             item.titulo
           )}
           {isEmAndamento && !isEditando && <IndicadorAndamento isCompacto className="ml-1.5" />}
+          {!isEditando && !isTransferido && !isSobreposto && (
+            <HorarioDaTarefa
+              alvo={{ tipo: 'item', id: item.id }}
+              horario={item.horario}
+              titulo={item.titulo}
+              isAberto={isHorarioAberto}
+              onMudarAberto={setIsHorarioAberto}
+              isCompacto
+              className="ml-1.5"
+            />
+          )}
           {isAtrasado && !isEditando && (
             <span className="ml-1.5 rounded-[3px] bg-marca-texto px-1 text-xs font-medium whitespace-nowrap text-violeta-profundo no-underline">
               desde {diaCurto(item.dataOriginal)}
@@ -464,6 +477,7 @@ function LinhaItem({
             hoje={hoje}
             onRenomear={() => setIsEditando(true)}
             onAdicionarSubetapa={handleAdicionarSubetapa}
+            onDefinirHorario={() => setIsHorarioAberto(true)}
             isCompacto
           />
         )}

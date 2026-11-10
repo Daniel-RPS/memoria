@@ -1,5 +1,6 @@
 import { format, isValid } from 'date-fns'
 import type { Category, Etapa, Procedure } from '@/db/types'
+import { compararPorOrdem } from '@/domain/procedimentos'
 
 /** Minúsculas e sem acentos, para comparar nomes e buscar. */
 export function normalizar(texto: string) {
@@ -28,15 +29,14 @@ function textoPesquisavel(procedimento: Procedure) {
   )
 }
 
-const porTitulo = (a: Procedure, b: Procedure) => a.titulo.localeCompare(b.titulo, 'pt-BR')
-
 /**
  * Procedimentos que contêm todas as palavras do termo (sem diferenciar acentos e maiúsculas),
- * no título ou no texto das etapas. Quem tem a busca no título vem primeiro.
+ * no título ou no texto das etapas. Quem tem a busca no título vem primeiro; no resto (e sem
+ * termo), a ordem manual (`compararPorOrdem`).
  */
 export function buscarProcedimentos(procedimentos: Procedure[], termo: string) {
   const palavras = normalizar(termo).split(/\s+/).filter(Boolean)
-  if (palavras.length === 0) return [...procedimentos].sort(porTitulo)
+  if (palavras.length === 0) return [...procedimentos].sort(compararPorOrdem)
 
   const pontuar = (procedimento: Procedure) => {
     const titulo = normalizar(procedimento.titulo)
@@ -47,7 +47,7 @@ export function buscarProcedimentos(procedimentos: Procedure[], termo: string) {
       const texto = textoPesquisavel(procedimento)
       return palavras.every((palavra) => texto.includes(palavra))
     })
-    .sort((a, b) => pontuar(a) - pontuar(b) || porTitulo(a, b))
+    .sort((a, b) => pontuar(a) - pontuar(b) || compararPorOrdem(a, b))
 }
 
 export interface BlocoDeProcedimentos {

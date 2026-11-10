@@ -70,6 +70,8 @@ export interface Task extends EntidadeBase {
   prioridadeDesde?: string
   /** Posição arrastada dentro do bloco do topo; ausente ou velha = pela hora da marcação. */
   ordemNoTopo?: OrdemNoTopo
+  /** Horário de início `HH:mm` (24h), só para mostrar. Ausente = sem horário; `domain/horario`. */
+  horario?: string
 }
 
 /**
@@ -136,6 +138,8 @@ export interface GroupItem extends EntidadeBase {
   prioridadeDesde?: string
   /** Posição arrastada dentro do bloco do topo; ausente ou velha = pela hora da marcação. */
   ordemNoTopo?: OrdemNoTopo
+  /** Horário de início `HH:mm` (24h), só para mostrar. Ausente = sem horário; `domain/horario`. */
+  horario?: string
 }
 
 /**
@@ -163,6 +167,8 @@ export interface Procedure extends EntidadeBase {
   icone?: Icone
   categoryId?: string
   etapas: Etapa[]
+  /** Posição manual dentro da categoria (aceita decimais); regras em `domain/procedimentos`. */
+  ordem: number
   /** Arquivado: fora da aba Procedimentos e dos seletores, sem apagar. */
   arquivado?: boolean
   arquivadoEm?: string
@@ -177,11 +183,12 @@ export interface Dono {
 }
 
 /** A que uma nota pode estar ligada. */
-export type TipoVinculo = 'tarefa' | 'grupo' | 'item'
+export type TipoVinculo = 'tarefa' | 'grupo' | 'item' | 'procedimento'
 
 /**
  * Ligação da nota: `tarefa` → id da tarefa solta; `grupo` → id da série (vale em todos os
- * dias); `item` → `cadeiaId` do item (vale em todas as cópias levadas de dia em dia).
+ * dias); `item` → `cadeiaId` do item (vale em todas as cópias levadas de dia em dia);
+ * `procedimento` → id do procedimento (o procedimento inteiro, não uma etapa).
  */
 export interface Vinculo {
   tipo: TipoVinculo

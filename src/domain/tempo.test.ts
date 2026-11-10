@@ -381,7 +381,7 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
     expect(fora).toBeNull()
   })
 
-  it('detecta sessão longa (≥ 4h ou que passou da meia-noite) e ajusta o fim', async () => {
+  it('detecta sessão longa (≥ 4h dentro de hoje; a de outro dia fica para a virada) e ajusta o fim', async () => {
     const tLonga = await criarTarefa({ titulo: 'Esquecida ligada', data: HOJE })
     const tCurta = await criarTarefa({ titulo: 'Recente', data: HOJE })
     const tMeiaNoite = await criarTarefa({ titulo: 'Virou a noite', data: '2026-11-03' })
@@ -418,7 +418,7 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
 
     const dados = await carregarDadosDeTempo()
     const avisos = encontrarSessoesLongas(dados, agoraIso)
-    expect(avisos.map((a) => a.sessaoId)).toEqual(['s-longa', 's-noite'])
+    expect(avisos.map((a) => a.sessaoId)).toEqual(['s-longa'])
     expect(avisos[0].mensagem).toBe('‘Esquecida ligada’ está em andamento há 5h')
 
     // Ajustar fim para 09:30 encerra a sessão e tira a marca de emAndamento da tarefa
@@ -528,7 +528,10 @@ describe('tempo: corte pelo período, meia-noite, sessão longa, edição, CSV, 
       tarefaId: 't-mig',
       inicio: '2026-11-04T12:00:00.000Z',
     })
-    expect(sessoes[0].fim).toBeUndefined()
+    // A v15 ("em andamento" só para hoje): a tarefa de 04/11 não é de hoje, então a marca sai e
+    // a sessão fecha às 23:59:59 do dia em que começou.
+    expect(sessoes[0].fim).toBe(new Date('2026-11-04T23:59:59-03:00').toISOString())
+    expect((await migrado.tasks.get('t-mig'))?.emAndamento).toBeUndefined()
     await migrado.delete()
   })
 

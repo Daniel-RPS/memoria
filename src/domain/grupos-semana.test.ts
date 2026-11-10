@@ -6,6 +6,7 @@ import {
   defaultGroupExpanded,
   definirTodosCardsNaSemana,
   isCardAbertoNaSemana,
+  resolveGroupExpanded,
 } from '@/domain/grupos-semana'
 
 describe('grupos-semana domain', () => {
@@ -130,6 +131,14 @@ describe('grupos-semana domain', () => {
       expect(isCardAbertoNaSemana(todosAbertos, 's1', ONTEM, HOJE)).toBe(true)
       expect(isCardAbertoNaSemana(todosAbertos, 's1', HOJE, HOJE)).toBe(true)
       expect(isCardAbertoNaSemana(todosAbertos, 's2', AMANHA, HOJE)).toBe(true)
+    })
+  })
+  describe('resolveGroupExpanded', () => {
+    it('usa a escolha salva e, sem ela, o padrão (aberto só hoje)', () => {
+      expect(resolveGroupExpanded(undefined, HOJE, HOJE)).toBe(true)
+      expect(resolveGroupExpanded(undefined, ONTEM, HOJE)).toBe(false)
+      expect(resolveGroupExpanded(false, HOJE, HOJE)).toBe(false)
+      expect(resolveGroupExpanded(true, AMANHA, HOJE)).toBe(true)
     })
   })
 })

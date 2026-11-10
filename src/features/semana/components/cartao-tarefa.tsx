@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { cn } from 'cn'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
 import { IndicadorPrioridade } from '@/components/indicador-prioridade'
+import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import { definirConclusao } from '@/db/repositories/task-repository'
@@ -31,6 +32,8 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
   const progresso = progressoSubtarefas(subtarefas)
   // Na Semana (coluna estreita) as subetapas começam recolhidas: só o "1/3".
   const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
+  // Sem menu ⋯ na Semana: o chip abre o popover para alterar ou remover o horário.
+  const [isHorarioAberto, setIsHorarioAberto] = useState(false)
   const idPainel = useId()
 
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
@@ -65,6 +68,17 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
           {tarefa.titulo}
         </Link>
         {isEmAndamento && <IndicadorAndamento isCompacto className="ml-1.5" />}
+        {!isSobreposto && (
+          <HorarioDaTarefa
+            alvo={{ tipo: 'tarefa', id: tarefa.id }}
+            horario={tarefa.horario}
+            titulo={tarefa.titulo}
+            isAberto={isHorarioAberto}
+            onMudarAberto={setIsHorarioAberto}
+            isCompacto
+            className="ml-1.5"
+          />
+        )}
         {!isSobreposto && (
           <IndicadorNotas
             vinculo={{ tipo: 'tarefa', id: tarefa.id }}

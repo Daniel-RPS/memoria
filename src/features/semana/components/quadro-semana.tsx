@@ -1,4 +1,5 @@
 import { useContext, useLayoutEffect, useRef, useState } from 'react'
+import { cn } from 'cn'
 import {
   closestCorners,
   DndContext,
@@ -36,6 +37,7 @@ import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { useAtalhoPrioridade } from '@/hooks/use-atalho-prioridade'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { ContextoGruposSemana } from '@/features/semana/hooks/use-grupos-semana'
+import { useRolagemEspelhada } from '@/features/semana/hooks/use-rolagem-espelhada'
 import { idDaEntrada, pendentesDo, textoPreviaLevar, type GrupoDoDia } from '@/lib/grupos'
 import { nomeDoDia } from '@/lib/mover'
 import { colunaDe, moverEntreColunas, type Colunas } from '@/lib/quadro'
@@ -106,6 +108,7 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       colunaDeHoje.offsetLeft - caixa.offsetLeft - RESPIRO_ANTES_DE_HOJE,
     )
   }, [])
+  const { barra: barraDosDias, larguraDoConteudo, isRolavel } = useRolagemEspelhada(rolagem)
   const [colunas, setColunas] = useState(() => colunasDe(semana))
   const [semanaAnterior, setSemanaAnterior] = useState(semana)
   const [idAtivo, setIdAtivo] = useState<string | null>(null)
@@ -369,7 +372,11 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
       <div
         ref={rolagem}
         data-arrastando-lote={lote ? '' : undefined}
-        className="md:overflow-x-auto"
+        className={cn(
+          'md:overflow-x-auto',
+          // Com a barra presa ao pé da janela, a barra própria da caixa some (seria repetida).
+          isRolavel && '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        )}
       >
         {/* Cada dia tem ao menos ~260px: sem espaço, a semana rola para o lado. */}
         <div className="grid grid-cols-1 md:grid-cols-[repeat(7,minmax(16.25rem,1fr))]">
@@ -386,6 +393,17 @@ export function QuadroSemana({ semana, subtarefasPorTarefa, hoje }: QuadroSemana
             />
           ))}
         </div>
+      </div>
+      {/* Barra dos dias presa ao pé da janela: rola a semana para o lado sem descer até o fim. */}
+      <div
+        ref={barraDosDias}
+        aria-hidden
+        className={cn(
+          'sticky bottom-0 z-10 hidden overflow-x-auto overflow-y-hidden bg-papel pt-1',
+          isRolavel && 'md:block',
+        )}
+      >
+        <div className="h-px" style={{ width: larguraDoConteudo }} />
       </div>
       <DragOverlay dropAnimation={null}>
         {lote && (

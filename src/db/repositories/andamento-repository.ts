@@ -1,5 +1,6 @@
 import { db } from '@/db/database'
-import type { GroupItem, Task, TimeSession } from '@/db/types'
+import type { DataLocal, GroupItem, Task, TimeSession } from '@/db/types'
+import { alvosForaDeHoje, fimDaSessaoNaVirada } from '@/domain/andamento'
 import { agora } from '@/db/repositories/ordenacao'
 import { abrirSessoesParaAlvos, fecharSessoesAbertasDe, restaurarSessoes } from '@/domain/tempo'
 import {
@@ -41,6 +42,8 @@ const TABELAS_DE_ANDAMENTO = [db.tasks, db.groupItems, db.groupCards, db.groupSe
 export async function definirAndamento(
   alvos: AlvosDeAndamento,
   isMarcar: boolean,
+  /** Ao parar: fim de cada sessão aberta (a virada do dia fecha às 23:59:59). */
+  fimDaSessao?: (sessao: TimeSession) => string,
 ): Promise<AndamentoAnterior> {
   return db.transaction('rw', TABELAS_DE_ANDAMENTO, async () => {
     const [tarefas, itens] = await Promise.all([
@@ -80,6 +83,7 @@ export async function definirAndamento(
             cadeias: itensMudados.map((i) => i.cadeiaId),
           },
           momento,
+          fimDaSessao,
         )
       : undefined
     return {
@@ -113,4 +117,22 @@ export async function restaurarAndamento(anteriores: AndamentoAnterior) {
 /** Quantos registros o resultado alterou. */
 export function quantidadeAlterada(resultado: AndamentoAnterior) {
   return resultado.tarefas.length + resultado.itens.length
+}
+
+/**
+ * Virada do dia: para o que ficou em andamento num dia que não é mais `hoje` (tarefa pelo próprio
+ * dia, item pelo dia do card), pela mesma `definirAndamento`. A sessão do tempo fecha às 23:59:59
+ * do dia em que começou (ou agora, se for antes).
+ */
+export async function pararAndamentoForaDeHoje(hoje: DataLocal) {
+  const [tarefas, itens] = await Promise.all([
+    db.tasks.filter((tarefa) => tarefa.emAndamento === true).toArray(),
+    db.groupItems.filter((item) => item.emAndamento === true).toArray(),
+  ])
+  if (tarefas.length === 0 && itens.length === 0) return
+  const cards = existentes(await db.groupCards.bulkGet([...new Set(itens.map((i) => i.cardId))]))
+  const alvos = alvosForaDeHoje(tarefas, itens, cards, hoje)
+  if (alvos.tarefas.length === 0 && alvos.itens.length === 0) return
+  const momento = agora()
+  await definirAndamento(alvos, false, (sessao) => fimDaSessaoNaVirada(sessao.inicio, momento))
 }

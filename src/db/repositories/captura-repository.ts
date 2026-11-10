@@ -9,6 +9,7 @@ import {
   type ItensAdicionados,
 } from '@/db/repositories/group-repository'
 import { criarTarefa, excluirTarefa } from '@/db/repositories/task-repository'
+import { camposDeHorario } from '@/domain/horario'
 import { itensPreenchidos } from '@/lib/captura'
 
 /** Anexo escolhido na captura, gravado junto com a tarefa (foto já reduzida). */
@@ -27,6 +28,8 @@ export type NovaCaptura =
       anexos?: AnexoDaCaptura[]
       /** Vira uma nota ligada à tarefa (as linhas depois do título). */
       anotacao?: string
+      /** Horário opcional `HH:mm`. */
+      horario?: string
     } & CategoriaDaCaptura)
   | ({
       tipo: 'grupo'
@@ -42,6 +45,8 @@ export type NovaCaptura =
       seriesId: string
       data: DataLocal
       itens: string[]
+      /** Horário opcional `HH:mm`, gravado em cada item criado. */
+      horario?: string
     }
 
 export type ResultadoCaptura =
@@ -63,6 +68,9 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
     const categoria = { categoryId: dados.categoryId }
     return db.transaction('rw', [db.tasks, db.groupCards, db.attachments, db.notes], async () => {
       const tarefa = await criarTarefa({ titulo: dados.titulo, data: dados.data, ...categoria })
+      if (dados.horario) {
+        await db.tasks.update(tarefa.id, camposDeHorario(dados.horario))
+      }
       const dono = { tipo: 'task' as const, id: tarefa.id }
       for (const anexo of dados.anexos ?? []) {
         await adicionarAnexo({ dono, ...anexo })
@@ -76,6 +84,10 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
   const itens = itensPreenchidos(dados.itens)
   if (dados.tipo === 'em-grupo') {
     const adicionados = await adicionarItensNaSerie(dados.seriesId, dados.data, itens)
+    if (dados.horario) {
+      const campos = camposDeHorario(dados.horario)
+      await Promise.all(adicionados.idsItens.map((id) => db.groupItems.update(id, campos)))
+    }
     return { tipo: 'em-grupo', ...adicionados }
   }
   const categoria = { categoryId: dados.categoryId }

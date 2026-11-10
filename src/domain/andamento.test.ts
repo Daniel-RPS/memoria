@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupCard, GroupItem, GroupSeries, Task } from '@/db/types'
 import {
+  alvosForaDeHoje,
   buildInProgressSummary,
+  fimDaSessaoNaVirada,
   montarResumoDeAndamento,
+  podeMarcarAndamento,
+  todasSaoDeHoje,
   type ResumoDeAndamento,
 } from '@/domain/andamento'
 
@@ -188,5 +192,53 @@ describe('montarResumoDeAndamento (src/domain)', () => {
 
   it('funciona também com o alias buildInProgressSummary', () => {
     expect(buildInProgressSummary).toBe(montarResumoDeAndamento)
+  })
+})
+
+describe('em andamento só para hoje', () => {
+  const HOJE = '2026-11-10'
+
+  it('pode marcar só pendente, sem marca, cujo dia é hoje', () => {
+    expect(podeMarcarAndamento({ status: 'pendente' }, HOJE, HOJE)).toBe(true)
+    expect(podeMarcarAndamento({ status: 'pendente' }, '2026-11-09', HOJE)).toBe(false)
+    expect(podeMarcarAndamento({ status: 'pendente' }, '2026-11-11', HOJE)).toBe(false)
+    expect(podeMarcarAndamento({ status: 'concluida' }, HOJE, HOJE)).toBe(false)
+    expect(podeMarcarAndamento({ status: 'pendente', emAndamento: true }, HOJE, HOJE)).toBe(false)
+  })
+
+  it('na seleção, só se todas forem de hoje', () => {
+    expect(todasSaoDeHoje([HOJE, HOJE], HOJE)).toBe(true)
+    expect(todasSaoDeHoje([HOJE, '2026-11-11'], HOJE)).toBe(false)
+    expect(todasSaoDeHoje([], HOJE)).toBe(false)
+  })
+
+  it('a virada fecha a sessão às 23:59:59 do dia em que começou (ou agora, se antes)', () => {
+    const inicio = new Date('2026-11-09T22:00:00-03:00').toISOString()
+    const depois = new Date('2026-11-10T08:00:00-03:00').toISOString()
+    expect(fimDaSessaoNaVirada(inicio, depois)).toBe(
+      new Date('2026-11-09T23:59:59-03:00').toISOString(),
+    )
+    const antes = new Date('2026-11-09T23:00:00-03:00').toISOString()
+    expect(fimDaSessaoNaVirada(inicio, antes)).toBe(antes)
+  })
+
+  it('a virada para tarefa pelo próprio dia e item pelo dia do card', () => {
+    const alvos = alvosForaDeHoje(
+      [
+        { id: 't-ontem', data: '2026-11-09', emAndamento: true },
+        { id: 't-hoje', data: HOJE, emAndamento: true },
+        { id: 't-parada', data: '2026-11-09' },
+      ],
+      [
+        { id: 'i-ontem', cardId: 'c-ontem', emAndamento: true },
+        { id: 'i-hoje', cardId: 'c-hoje', emAndamento: true },
+      ],
+      [
+        { id: 'c-ontem', data: '2026-11-09' },
+        { id: 'c-hoje', data: HOJE },
+      ],
+      HOJE,
+    )
+    expect(alvos).toEqual({ tarefas: ['t-ontem'], itens: ['i-ontem'] })
   })
 })

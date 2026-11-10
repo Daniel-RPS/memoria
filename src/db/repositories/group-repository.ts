@@ -1,3 +1,4 @@
+import { horarioDe } from '@/domain/horario'
 import { db } from '@/db/database'
 import type {
   DataLocal,
@@ -277,6 +278,12 @@ export async function desfazerItensAdicionados(resultado: ItensAdicionados) {
 /** Ids de todas as séries (para esquecer o estado lembrado das que deixaram de existir). */
 export async function listarIdsDasSeries() {
   return (await db.groupSeries.toCollection().primaryKeys()) as string[]
+}
+
+/** Série e data de todos os cards (para esquecer o estado aberto/recolhido de cards apagados). */
+export async function listarSeriesEDatasDosCards() {
+  const cards = await db.groupCards.toArray()
+  return cards.map((card) => ({ serieId: card.seriesId, data: card.data }))
 }
 
 export async function carregarSeriesParaEscolher() {
@@ -762,6 +769,7 @@ export async function colocarNoGrupo(tarefaId: string, cardId: string, idsEmOrde
         ...marcaDe(tarefa),
         ...(tarefa.concluidaPelasSubetapas && { concluidaPelasSubetapas: true }),
         ...prioridadeDe(tarefa),
+        ...horarioDe(tarefa),
         dataOriginal: tarefa.dataOriginal,
         criadoEm: tarefa.criadoEm,
         atualizadoEm: momento,
@@ -805,6 +813,7 @@ export async function tirarDoGrupo(itemId: string, idsEmOrdemNoDia?: string[]) {
         ...marcaDe(item),
         ...(item.concluidaPelasSubetapas && { concluidaPelasSubetapas: true }),
         ...prioridadeDe(item),
+        ...horarioDe(item),
         criadoEm: item.criadoEm,
         atualizadoEm: momento,
       }

@@ -1,10 +1,14 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { z } from 'zod'
+import { gravarPreferencia, lerPreferencia } from '@/app/preferencia-local'
+import { listarSeriesEDatasDosCards } from '@/db/repositories/group-repository'
 import type { DataLocal } from '@/db/types'
 import {
-  alternarCardNaSemana,
   chaveCardSemana,
   definirTodosCardsNaSemana,
-  isCardAbertoNaSemana,
+  podarEstadosDeCards,
+  resolveGroupExpanded,
 } from '@/domain/grupos-semana'
 
 export interface CardIdentificado {
@@ -24,32 +28,63 @@ export interface GruposSemanaContexto {
 
 export const ContextoGruposSemana = createContext<GruposSemanaContexto | null>(null)
 
+/** Escolhas do usuário (abrir/recolher) por card da Semana, `${serieId}:${data}` → aberto. */
+const CHAVE_CARDS_DA_SEMANA = 'memoria:semana:cards-abertos'
+const esquemaEstados = z.record(z.string(), z.boolean())
+
+function lerEstadosSalvos(): Record<string, boolean> {
+  const texto = lerPreferencia(CHAVE_CARDS_DA_SEMANA)
+  if (!texto) return {}
+  try {
+    const resultado = esquemaEstados.safeParse(JSON.parse(texto))
+    return resultado.success ? resultado.data : {}
+  } catch {
+    return {}
+  }
+}
+
 /**
- * Estado aberto/recolhido dos cards na Semana:
- * Mantido em memória durante a visita, com base por card (`${serieId}:${data}`).
- * Padrão: grupos de hoje abertos, grupos dos demais dias recolhidos.
+ * Estado aberto/recolhido dos cards na Semana, por card (série + data):
+ * a escolha do usuário fica salva no navegador e vale entre visitas, semanas e dias;
+ * sem escolha, vale o padrão (aberto só hoje). A abertura automática ao soltar um item
+ * num card recolhido vale só nesta visita e não é gravada.
  */
 export function useGruposSemana(cards: CardIdentificado[], hoje: DataLocal): GruposSemanaContexto {
-  const [overrides, setOverrides] = useState<Record<string, boolean>>({})
+  const [salvos, setSalvos] = useState<Record<string, boolean>>(lerEstadosSalvos)
+  const [automaticos, setAutomaticos] = useState<Record<string, boolean>>({})
+  const cardsExistentes = useLiveQuery(() => listarSeriesEDatasDosCards(), [])
 
-  const isAberto = (serieId: string, data: DataLocal) =>
-    isCardAbertoNaSemana(overrides, serieId, data, hoje)
+  // Grava só as escolhas de cards que ainda existem (os apagados são esquecidos).
+  useEffect(() => {
+    const vivos = cardsExistentes ? podarEstadosDeCards(salvos, cardsExistentes) : salvos
+    gravarPreferencia(CHAVE_CARDS_DA_SEMANA, JSON.stringify(vivos))
+  }, [salvos, cardsExistentes])
+
+  const isAberto = (serieId: string, data: DataLocal) => {
+    const chave = chaveCardSemana(serieId, data)
+    return automaticos[chave] ?? resolveGroupExpanded(salvos[chave], data, hoje)
+  }
+
+  /** Grava a escolha do usuário e descarta a abertura automática desses cards. */
+  function gravarEscolha(novos: Record<string, boolean>) {
+    setSalvos((atuais) => ({ ...atuais, ...novos }))
+    setAutomaticos((atuais) => {
+      const restantes = { ...atuais }
+      for (const chave of Object.keys(novos)) delete restantes[chave]
+      return restantes
+    })
+  }
 
   const handleAlternar = (serieId: string, data: DataLocal) => {
-    setOverrides((atuais) => alternarCardNaSemana(atuais, serieId, data, hoje))
+    gravarEscolha({ [chaveCardSemana(serieId, data)]: !isAberto(serieId, data) })
   }
 
   const handleAbrir = (serieId: string, data: DataLocal) => {
-    setOverrides((atuais) => ({ ...atuais, [chaveCardSemana(serieId, data)]: true }))
+    setAutomaticos((atuais) => ({ ...atuais, [chaveCardSemana(serieId, data)]: true }))
   }
 
-  const handleExpandirTudo = () => {
-    setOverrides(definirTodosCardsNaSemana(cards, true))
-  }
-
-  const handleRecolherTudo = () => {
-    setOverrides(definirTodosCardsNaSemana(cards, false))
-  }
+  const handleExpandirTudo = () => gravarEscolha(definirTodosCardsNaSemana(cards, true))
+  const handleRecolherTudo = () => gravarEscolha(definirTodosCardsNaSemana(cards, false))
 
   const totalCards = cards.length
   const totalAbertos = cards.filter((card) => isAberto(card.serieId, card.data)).length

@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
 import { AcoesDasSecoes, SecaoRecolhivel } from '@/components/secao-recolhivel'
 import type { TipoAnexo } from '@/db/types'
@@ -34,28 +35,34 @@ export function ListaDeNotas({ blocos, anexosPorNota, escopo, isFiltrando }: Lis
         onRecolherTudo={() => secoes.handleRecolherTudo(ids)}
       />
       {blocos.map((bloco) => (
-        <SecaoRecolhivel
-          key={bloco.id}
-          titulo={bloco.titulo}
-          cor={isComBolinha ? (bloco.cor ? corNaTela(bloco.cor) : null) : undefined}
-          icone={bloco.icone && <IconeDaEntidade icone={bloco.icone} tamanho="lg" />}
-          contagem={bloco.notas.length}
-          isAberta={secoes.isAberta(bloco.id)}
-          onAlternar={() => secoes.handleAlternar(bloco.id)}
-        >
-          {/* Colunas pela largura, sem número fixo (como os cartões de Procedimentos). */}
-          <ul className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
-            {bloco.notas.map((item) => (
-              <li key={item.nota.id} className="min-w-0">
-                <CartaoNota
-                  item={item}
-                  cor={item.dono.cor ? corDeTraco(item.dono.cor) : 'var(--grafite)'}
-                  tiposDeAnexo={anexosPorNota.get(item.nota.id)}
-                />
-              </li>
-            ))}
-          </ul>
-        </SecaoRecolhivel>
+        <Fragment key={bloco.id}>
+          {bloco.separador && (
+            <h2 className="-mb-2 border-b border-pauta pb-1 text-sm font-semibold text-grafite">
+              {bloco.separador}
+            </h2>
+          )}
+          <SecaoRecolhivel
+            titulo={bloco.titulo}
+            cor={isComBolinha ? (bloco.cor ? corNaTela(bloco.cor) : null) : undefined}
+            icone={bloco.icone && <IconeDaEntidade icone={bloco.icone} tamanho="lg" />}
+            contagem={bloco.notas.length}
+            isAberta={secoes.isAberta(bloco.id)}
+            onAlternar={() => secoes.handleAlternar(bloco.id)}
+          >
+            {/* Colunas pela largura, sem número fixo (como os cartões de Procedimentos). */}
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
+              {bloco.notas.map((item) => (
+                <li key={item.nota.id} className="min-w-0">
+                  <CartaoNota
+                    item={item}
+                    cor={item.dono.cor ? corDeTraco(item.dono.cor) : 'var(--grafite)'}
+                    tiposDeAnexo={anexosPorNota.get(item.nota.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </SecaoRecolhivel>
+        </Fragment>
       ))}
     </div>
   )

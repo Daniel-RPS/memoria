@@ -5,6 +5,7 @@ import { PainelAnexos } from '@/components/anexos/painel-anexos'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
 import { ComBandeira } from '@/components/indicador-prioridade'
 import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
+import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, Subtask, Task } from '@/db/types'
@@ -38,6 +39,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const [isSubtarefasAbertas, setIsSubtarefasAbertas] = useState(false)
   const [isFocandoNovaSubtarefa, setIsFocandoNovaSubtarefa] = useState(false)
   const [isAnexosAbertos, setIsAnexosAbertos] = useState(false)
+  const [isHorarioAberto, setIsHorarioAberto] = useState(false)
   const { quantidadeAnexos } = useExtrasDaTarefa(tarefa.id)
   const isConcluida = tarefa.status === 'concluida'
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
@@ -126,6 +128,15 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
           </ComBandeira>
           {isEmAndamento && !isEditando && <IndicadorAndamento desde={tarefa.emAndamentoDesde} />}
           {!isEditando && (
+            <HorarioDaTarefa
+              alvo={{ tipo: 'tarefa', id: tarefa.id }}
+              horario={tarefa.horario}
+              titulo={tarefa.titulo}
+              isAberto={isHorarioAberto}
+              onMudarAberto={setIsHorarioAberto}
+            />
+          )}
+          {!isEditando && (
             <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />
           )}
           {dias !== null && !isEditando && (
@@ -173,6 +184,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
             onRenomear={() => setIsEditando(true)}
             onAdicionarSubtarefa={handleAdicionarSubtarefa}
             onAbrirAnexos={handleAbrirAnexos}
+            onDefinirHorario={() => setIsHorarioAberto(true)}
           />
         )}
       </div>

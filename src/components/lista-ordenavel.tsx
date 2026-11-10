@@ -42,7 +42,7 @@ interface ListaOrdenavelProps<T extends ItemComTitulo> {
 /** Distância mínima do ponteiro antes de começar a arrastar, para não roubar cliques. */
 const DISTANCIA_PARA_ARRASTAR = 4
 
-const instrucoesLeitorDeTela = {
+export const instrucoesLeitorDeTela = {
   draggable:
     'Para mover, pressione espaço. Use as setas para cima e para baixo e espaço de novo para soltar. Esc cancela.',
 }

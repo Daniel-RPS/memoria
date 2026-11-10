@@ -22,8 +22,8 @@ import {
 import { ErroDeValidacao } from '@/lib/erros'
 
 /**
- * Toast discreto exibido quando há uma sessão em andamento há 4h ou mais (ou que virou a
- * meia-noite). Oferece "Manter" (continua rodando sem incomodar) e "Ajustar…" (abre um campo
+ * Toast discreto exibido quando há uma sessão em andamento há 4h ou mais dentro de hoje (a de
+ * um dia anterior é fechada sozinha pela virada do dia). Oferece "Manter" (continua rodando sem incomodar) e "Ajustar…" (abre um campo
  * para corrigir o horário de fim e encerrar a sessão).
  */
 export function AvisoSessaoLonga() {

@@ -27,6 +27,7 @@ const TIPOS: { valor: FiltroDeTipo; rotulo: string }[] = [
   { valor: 'tarefa', rotulo: 'Tarefas' },
   { valor: 'grupo', rotulo: 'Grupos' },
   { valor: 'item', rotulo: 'Itens' },
+  { valor: 'procedimento', rotulo: 'Procedimentos' },
   { valor: 'avulsa', rotulo: 'Avulsas' },
 ]
 

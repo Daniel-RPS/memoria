@@ -10,7 +10,7 @@ import {
 } from '@/lib/procedimentos'
 
 function procedimento(id: string, titulo: string, extras: Partial<Procedure> = {}): Procedure {
-  return { id, titulo, etapas: [], criadoEm: '', atualizadoEm: '', ...extras }
+  return { id, titulo, etapas: [], ordem: 0, criadoEm: '', atualizadoEm: '', ...extras }
 }
 
 const casa = { id: 'casa', nome: 'Casa', cor: '#2f7d4f' }

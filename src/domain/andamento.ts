@@ -108,3 +108,50 @@ export function montarResumoDeAndamento({
 
 /** Alias em inglês conforme sugestão das especificações. */
 export const buildInProgressSummary = montarResumoDeAndamento
+
+/* ============================================================================
+ * "Em andamento" só vale para HOJE (America/Sao_Paulo). Tarefa solta vale pelo próprio `data`;
+ * item de grupo, pela data do CARD. Na virada do dia, o que ficou em andamento num dia que
+ * deixou de ser hoje é parado, e a sessão do tempo fecha às 23:59:59 do dia em que começou.
+ * ========================================================================== */
+
+/** Pode MARCAR como em andamento: pendente, sem marca, e o dia (do card, no item) é hoje. */
+export function podeMarcarAndamento(
+  registro: Pick<Task | GroupItem, 'status' | 'emAndamento'>,
+  dia: DataLocal,
+  hoje: DataLocal,
+) {
+  return registro.status === 'pendente' && registro.emAndamento !== true && dia === hoje
+}
+
+/** Na seleção múltipla, "Em andamento" só aparece se TODAS forem de hoje. */
+export function todasSaoDeHoje(dias: DataLocal[], hoje: DataLocal) {
+  return dias.length > 0 && dias.every((dia) => dia === hoje)
+}
+
+/**
+ * Fim da sessão parada pela virada do dia: 23:59:59 do dia local em que ela começou, ou `agora`,
+ * o que vier primeiro.
+ */
+export function fimDaSessaoNaVirada(inicioIso: string, agoraIso: string): string {
+  const fimDoDia = new Date(inicioIso)
+  if (Number.isNaN(fimDoDia.getTime())) return agoraIso
+  fimDoDia.setHours(23, 59, 59, 0)
+  return fimDoDia.getTime() < new Date(agoraIso).getTime() ? fimDoDia.toISOString() : agoraIso
+}
+
+/** Tarefas e itens em andamento cujo dia não é mais hoje: os que a virada do dia para. */
+export function alvosForaDeHoje(
+  tarefas: Pick<Task, 'id' | 'data' | 'emAndamento'>[],
+  itens: Pick<GroupItem, 'id' | 'cardId' | 'emAndamento'>[],
+  cards: Pick<GroupCard, 'id' | 'data'>[],
+  hoje: DataLocal,
+): { tarefas: string[]; itens: string[] } {
+  const diaDoCard = new Map(cards.map((card) => [card.id, card.data]))
+  return {
+    tarefas: tarefas.filter((t) => t.emAndamento === true && t.data !== hoje).map((t) => t.id),
+    itens: itens
+      .filter((i) => i.emAndamento === true && diaDoCard.get(i.cardId) !== hoje)
+      .map((i) => i.id),
+  }
+}

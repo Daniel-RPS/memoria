@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isHorarioValido } from '@/domain/horario'
 import type { DataLocal } from '@/db/types'
 import { isDataLocalValida } from '@/lib/datas'
 import { esquemaTituloTarefa } from '@/lib/esquemas'
@@ -97,6 +98,8 @@ export const esquemaCaptura = z
     /** Grupo que já existe escolhido na Tarefa: o texto vira item dele. */
     seriesId: z.string().optional(),
     data: z.string().refine(isDataLocalValida, 'Escolha um dia.'),
+    /** Horário opcional `HH:mm` da tarefa (ou dos itens no grupo escolhido); o grupo novo não usa. */
+    horario: z.string().refine(isHorarioValido, 'Horário inválido.').optional(),
   })
   .superRefine((captura, contexto) => {
     const modo = modoDoCampo(captura.tipo, captura.seriesId)

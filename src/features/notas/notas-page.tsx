@@ -17,7 +17,7 @@ import type { EstadoNotaNova } from '@/features/notas/nota-page'
 const PARAMETRO_BUSCA = 'q'
 const PARAMETRO_TIPO = 'tipo'
 const PARAMETRO_CATEGORIA = 'categoria'
-const TIPOS_VALIDOS: FiltroDeTipo[] = ['todas', 'tarefa', 'grupo', 'item', 'avulsa']
+const TIPOS_VALIDOS: FiltroDeTipo[] = ['todas', 'tarefa', 'grupo', 'item', 'procedimento', 'avulsa']
 const CHAVE_FILTRO_DE_DIA_DAS_NOTAS = 'memoria:notas-dia'
 
 export function NotasPage() {
@@ -36,6 +36,8 @@ export function NotasPage() {
   const tipo = tipoLido && TIPOS_VALIDOS.includes(tipoLido) ? tipoLido : 'todas'
   // Categoria do endereço que não existe mais: volta para todas.
   const categoria = categorias.find((opcao) => opcao.id === parametros.get(PARAMETRO_CATEGORIA))
+  // O filtro de categoria escolhe entre as de Grupo (o seletor é desse tipo).
+  const hasCategoriasDeGrupo = categorias.some((opcao) => opcao.tipo === 'grupo')
 
   // Dia = o da última edição (o mesmo do "editada há…").
   const encontradas = buscarNotasComDono(
@@ -72,7 +74,7 @@ export function NotasPage() {
     <>
       <CabecalhoPagina
         titulo="Notas"
-        descricao="Texto livre com fotos, desenhos, áudios e links, solto ou ligado a uma tarefa, grupo ou item. Salva sozinha enquanto você escreve."
+        descricao="Texto livre com fotos, desenhos, áudios e links, solto ou ligado a uma tarefa, grupo, item ou procedimento. Salva sozinha enquanto você escreve."
         acao={
           <div className="flex flex-wrap gap-2">
             <BotaoImportar conteudoInicial="nota" />
@@ -95,7 +97,7 @@ export function NotasPage() {
               type="search"
               value={termo}
               onChange={(evento) => mudarParametro(PARAMETRO_BUSCA, evento.target.value)}
-              placeholder="Buscar no título, no texto e em tarefas, grupos e categorias"
+              placeholder="Buscar no título, no texto e em tarefas, grupos, procedimentos e categorias"
               className="h-10 bg-papel pl-9"
             />
           </label>
@@ -105,7 +107,7 @@ export function NotasPage() {
             tipo={tipo}
             onTipo={(novo) => mudarParametro(PARAMETRO_TIPO, novo === 'todas' ? undefined : novo)}
             categoria={categoria}
-            hasCategorias={categorias.length > 0}
+            hasCategorias={hasCategoriasDeGrupo}
             onCategoria={(id) => mudarParametro(PARAMETRO_CATEGORIA, id)}
             filtroDeDia={filtroDeDia}
             onFiltroDeDia={handleFiltroDeDia}

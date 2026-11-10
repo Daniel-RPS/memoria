@@ -73,10 +73,10 @@ describe('Grupos nas visões de semana, mês e ano', () => {
 
     cleanup()
 
-    // 5. Nova visita / recarregamento: volta à regra inicial (hoje aberto, outro dia recolhido).
+    // 5. Nova visita / recarregamento: a Semana volta como foi deixada (os dois abertos).
     renderizarApp(`/semana/${inicioDaSemana(HOJE)}`)
-    expect(await screen.findByRole('button', { name: 'Recolher Casa' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Expandir Casa' })).toBeInTheDocument()
+    expect(await screen.findAllByRole('button', { name: 'Recolher Casa' })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Expandir Casa' })).toBeNull()
   })
 
   it('mês: itens pendentes e feitos contam; transferidos não', async () => {

@@ -4,9 +4,17 @@ import { db, MemoriaDatabase } from '@/db/database'
 import {
   criarProcedimento,
   excluirProcedimento,
+  moverProcedimento,
   obterProcedimento,
   salvarProcedimento,
 } from '@/db/repositories/procedure-repository'
+import {
+  carregarDadosDosVinculos,
+  contarNotasDe,
+  criarNota,
+  listarNotas,
+} from '@/db/repositories/note-repository'
+import { donoDaNota, indexarVinculos, vinculoDoProcedimento } from '@/lib/notas'
 
 describe('procedure-repository', () => {
   beforeEach(async () => {
@@ -156,6 +164,8 @@ describe('migração para o banco v7', () => {
         { id: 'sp1', texto: 'Usar 4096 bits', ordem: 1 },
         { id: 'p2', texto: 'Copiar para o servidor', ordem: 2 },
       ],
+      // v14: preenchida pela ordem em que o cartão aparecia.
+      ordem: 1,
       ...base,
     })
     expect(novo.tables.map((tabela) => tabela.name)).not.toContain('procedureVersions')
@@ -167,5 +177,65 @@ describe('migração para o banco v7', () => {
     expect((await novo.notes.toArray()).map((nota) => nota.id)).toEqual(['n2'])
     novo.close()
     await Dexie.delete(nome)
+  })
+})
+
+describe('ordem manual e notas de procedimento', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((tabela) => tabela.clear()))
+  })
+
+  const dados = (titulo: string, categoryId = '') => ({ titulo, categoryId, etapas: [] })
+
+  it('novo entra no fim da categoria; trocar de categoria leva para o fim da nova', async () => {
+    const a = await criarProcedimento(dados('A', 'casa'))
+    const b = await criarProcedimento(dados('B', 'casa'))
+    const x = await criarProcedimento(dados('X', 'trabalho'))
+    expect(b.ordem).toBeGreaterThan(a.ordem)
+
+    await salvarProcedimento(a.id, dados('A', 'trabalho'))
+    const movido = await obterProcedimento(a.id)
+    expect(movido!.ordem).toBeGreaterThan(x.ordem)
+
+    // Salvar sem trocar a categoria não muda a posição.
+    await salvarProcedimento(a.id, dados('A renomeado', 'trabalho'))
+    expect((await obterProcedimento(a.id))!.ordem).toBe(movido!.ordem)
+  })
+
+  it('subir/descer troca de lugar só dentro da categoria e não muda a data de edição', async () => {
+    const a = await criarProcedimento(dados('A', 'casa'))
+    const b = await criarProcedimento(dados('B', 'casa'))
+    await moverProcedimento(b.id, 'cima')
+    const [aDepois, bDepois] = await Promise.all([obterProcedimento(a.id), obterProcedimento(b.id)])
+    expect(bDepois!.ordem).toBeLessThan(aDepois!.ordem)
+    expect(bDepois!.atualizadoEm).toBe(b.atualizadoEm)
+    // Já é o primeiro: não sobe mais.
+    await moverProcedimento(b.id, 'cima')
+    expect((await obterProcedimento(b.id))!.ordem).toBe(bDepois!.ordem)
+  })
+
+  it('notas ligadas ao procedimento; excluir o procedimento deixa as notas avulsas', async () => {
+    const procedimento = await criarProcedimento(dados('Recuperação de senha'))
+    const vinculo = vinculoDoProcedimento(procedimento)
+    await criarNota({ conteudo: 'primeira', vinculo })
+    await criarNota({ conteudo: 'segunda', vinculo })
+    expect(await contarNotasDe(vinculo)).toBe(2)
+
+    await excluirProcedimento(procedimento.id)
+    expect(await contarNotasDe(vinculo)).toBe(0)
+    const notas = await listarNotas()
+    expect(notas.map((nota) => nota.conteudo).sort()).toEqual(['primeira', 'segunda'])
+    expect(notas.every((nota) => nota.vinculo === undefined)).toBe(true)
+  })
+
+  it('o dono da nota mostra "Categoria › Procedimento"', async () => {
+    const procedimento = await criarProcedimento(dados('Recuperação de senha'))
+    const nota = await criarNota({ vinculo: vinculoDoProcedimento(procedimento) })
+    const dadosDosVinculos = await carregarDadosDosVinculos([nota])
+    const dono = donoDaNota(nota.vinculo, indexarVinculos(dadosDosVinculos, '2026-11-10'))
+    expect(dono.tipo).toBe('procedimento')
+    expect(dono.caminho).toEqual([
+      { tipo: 'procedimento', texto: 'Recuperação de senha', procedimentoId: procedimento.id },
+    ])
   })
 })

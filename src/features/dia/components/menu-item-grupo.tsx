@@ -3,6 +3,7 @@ import {
   Archive,
   CalendarArrowUp,
   CalendarDays,
+  Clock,
   Flag,
   FolderOutput,
   ListPlus,
@@ -11,6 +12,7 @@ import {
   Play,
   Square,
   Trash2,
+  X,
 } from 'lucide-react'
 import { cn } from 'cn'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
@@ -38,7 +40,9 @@ import type { DataLocal, GroupItem } from '@/db/types'
 import { contarNotasQueFicamAvulsas } from '@/db/repositories/note-repository'
 import { useAndamento } from '@/hooks/use-andamento'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
+import { useHorario } from '@/hooks/use-horario'
 import { usePrioridade } from '@/hooks/use-prioridade'
+import { podeMarcarAndamento } from '@/domain/andamento'
 import { avisoNotasAvulsas, vinculoDoItem } from '@/lib/notas'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 
@@ -50,6 +54,8 @@ interface MenuItemGrupoProps {
   onRenomear: () => void
   /** Abre as subetapas do item com a linha nova focada (ausente = o menu não oferece). */
   onAdicionarSubetapa?: () => void
+  /** Abre o popover do horário na linha (ausente = o menu não oferece). */
+  onDefinirHorario?: () => void
   /** Botão ⋯ menor, para a Semana (linhas mais baixas). */
   isCompacto?: boolean
 }
@@ -64,12 +70,14 @@ export function MenuItemGrupo({
   hoje,
   onRenomear,
   onAdicionarSubetapa,
+  onDefinirHorario,
   isCompacto = false,
 }: MenuItemGrupoProps) {
   const { tirarDoGrupo, arquivarItem, excluirItem } = useAcoesGrupo()
   const { mover, adiar } = useMoverTarefas()
   const { marcarEmAndamento, pararAndamento } = useAndamento()
   const { marcarPrioridade, tirarPrioridade } = usePrioridade()
+  const { removerHorario } = useHorario()
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
   /** Notas que ficariam avulsas: só com elas o excluir pede confirmação. */
   const [notasAoExcluir, setNotasAoExcluir] = useState(0)
@@ -117,9 +125,11 @@ export function MenuItemGrupo({
                   <Square /> Parar andamento
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem onSelect={() => void marcarEmAndamento({ itens: [item.id] })}>
-                  <Play /> Marcar como em andamento
-                </DropdownMenuItem>
+                podeMarcarAndamento(item, data, hoje) && (
+                  <DropdownMenuItem onSelect={() => void marcarEmAndamento({ itens: [item.id] })}>
+                    <Play /> Marcar como em andamento
+                  </DropdownMenuItem>
+                )
               )}
               {item.prioridade ? (
                 <DropdownMenuItem onSelect={() => void tirarPrioridade({ itens: [item.id] })}>
@@ -142,6 +152,23 @@ export function MenuItemGrupo({
           )}
           {!isTransferido && (
             <>
+              {onDefinirHorario && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    isAbrindoCampoRef.current = true
+                    onDefinirHorario()
+                  }}
+                >
+                  <Clock /> {item.horario ? 'Alterar horário…' : 'Definir horário…'}
+                </DropdownMenuItem>
+              )}
+              {item.horario && (
+                <DropdownMenuItem
+                  onSelect={() => void removerHorario({ tipo: 'item', id: item.id })}
+                >
+                  <X /> Remover horário
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onSelect={() => {
                   isAbrindoCampoRef.current = true

@@ -5,6 +5,7 @@ import { cn } from 'cn'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
 import { ComBandeira } from '@/components/indicador-prioridade'
 import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
+import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -41,6 +42,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
   const [isEditando, setIsEditando] = useState(false)
   const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
   const [isFocandoNovaSubetapa, setIsFocandoNovaSubetapa] = useState(false)
+  const [isHorarioAberto, setIsHorarioAberto] = useState(false)
   const subetapas = useSubetapasDe(item.id)
   const progresso = progressoSubtarefas(subetapas)
   const idPainel = `subetapas-${item.id}`
@@ -117,6 +119,15 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
             )}
           </ComBandeira>
           {isEmAndamento && !isEditando && <IndicadorAndamento desde={item.emAndamentoDesde} />}
+          {!isEditando && !isTransferido && (
+            <HorarioDaTarefa
+              alvo={{ tipo: 'item', id: item.id }}
+              horario={item.horario}
+              titulo={item.titulo}
+              isAberto={isHorarioAberto}
+              onMudarAberto={setIsHorarioAberto}
+            />
+          )}
           {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
           {isAtrasado && !isEditando && (
             <span className={SELO_DE_ATRASO}>pendente desde {diaCurto(item.dataOriginal)}</span>
@@ -149,6 +160,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
             hoje={hoje}
             onRenomear={() => setIsEditando(true)}
             onAdicionarSubetapa={handleAdicionarSubetapa}
+            onDefinirHorario={() => setIsHorarioAberto(true)}
           />
         )}
       </div>

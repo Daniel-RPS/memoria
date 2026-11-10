@@ -6,6 +6,7 @@ import type {
   GroupSeries,
   Icone,
   Note,
+  Procedure,
   Task,
   TipoVinculo,
   Vinculo,
@@ -17,7 +18,8 @@ import { diaLocalDoMomento } from '@/lib/filtro-de-data'
 import { normalizar } from '@/lib/procedimentos'
 
 /**
- * Regras das notas ligadas a tarefa solta, grupo (série) ou item (cadeia de cópias), sem banco:
+ * Regras das notas ligadas a tarefa solta, grupo (série), item (cadeia de cópias) ou
+ * procedimento, sem banco:
  * quem é o dono de cada nota, o caminho "Categoria › Grupo › Item", os blocos da aba Notas,
  * filtros e busca. O repositório só carrega os registros e grava.
  */
@@ -54,6 +56,11 @@ export function mesmoVinculo(a: Vinculo | undefined, b: Vinculo | undefined) {
   return a?.tipo === b?.tipo && a?.id === b?.id
 }
 
+/** Vínculo das notas de um procedimento (o procedimento inteiro). */
+export function vinculoDoProcedimento(procedimento: Pick<Procedure, 'id'>): Vinculo {
+  return { tipo: 'procedimento', id: procedimento.id }
+}
+
 /** Vínculo das notas de um item: a cadeia toda, não só a cópia daquele dia. */
 export function vinculoDoItem(item: Pick<GroupItem, 'cadeiaId'>): Vinculo {
   return { tipo: 'item', id: item.cadeiaId }
@@ -65,9 +72,14 @@ export function textoQuantasNotas(quantidade: number) {
 }
 
 /** Aviso da confirmação de excluir quando notas vão ficar avulsas (vazio se nenhuma). */
-export function avisoNotasAvulsas(quantidade: number, de: 'tarefa' | 'grupo' | 'item') {
+export function avisoNotasAvulsas(quantidade: number, de: TipoVinculo) {
   if (quantidade === 0) return ''
-  const sujeito = { tarefa: 'Esta tarefa', grupo: 'Este grupo', item: 'Este item' }[de]
+  const sujeito = {
+    tarefa: 'Esta tarefa',
+    grupo: 'Este grupo',
+    item: 'Este item',
+    procedimento: 'Este procedimento',
+  }[de]
   return quantidade === 1
     ? `${sujeito} tem 1 nota. Ela ficará como nota avulsa.`
     : `${sujeito} tem ${quantidade} notas. Elas ficarão como notas avulsas.`
@@ -104,15 +116,21 @@ export interface DadosDosVinculos {
   cards: GroupCard[]
   /** Itens das cadeias ligadas. */
   itens: GroupItem[]
+  /** Procedimentos ligados (ou todos, em "Vincular a…"); ausente = nenhum. */
+  procedimentos?: Procedure[]
   /** Na ordem do usuário. */
   categorias: Category[]
 }
 
-/** Um trecho do caminho "Categoria › Grupo › Item"; `data` = dia que o link abre. */
+/**
+ * Um trecho do caminho "Categoria › Grupo › Item"; `data` = dia que o link abre;
+ * `procedimentoId` = procedimento que o link abre.
+ */
 export interface TrechoDoCaminho {
   tipo: 'categoria' | TipoVinculo
   texto: string
   data?: DataLocal
+  procedimentoId?: string
 }
 
 export interface DonoDaNota {
@@ -159,6 +177,9 @@ export function indexarVinculos(dados: DadosDosVinculos, hoje: DataLocal) {
   const series = new Map(dados.series.map((serie) => [serie.id, serie]))
   const cards = new Map(dados.cards.map((card) => [card.id, card]))
   const categorias = new Map(dados.categorias.map((categoria) => [categoria.id, categoria]))
+  const procedimentos = new Map(
+    (dados.procedimentos ?? []).map((procedimento) => [procedimento.id, procedimento]),
+  )
   const cadeias = new Map<string, GroupItem[]>()
   for (const item of dados.itens) {
     cadeias.set(item.cadeiaId, [...(cadeias.get(item.cadeiaId) ?? []), item])
@@ -168,7 +189,7 @@ export function indexarVinculos(dados: DadosDosVinculos, hoje: DataLocal) {
     if (card.arquivado) continue
     diasDaSerie.set(card.seriesId, [...(diasDaSerie.get(card.seriesId) ?? []), card.data])
   }
-  return { tarefas, series, cards, categorias, cadeias, diasDaSerie, hoje }
+  return { tarefas, series, cards, categorias, procedimentos, cadeias, diasDaSerie, hoje }
 }
 
 export type IndiceDosVinculos = ReturnType<typeof indexarVinculos>
@@ -204,6 +225,20 @@ export function donoDaNota(vinculo: Vinculo | undefined, indice: IndiceDosVincul
       caminho: [
         ...trechoCategoria(cor.categoria),
         { tipo: 'tarefa', texto: tarefa.titulo, data: tarefa.data },
+      ],
+    }
+  }
+
+  if (vinculo.tipo === 'procedimento') {
+    const procedimento = indice.procedimentos.get(vinculo.id)
+    if (!procedimento) return AVULSA
+    const cor = categoriaECor(indice, procedimento)
+    return {
+      tipo: 'procedimento',
+      ...cor,
+      caminho: [
+        ...trechoCategoria(cor.categoria),
+        { tipo: 'procedimento', texto: procedimento.titulo, procedimentoId: procedimento.id },
       ],
     }
   }
@@ -268,16 +303,18 @@ export interface BlocoDeNotas {
   cor?: string
   /** Ícone da categoria do bloco ("Por categoria") ou do grupo ("Por grupo"). */
   icone?: Icone
+  /** Título do separador antes deste bloco ("Grupos" / "Procedimentos", em "Por categoria"). */
+  separador?: string
   notas: NotaComDono[]
 }
 
 const maisRecentePrimeiro = (a: NotaComDono, b: NotaComDono) =>
   b.nota.atualizadoEm.localeCompare(a.nota.atualizadoEm)
 
-/** Nome do alvo direto (grupo ou tarefa) para ordenar dentro do bloco. */
+/** Nome do alvo direto (grupo, tarefa ou procedimento) para ordenar dentro do bloco. */
 const nomeDoAlvo = (item: NotaComDono) =>
-  item.dono.caminho.find((trecho) => trecho.tipo === 'grupo' || trecho.tipo === 'tarefa')?.texto ??
-  ''
+  item.dono.caminho.find((trecho) => trecho.tipo !== 'categoria' && trecho.tipo !== 'item')
+    ?.texto ?? ''
 
 const porAlvoERecencia = (a: NotaComDono, b: NotaComDono) =>
   nomeDoAlvo(a).localeCompare(nomeDoAlvo(b), 'pt-BR', { sensitivity: 'base' }) ||
@@ -285,17 +322,19 @@ const porAlvoERecencia = (a: NotaComDono, b: NotaComDono) =>
 
 /**
  * Blocos da aba Notas:
- * - `categoria`: um por categoria (ordem do usuário; vem só quem tem nota), dentro dele por
- *   grupo/tarefa; depois "Sem categoria" e "Notas avulsas".
- * - `grupo`: um por grupo (notas do grupo e dos itens), por nome; depois "Tarefas soltas" e
- *   "Notas avulsas".
+ * - `categoria`: um por categoria de Grupo (ordem do usuário; vem só quem tem nota), dentro dele
+ *   por grupo/tarefa, e "Sem categoria"; depois o mesmo com as categorias de Procedimento
+ *   (com os separadores "Grupos" / "Procedimentos") e "Notas avulsas".
+ * - `grupo`: um por grupo (notas do grupo e dos itens), por nome; depois "Tarefas soltas",
+ *   "Notas avulsas" e "Procedimentos".
  * - `recentes`: um bloco por dia da última edição (`agruparPorDia`).
  * Blocos vazios não aparecem.
  */
 export function agruparNotas(
   notas: NotaComDono[],
   modo: ModoDasNotas,
-  categorias: Pick<Category, 'id' | 'nome' | 'cor' | 'icone'>[],
+  /** Na ordem do usuário; as de Procedimento ganham seção própria em "Por categoria". */
+  categorias: (Pick<Category, 'id' | 'nome' | 'cor' | 'icone'> & Partial<Pick<Category, 'tipo'>>)[],
   hoje: DataLocal,
 ): BlocoDeNotas[] {
   const avulsas = notas.filter((item) => item.dono.tipo === 'avulsa').sort(maisRecentePrimeiro)
@@ -305,25 +344,48 @@ export function agruparNotas(
   if (modo === 'recentes') return agruparPorDia(notas, hoje)
 
   if (modo === 'categoria') {
-    const blocos: BlocoDeNotas[] = categorias.map((categoria) => ({
-      id: `categoria:${categoria.id}`,
-      titulo: categoria.nome,
-      cor: categoria.cor,
-      icone: categoria.icone,
-      notas: ligadas
-        .filter((item) => item.dono.categoria?.id === categoria.id)
-        .sort(porAlvoERecencia),
-    }))
-    const idsCategorias = new Set(categorias.map((categoria) => categoria.id))
-    blocos.push({
-      id: 'sem-categoria',
-      titulo: 'Sem categoria',
-      notas: ligadas
-        .filter((item) => !item.dono.categoria || !idsCategorias.has(item.dono.categoria.id))
-        .sort(porAlvoERecencia),
-    })
-    blocos.push(blocoAvulsas)
-    return blocos.filter((bloco) => bloco.notas.length > 0)
+    const isDeProcedimento = (item: NotaComDono) => item.dono.tipo === 'procedimento'
+    const blocosDoTipo = (
+      tipo: Category['tipo'],
+      notasDoTipo: NotaComDono[],
+      idSemCategoria: string,
+    ): BlocoDeNotas[] => {
+      const doTipo = categorias.filter((categoria) => (categoria.tipo ?? 'grupo') === tipo)
+      const idsCategorias = new Set(doTipo.map((categoria) => categoria.id))
+      const blocos: BlocoDeNotas[] = doTipo.map((categoria) => ({
+        id: `categoria:${categoria.id}`,
+        titulo: categoria.nome,
+        cor: categoria.cor,
+        icone: categoria.icone,
+        notas: notasDoTipo
+          .filter((item) => item.dono.categoria?.id === categoria.id)
+          .sort(porAlvoERecencia),
+      }))
+      blocos.push({
+        id: idSemCategoria,
+        titulo: 'Sem categoria',
+        notas: notasDoTipo
+          .filter((item) => !item.dono.categoria || !idsCategorias.has(item.dono.categoria.id))
+          .sort(porAlvoERecencia),
+      })
+      return blocos.filter((bloco) => bloco.notas.length > 0)
+    }
+    const deGrupos = blocosDoTipo(
+      'grupo',
+      ligadas.filter((item) => !isDeProcedimento(item)),
+      'sem-categoria',
+    )
+    const deProcedimentos = blocosDoTipo(
+      'procedimento',
+      ligadas.filter(isDeProcedimento),
+      'sem-categoria-procedimentos',
+    )
+    // Separadores só quando há notas de procedimento: sem elas, a aba fica como era.
+    if (deProcedimentos.length > 0) {
+      if (deGrupos.length > 0) deGrupos[0] = { ...deGrupos[0], separador: 'Grupos' }
+      deProcedimentos[0] = { ...deProcedimentos[0], separador: 'Procedimentos' }
+    }
+    return [...deGrupos, ...deProcedimentos, blocoAvulsas].filter((bloco) => bloco.notas.length > 0)
   }
 
   const porSerie = new Map<string, BlocoDeNotas>()
@@ -353,6 +415,11 @@ export function agruparNotas(
       notas: ligadas.filter((item) => item.dono.tipo === 'tarefa').sort(porAlvoERecencia),
     },
     blocoAvulsas,
+    {
+      id: 'procedimentos',
+      titulo: 'Procedimentos',
+      notas: ligadas.filter((item) => item.dono.tipo === 'procedimento').sort(porAlvoERecencia),
+    },
   ].filter((bloco) => bloco.notas.length > 0)
 }
 
@@ -440,8 +507,9 @@ export interface AlvoParaVincular {
 export const LIMITE_DE_ALVOS = 30
 
 /**
- * Tarefas soltas (não arquivadas), grupos e itens (um por cadeia, o atual) que casam com o
- * termo; os mais perto de hoje primeiro. Sem termo, os mais perto de hoje.
+ * Tarefas soltas (não arquivadas), grupos, itens (um por cadeia, o atual) e procedimentos (não
+ * arquivados) que casam com o termo; os mais perto de hoje primeiro (procedimento não tem dia:
+ * vem depois). Sem termo, os mais perto de hoje.
  */
 export function alvosParaVincular(dados: DadosDosVinculos, termo: string, hoje: DataLocal) {
   const indice = indexarVinculos(dados, hoje)
@@ -475,6 +543,17 @@ export function alvosParaVincular(dados: DadosDosVinculos, termo: string, hoje: 
       titulo: item.titulo,
       contexto: serie.titulo,
       data: card.data,
+    })
+  }
+  for (const procedimento of dados.procedimentos ?? []) {
+    if (procedimento.arquivado) continue
+    const categoria = procedimento.categoryId
+      ? indice.categorias.get(procedimento.categoryId)
+      : undefined
+    alvos.push({
+      vinculo: { tipo: 'procedimento', id: procedimento.id },
+      titulo: procedimento.titulo,
+      contexto: categoria?.nome ?? '',
     })
   }
   const palavras = palavrasDe(termo)

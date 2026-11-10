@@ -216,3 +216,33 @@ describe('captura rápida (repositório)', () => {
     expect(await db.groupSeries.count()).toBe(1)
   })
 })
+
+describe('captura rápida com horário', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((tabela) => tabela.clear()))
+  })
+
+  it('grava o horário na tarefa e nos itens do grupo escolhido; sem horário, nem o campo', async () => {
+    const tarefa = await capturar({
+      tipo: 'tarefa',
+      titulo: 'Fazer comida',
+      data: HOJE,
+      horario: '12:00',
+    })
+    expect(await db.tasks.get(idDe(tarefa))).toMatchObject({ horario: '12:00' })
+
+    const casa = await criarGrupo({ titulo: 'Casa', data: HOJE })
+    const itens = await capturar({
+      tipo: 'em-grupo',
+      seriesId: casa.seriesId,
+      data: HOJE,
+      itens: ['Varrer', 'Lavar'],
+      horario: '09:30',
+    })
+    const gravados = await db.groupItems.bulkGet(itens.tipo === 'tarefa' ? [] : itens.idsItens)
+    expect(gravados.map((item) => item?.horario)).toEqual(['09:30', '09:30'])
+
+    const semHorario = await capturar({ tipo: 'tarefa', titulo: 'Ler', data: HOJE })
+    expect('horario' in (await db.tasks.get(idDe(semHorario)))!).toBe(false)
+  })
+})

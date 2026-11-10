@@ -1,3 +1,4 @@
+import { horarioDe } from '@/domain/horario'
 import type { DataLocal, GroupCard, GroupItem, GroupSeries, Subtask } from '@/db/types'
 import { prioridadeDe } from '@/domain/prioridade'
 import { copiarSubetapas } from '@/domain/subetapas'
@@ -213,6 +214,7 @@ export function planejarLevarItens(
       cadeiaId: item.cadeiaId,
       dataOriginal: item.dataOriginal,
       ...prioridadeDe(item),
+      ...horarioDe(item),
       criadoEm: momento,
       atualizadoEm: momento,
     }

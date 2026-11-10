@@ -367,7 +367,7 @@ describe('MemoriaDatabase', () => {
     antigo.close()
 
     await banco.open()
-    expect(banco.verno).toBe(13)
+    expect(banco.verno).toBe(15)
     expect(banco.tables.map((tabela) => tabela.name)).not.toContain('subcategories')
     const tarefas = await banco.tasks.toCollection().sortBy('ordem')
     expect(tarefas.map(({ id, categoryId }) => ({ id, categoryId }))).toEqual([

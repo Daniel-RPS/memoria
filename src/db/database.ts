@@ -21,6 +21,9 @@ import { preencherCadeias } from '@/lib/grupos'
 import { converterGruposAntigos, type CardAntigo, type TarefaAntiga } from '@/lib/migracao-grupos'
 import { converterProcedimentoAntigo, type ProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 import { converterNotaAntiga, type NotaAntiga } from '@/lib/notas'
+import { preencherOrdemDosProcedimentos } from '@/domain/procedimentos'
+import { alvosForaDeHoje, fimDaSessaoNaVirada } from '@/domain/andamento'
+import { hoje } from '@/lib/datas'
 
 /**
  * Banco local (IndexedDB). Componentes NUNCA usam esta instância direto:
@@ -267,6 +270,76 @@ export class MemoriaDatabase extends Dexie {
               if (religado.categoryId) item.categoryId = religado.categoryId
             })
         }
+      })
+    // v14: ordem manual dos procedimentos, preenchida na sequência em que os cartões já
+    // apareciam (pelo título). Sem índice novo: as notas de procedimento usam o índice do vínculo.
+    this.version(14)
+      .stores({})
+      .upgrade(async (transacao) => {
+        const tabela = transacao.table('procedures')
+        const procedimentos = (await tabela.toArray()) as (Omit<Procedure, 'ordem'> & {
+          ordem?: number
+        })[]
+        const preenchidos = preencherOrdemDosProcedimentos(procedimentos)
+        await Promise.all(
+          preenchidos.map((procedimento) =>
+            tabela.update(procedimento.id, { ordem: procedimento.ordem }),
+          ),
+        )
+      })
+    // v15: horário opcional (`horario`, "HH:mm") em tarefas e itens, sem índice nem dado a
+    // preencher. E "em andamento" passa a valer só para hoje: o que está em andamento num dia que
+    // não é hoje é desligado, e a sessão aberta fecha no que vier primeiro entre agora e 23:59:59
+    // do dia em que começou.
+    this.version(15)
+      .stores({})
+      .upgrade(async (transacao) => {
+        const momento = new Date().toISOString()
+        const diaDeHoje = hoje()
+        const [tarefas, itens, cards] = await Promise.all([
+          transacao
+            .table('tasks')
+            .filter((tarefa: Task) => tarefa.emAndamento === true)
+            .toArray() as Promise<Task[]>,
+          transacao
+            .table('groupItems')
+            .filter((item: GroupItem) => item.emAndamento === true)
+            .toArray() as Promise<GroupItem[]>,
+          transacao.table('groupCards').toArray() as Promise<GroupCard[]>,
+        ])
+        const alvos = alvosForaDeHoje(tarefas, itens, cards, diaDeHoje)
+        if (alvos.tarefas.length === 0 && alvos.itens.length === 0) return
+        const idsTarefas = new Set(alvos.tarefas)
+        const idsItens = new Set(alvos.itens)
+        const cadeias = new Set(
+          itens.filter((item) => idsItens.has(item.id)).map((item) => item.cadeiaId),
+        )
+        const desligar = (registro: Task | GroupItem) => {
+          delete registro.emAndamento
+          delete registro.emAndamentoDesde
+          registro.atualizadoEm = momento
+        }
+        await transacao
+          .table('tasks')
+          .filter((tarefa: Task) => idsTarefas.has(tarefa.id))
+          .modify(desligar)
+        await transacao
+          .table('groupItems')
+          .filter((item: GroupItem) => idsItens.has(item.id))
+          .modify(desligar)
+        await transacao
+          .table('sessions')
+          .filter(
+            (sessao: TimeSession) =>
+              sessao.fim === undefined &&
+              ((sessao.tarefaId !== undefined && idsTarefas.has(sessao.tarefaId)) ||
+                (sessao.itemId !== undefined && idsItens.has(sessao.itemId)) ||
+                (sessao.cadeiaId !== undefined && cadeias.has(sessao.cadeiaId))),
+          )
+          .modify((sessao: TimeSession) => {
+            sessao.fim = fimDaSessaoNaVirada(sessao.inicio, momento)
+            sessao.atualizadoEm = momento
+          })
       })
   }
 }

@@ -26,7 +26,7 @@ export function isCardAbertoNaSemana(
   hoje: DataLocal,
 ): boolean {
   const chave = chaveCardSemana(serieId, data)
-  return overrides[chave] ?? defaultGroupExpanded(data, hoje)
+  return resolveGroupExpanded(overrides[chave], data, hoje)
 }
 
 /**
@@ -55,4 +55,31 @@ export function definirTodosCardsNaSemana(
     novosOverrides[chaveCardSemana(card.serieId, card.data)] = aberto
   }
   return novosOverrides
+}
+
+/**
+ * Decide se um card da Semana abre: vale a escolha salva do usuário; sem escolha, a regra
+ * padrão (aberto só se é de hoje). O padrão nunca é gravado.
+ */
+export function resolveGroupExpanded(
+  estadoSalvo: boolean | undefined,
+  dataDoCard: DataLocal,
+  hoje: DataLocal,
+): boolean {
+  return estadoSalvo ?? defaultGroupExpanded(dataDoCard, hoje)
+}
+
+/** Remove os estados salvos de cards que não existem mais (devolve o mesmo objeto se nada mudou). */
+export function podarEstadosDeCards(
+  salvos: Record<string, boolean>,
+  cardsExistentes: Array<{ serieId: string; data: DataLocal }>,
+): Record<string, boolean> {
+  const existentes = new Set(
+    cardsExistentes.map((card) => chaveCardSemana(card.serieId, card.data)),
+  )
+  const chaves = Object.keys(salvos)
+  if (chaves.every((chave) => existentes.has(chave))) return salvos
+  return Object.fromEntries(
+    chaves.filter((chave) => existentes.has(chave)).map((chave) => [chave, salvos[chave]]),
+  )
 }

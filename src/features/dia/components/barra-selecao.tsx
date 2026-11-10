@@ -6,6 +6,7 @@ import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useAndamento } from '@/hooks/use-andamento'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { usePrioridade } from '@/hooks/use-prioridade'
+import { todasSaoDeHoje } from '@/domain/andamento'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 
 interface BarraSelecaoProps {
@@ -16,10 +17,22 @@ interface BarraSelecaoProps {
   /** Quais desses ids são cards de grupo e itens: são copiados, não movidos. */
   idsGrupos: string[]
   idsItens: string[]
+  /**
+   * Quais ids são de HOJE (só eles podem ser marcados em andamento). Ausente = todos se `data`
+   * é hoje, senão nenhum. A Semana passa os dos dias de hoje.
+   */
+  idsDeHoje?: string[]
 }
 
 /** Barra fixa no rodapé com as ações sobre as tarefas selecionadas. */
-export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: BarraSelecaoProps) {
+export function BarraSelecao({
+  data,
+  hoje,
+  idsPendentes,
+  idsGrupos,
+  idsItens,
+  idsDeHoje,
+}: BarraSelecaoProps) {
   const { selecionados, tipo, encerrar, selecionarTodos } = useSelecaoDaFolha()
   const { arquivarComAviso } = useAcoesDeArquivo()
   const { mover, adiar } = useMoverTarefas()
@@ -39,6 +52,14 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: 
   /** Só tarefas soltas e itens têm "em andamento"; o card inteiro não. */
   const alvosDeAndamento = { tarefas, itens: deGrupos.itens }
   const temAlvoDeAndamento = tarefas.length + deGrupos.itens.length > 0
+  // "Em andamento" só aparece se TODAS as selecionadas forem de hoje.
+  const deHoje = new Set(idsDeHoje ?? (data === hoje ? idsPendentes : []))
+  const podeMarcarEmAndamento =
+    temAlvoDeAndamento &&
+    todasSaoDeHoje(
+      [...tarefas, ...deGrupos.itens].map((id) => (deHoje.has(id) ? hoje : '')),
+      hoje,
+    )
 
   async function handleAndamento(isMarcar: boolean) {
     await (isMarcar ? marcarEmAndamento(alvosDeAndamento) : pararAndamento(alvosDeAndamento))
@@ -117,14 +138,11 @@ export function BarraSelecao({ data, hoje, idsPendentes, idsGrupos, idsItens }: 
       >
         Todas
       </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        disabled={!temAlvoDeAndamento}
-        onClick={() => void handleAndamento(true)}
-      >
-        Em andamento
-      </Button>
+      {podeMarcarEmAndamento && (
+        <Button size="sm" variant="secondary" onClick={() => void handleAndamento(true)}>
+          Em andamento
+        </Button>
+      )}
       <Button
         size="sm"
         variant="secondary"

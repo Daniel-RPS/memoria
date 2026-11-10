@@ -12,11 +12,12 @@ import { converterProcedimentoAntigo } from '@/lib/migracao-procedimentos'
 import { preencherCadeias } from '@/lib/grupos'
 import { esquemaIcone } from '@/lib/icones'
 import { converterNotaAntiga } from '@/lib/notas'
+import { preencherOrdemDosProcedimentos } from '@/domain/procedimentos'
 
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 14
+export const FORMATO_ATUAL = 16
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -41,6 +42,13 @@ const subcategoriaAntiga = z.object({ id, categoryId: id })
 // Formato 13: posição arrastada dentro do bloco do topo (prioridade/em andamento).
 const ordemNoTopo = z.object({ chave: texto, posicao: z.number() }).optional().catch(undefined)
 
+// Formato 16: horário de início `HH:mm`; backups anteriores entram sem horário. Inválido é ignorado.
+const horario = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  .optional()
+  .catch(undefined)
+
 const tarefa = z.object({
   ...base,
   titulo: texto,
@@ -61,6 +69,7 @@ const tarefa = z.object({
   prioridade: z.boolean().optional(),
   prioridadeDesde: texto.optional(),
   ordemNoTopo,
+  horario,
   // Formato 2: item de grupo era tarefa com card.
   groupInstanceId: texto.optional(),
 })
@@ -104,6 +113,7 @@ const itemDeGrupo = z.object({
   prioridade: z.boolean().optional(),
   prioridadeDesde: texto.optional(),
   ordemNoTopo,
+  horario,
 })
 
 const subtarefa = z.object({
@@ -121,6 +131,8 @@ const procedimento = z.object({
   // Formatos 5 a 13; religada à categoria-mãe ao ler.
   subcategoryId: texto.optional(),
   etapas: z.array(z.object({ id, texto, ordem: z.number() })),
+  // Formato 15; antes, preenchida ao ler pelo título (`preencherOrdemDosProcedimentos`).
+  ordem: z.number().optional(),
   icone,
   // Formato 10; backups antigos entram como não arquivados.
   arquivado: z.boolean().optional(),
@@ -154,7 +166,8 @@ const nota = z.object({
   ...base,
   titulo: texto,
   conteudo: texto,
-  vinculo: z.object({ tipo: z.enum(['tarefa', 'grupo', 'item']), id }).optional(),
+  // `procedimento` desde o formato 15.
+  vinculo: z.object({ tipo: z.enum(['tarefa', 'grupo', 'item', 'procedimento']), id }).optional(),
   dono: dono.optional(),
   arquivado: z.boolean().optional(),
   arquivadoEm: texto.optional(),
@@ -236,7 +249,7 @@ export const esquemaBackup = z.object({
       return {
         ...tabelas,
         categories: categorias,
-        procedures: procedimentos,
+        procedures: preencherOrdemDosProcedimentos(procedimentos),
         notes: notes.flatMap((nota) => {
           if (nota.dono && !isDonoAtual(nota.dono)) return []
           return [converterNotaAntiga(nota, new Set(soltas.map((tarefa) => tarefa.id)))]

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Archive, Trash2 } from 'lucide-react'
+import { Archive, StickyNote, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import {
   AlertDialog,
@@ -14,8 +14,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { excluirProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
+import { usePainelDeNotas, useQuantasNotas } from '@/hooks/contexto-painel-notas'
 import { useSalvarComAtraso } from '@/hooks/use-salvar-com-atraso'
 import type { DadosProcedimento, ValoresProcedimento } from '@/lib/esquema-procedimento'
+import { avisoNotasAvulsas, textoQuantasNotas, vinculoDoProcedimento } from '@/lib/notas'
 import { FormularioProcedimento } from '@/features/procedimentos/components/formulario-procedimento'
 
 interface EditarProcedimentoProps {
@@ -30,6 +32,9 @@ export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProced
   const navigate = useNavigate()
   const { arquivarComAviso } = useAcoesDeArquivo()
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
+  const vinculo = vinculoDoProcedimento({ id })
+  const quantasNotas = useQuantasNotas(vinculo)
+  const { abrir: abrirNotas } = usePainelDeNotas()
   const { mudar, isPendente, salvarAgora } = useSalvarComAtraso<DadosProcedimento | null>(
     null,
     async (dados) => {
@@ -56,9 +61,21 @@ export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProced
         valoresIniciais={valoresIniciais}
         onAlterar={mudar}
         situacao={
-          <p role="status" className="text-sm text-grafite">
-            {isPendente ? 'Salvando…' : 'Salvo'}
-          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-grafite tabular-nums"
+              aria-label={quantasNotas > 0 ? `Notas: ${textoQuantasNotas(quantasNotas)}` : 'Notas'}
+              onClick={() => void abrirNotas(vinculo)}
+            >
+              <StickyNote /> Notas{quantasNotas > 0 && ` ${quantasNotas}`}
+            </Button>
+            <p role="status" className="text-sm text-grafite">
+              {isPendente ? 'Salvando…' : 'Salvo'}
+            </p>
+          </div>
         }
         rodape={
           <div className="-mt-2 flex flex-wrap gap-2 border-t border-pauta pt-2">
@@ -88,6 +105,7 @@ export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProced
             <AlertDialogTitle>Excluir “{titulo}”?</AlertDialogTitle>
             <AlertDialogDescription>
               O procedimento e todas as etapas serão apagados de vez.
+              {quantasNotas > 0 && ` ${avisoNotasAvulsas(quantasNotas, 'procedimento')}`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

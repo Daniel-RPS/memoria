@@ -34,13 +34,17 @@ export function useNotas() {
       nota,
       dono: donoDaNota(nota.vinculo, indice),
     }))
-    const categorias = dados.categorias.filter((categoria) => categoria.tipo === 'grupo')
+    // Grupo primeiro, depois Procedimento (cada tipo na ordem do usuário).
+    const categorias = [
+      ...dados.categorias.filter((categoria) => categoria.tipo === 'grupo'),
+      ...dados.categorias.filter((categoria) => categoria.tipo === 'procedimento'),
+    ]
     return { notas: comDono, anexos, categorias }
   }, [hoje])
   return {
     notas: resultado?.notas ?? [],
     anexosPorNota: resultado?.anexos ?? new Map<string, Set<TipoAnexo>>(),
-    /** Categorias do tipo Grupo, na ordem do usuário (blocos "Por categoria"). */
+    /** Categorias de Grupo e depois as de Procedimento, na ordem do usuário ("Por categoria"). */
     categorias: resultado?.categorias ?? [],
     isCarregando: resultado === undefined,
   }

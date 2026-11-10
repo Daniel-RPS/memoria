@@ -3,6 +3,7 @@ import {
   Archive,
   CalendarArrowUp,
   CalendarDays,
+  Clock,
   Flag,
   FolderInput,
   ListPlus,
@@ -12,6 +13,7 @@ import {
   Play,
   Square,
   Trash2,
+  X,
 } from 'lucide-react'
 import { DialogoEscolherDia } from '@/components/dialogo-escolher-dia'
 import {
@@ -41,9 +43,11 @@ import { SubmenuCategoria } from '@/components/seletor-categoria/submenu-categor
 import type { DataLocal, Task } from '@/db/types'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useAndamento } from '@/hooks/use-andamento'
+import { useHorario } from '@/hooks/use-horario'
 import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { usePrioridade } from '@/hooks/use-prioridade'
+import { podeMarcarAndamento } from '@/domain/andamento'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { useGruposDoDia } from '@/features/dia/hooks/contexto-extras'
 
@@ -53,6 +57,8 @@ interface MenuTarefaProps {
   onRenomear: () => void
   onAdicionarSubtarefa: () => void
   onAbrirAnexos: () => void
+  /** Abre o popover do horário na linha. */
+  onDefinirHorario: () => void
 }
 
 /**
@@ -65,6 +71,7 @@ export function MenuTarefa({
   onRenomear,
   onAdicionarSubtarefa,
   onAbrirAnexos,
+  onDefinirHorario,
 }: MenuTarefaProps) {
   const { excluirTarefa, definirCategoria, colocarNoGrupo } = useAcoesTarefa()
   const { arquivarComAviso } = useAcoesDeArquivo()
@@ -72,6 +79,7 @@ export function MenuTarefa({
   const { mover, adiar } = useMoverTarefas()
   const { marcarEmAndamento, pararAndamento } = useAndamento()
   const { marcarPrioridade, tirarPrioridade } = usePrioridade()
+  const { removerHorario } = useHorario()
   const [isMenuAberto, setIsMenuAberto] = useState(false)
   const [isConfirmandoExclusao, setIsConfirmandoExclusao] = useState(false)
   const [isEscolhendoDia, setIsEscolhendoDia] = useState(false)
@@ -118,9 +126,13 @@ export function MenuTarefa({
                   <Square /> Parar andamento
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem onSelect={() => void marcarEmAndamento({ tarefas: [tarefa.id] })}>
-                  <Play /> Marcar como em andamento
-                </DropdownMenuItem>
+                podeMarcarAndamento(tarefa, tarefa.data, hoje) && (
+                  <DropdownMenuItem
+                    onSelect={() => void marcarEmAndamento({ tarefas: [tarefa.id] })}
+                  >
+                    <Play /> Marcar como em andamento
+                  </DropdownMenuItem>
+                )
               )}
               {tarefa.prioridade ? (
                 <DropdownMenuItem onSelect={() => void tirarPrioridade({ tarefas: [tarefa.id] })}>
@@ -136,6 +148,16 @@ export function MenuTarefa({
                 <CalendarArrowUp /> {isFutura ? 'Adiar um dia' : 'Adiar para amanhã'}
               </DropdownMenuItem>
             </>
+          )}
+          <DropdownMenuItem onSelect={() => abrirCampo(onDefinirHorario)}>
+            <Clock /> {tarefa.horario ? 'Alterar horário…' : 'Definir horário…'}
+          </DropdownMenuItem>
+          {tarefa.horario && (
+            <DropdownMenuItem
+              onSelect={() => void removerHorario({ tipo: 'tarefa', id: tarefa.id })}
+            >
+              <X /> Remover horário
+            </DropdownMenuItem>
           )}
           <DropdownMenuItem onSelect={() => setIsEscolhendoDia(true)}>
             <CalendarDays /> Mover para outro dia…
