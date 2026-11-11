@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { MoreHorizontal, Trash2 } from 'lucide-react'
+import { useRef } from 'react'
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -14,6 +15,7 @@ import type { Subtask } from '@/db/types'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { useAcoesSubtarefa } from '@/features/dia/hooks/use-acoes-subtarefa'
 import { AlcaArrastar } from '@/components/alca-arrastar'
+import { useDuploCliqueParaEditar } from '@/hooks/use-duplo-clique-para-editar'
 import { TituloEditavel } from '@/components/titulo-editavel'
 
 interface ItemSubtarefaProps {
@@ -27,7 +29,7 @@ interface ItemSubtarefaProps {
   isCompacto?: boolean
 }
 
-/** Subetapa: alça, caixa de seleção, título editável e menu ⋯ (Excluir). */
+/** Subetapa: alça, caixa de seleção, título editável e menu ⋯ (Renomear, Excluir). */
 export function ItemSubtarefa({
   subtarefa,
   isEditando,
@@ -53,9 +55,14 @@ export function ItemSubtarefa({
     if (titulo !== subtarefa.titulo) void renomearSubtarefa(subtarefa.id, titulo)
   }
 
+  // Renomear pelo menu: o foco não volta ao ⋯ (tiraria o campo recém-aberto da edição).
+  const isAbrindoCampoRef = useRef(false)
+  const duploClique = useDuploCliqueParaEditar(() => onMudarEdicao(true), !isEditando)
+
   return (
     <li
       ref={setNodeRef}
+      {...duploClique}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       data-sem-arrasto=""
       data-alvo-subetapa={subtarefa.id}
@@ -89,6 +96,8 @@ export function ItemSubtarefa({
       />
       <div className={cn('min-w-0 flex-1 pl-1', isCompacto ? 'py-0.5' : 'py-1.5')}>
         <TituloEditavel
+          isComLinks
+          isComLapis={!isCompacto}
           titulo={subtarefa.titulo}
           isEditando={isEditando}
           onIniciarEdicao={() => onMudarEdicao(true)}
@@ -112,7 +121,24 @@ export function ItemSubtarefa({
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" collisionPadding={8} className="w-auto min-w-40">
+        <DropdownMenuContent
+          align="end"
+          collisionPadding={8}
+          className="w-auto min-w-40"
+          onCloseAutoFocus={(evento) => {
+            if (!isAbrindoCampoRef.current) return
+            evento.preventDefault()
+            isAbrindoCampoRef.current = false
+          }}
+        >
+          <DropdownMenuItem
+            onSelect={() => {
+              isAbrindoCampoRef.current = true
+              onMudarEdicao(true)
+            }}
+          >
+            <Pencil /> Renomear
+          </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => void excluirSubtarefa(subtarefa.id)}

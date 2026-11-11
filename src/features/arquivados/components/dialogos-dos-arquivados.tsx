@@ -1,3 +1,4 @@
+import { TextoComLinks } from '@/components/texto-com-links'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,14 +31,20 @@ export function DialogoAbrir({ item, onFechar }: DialogoAbrirProps) {
         {item && (
           <>
             <DialogHeader>
-              <DialogTitle className="break-words">{item.titulo}</DialogTitle>
+              <DialogTitle className="break-words">
+                <TextoComLinks texto={item.titulo} />
+              </DialogTitle>
               <DialogDescription>
                 {NOMES_DOS_TIPOS[item.tipo].singular} · {item.detalhe} ·{' '}
                 {rotuloDoArquivamento(item.arquivadoEm)}
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[50vh] overflow-y-auto text-sm leading-6 break-words whitespace-pre-wrap">
-              {item.leitura.trim() || <span className="text-grafite">Sem conteúdo.</span>}
+              {item.leitura.trim() ? (
+                <TextoComLinks texto={item.leitura} />
+              ) : (
+                <span className="text-grafite">Sem conteúdo.</span>
+              )}
             </div>
           </>
         )}

@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import { useFieldArray, useFormContext } from 'react-hook-form'
+import { useFieldArray, useFormContext, useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import type { ValoresProcedimento } from '@/lib/esquema-procedimento'
 import { LinhaEtapa } from '@/features/procedimentos/components/linha-etapa'
@@ -21,6 +21,7 @@ export function EditorEtapas() {
     name: 'etapas',
     keyName: 'chave',
   })
+  const etapas = useWatch({ control, name: 'etapas' })
 
   // `append`/`insert` já focam a etapa nova.
   function handleAdicionar() {
@@ -61,6 +62,7 @@ export function EditorEtapas() {
               id={idDaEtapa(campo.id)}
               numero={indice + 1}
               campo={register(`etapas.${indice}.texto`)}
+              texto={etapas?.[indice]?.texto ?? ''}
               onCriarProxima={() => insert(indice + 1, novaEtapa())}
               onApagarVazia={() => handleApagarVazia(indice)}
               onExcluir={() => remove(indice)}

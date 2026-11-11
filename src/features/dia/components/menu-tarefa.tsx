@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   Archive,
+  Bell,
   CalendarArrowUp,
   CalendarDays,
   Clock,
@@ -44,6 +45,7 @@ import type { DataLocal, Task } from '@/db/types'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { useAndamento } from '@/hooks/use-andamento'
 import { useHorario } from '@/hooks/use-horario'
+import { useLembretesDe } from '@/hooks/contexto-lembretes'
 import { useAvisoNotasAvulsas } from '@/hooks/use-aviso-notas-avulsas'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { usePrioridade } from '@/hooks/use-prioridade'
@@ -59,6 +61,8 @@ interface MenuTarefaProps {
   onAbrirAnexos: () => void
   /** Abre o popover do horário na linha. */
   onDefinirHorario: () => void
+  /** Abre o popup de avisos na linha. */
+  onNotificar: () => void
 }
 
 /**
@@ -72,7 +76,9 @@ export function MenuTarefa({
   onAdicionarSubtarefa,
   onAbrirAnexos,
   onDefinirHorario,
+  onNotificar,
 }: MenuTarefaProps) {
+  const totalAvisos = useLembretesDe(tarefa.id).length
   const { excluirTarefa, definirCategoria, colocarNoGrupo } = useAcoesTarefa()
   const { arquivarComAviso } = useAcoesDeArquivo()
   const gruposDoDia = useGruposDoDia()
@@ -151,6 +157,9 @@ export function MenuTarefa({
           )}
           <DropdownMenuItem onSelect={() => abrirCampo(onDefinirHorario)}>
             <Clock /> {tarefa.horario ? 'Alterar horário…' : 'Definir horário…'}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => abrirCampo(onNotificar)}>
+            <Bell /> {totalAvisos > 0 ? `Notificar · ${totalAvisos}` : 'Notificar'}
           </DropdownMenuItem>
           {tarefa.horario && (
             <DropdownMenuItem

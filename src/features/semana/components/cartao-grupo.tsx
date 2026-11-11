@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { cn } from 'cn'
 import { IndicadorPrioridade } from '@/components/indicador-prioridade'
 import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
+import { AvisosDaTarefa } from '@/components/lembretes/avisos-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { contarPrioritarios } from '@/domain/prioridade'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
@@ -16,7 +17,9 @@ import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { ChevronRecolher, ConteudoRecolhivel } from '@/components/secao-recolhivel'
 import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
+import { useDuploCliqueParaEditar } from '@/hooks/use-duplo-clique-para-editar'
 import { TituloEditavel } from '@/components/titulo-editavel'
+import { TextoComLinks } from '@/components/texto-com-links'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, GroupItem } from '@/db/types'
 import {
@@ -114,6 +117,11 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
     }
   }
 
+  const duploCliqueNoNome = useDuploCliqueParaEditar(
+    () => setIsEditando(true),
+    !isEditando && !isSobreposto,
+  )
+
   return (
     <div
       {...(isArrastavel ? arrasto.listeners : undefined)}
@@ -142,6 +150,7 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
         }}
       />
       <div
+        {...duploCliqueNoNome}
         className={cn(
           'group/cabecalho flex items-start gap-0.5 pt-0.5 pr-1 pl-1',
           isAberto && 'border-b border-dashed border-pauta',
@@ -188,6 +197,8 @@ export function CartaoGrupo({ grupo, hoje, arrasto, isSobreposto }: CartaoGrupoP
               </span>
             ) : (
               <TituloEditavel
+                isComLinks
+                isComLapis={false}
                 titulo={serie.titulo}
                 isEditando={isEditando}
                 onIniciarEdicao={() => setIsEditando(true)}
@@ -357,6 +368,7 @@ function LinhaItem({
   const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
   const [isFocandoNovaSubetapa, setIsFocandoNovaSubetapa] = useState(false)
   const [isHorarioAberto, setIsHorarioAberto] = useState(false)
+  const [isAvisosAberto, setIsAvisosAberto] = useState(false)
   const subetapas = useSubetapasDe(item.id)
   const progresso = progressoSubtarefas(subetapas)
   const idPainel = useId()
@@ -379,6 +391,11 @@ function LinhaItem({
     setIsFocandoNovaSubetapa(true)
   }
 
+  const duploClique = useDuploCliqueParaEditar(
+    () => setIsEditando(true),
+    !isEditando && isEditavel,
+  )
+
   return (
     <>
       <div
@@ -386,6 +403,7 @@ function LinhaItem({
         data-prioridade={isPrioritario || undefined}
         data-selecionada={isSelecionado || undefined}
         {...alvoDePrioridade('item', item.id, item.status === 'pendente')}
+        {...duploClique}
         className={cn(
           'relative flex items-start gap-1 py-1 pr-0.5 pl-1',
           isSelecionado && 'bg-accent',
@@ -415,6 +433,8 @@ function LinhaItem({
           )}
           {isEditavel ? (
             <TituloEditavel
+              isComLinks
+              isComLapis={false}
               titulo={item.titulo}
               isEditando={isEditando}
               onIniciarEdicao={() => setIsEditando(true)}
@@ -426,7 +446,7 @@ function LinhaItem({
               )}
             />
           ) : (
-            item.titulo
+            <TextoComLinks texto={item.titulo} />
           )}
           {isEmAndamento && !isEditando && <IndicadorAndamento isCompacto className="ml-1.5" />}
           {!isEditando && !isTransferido && !isSobreposto && (
@@ -438,6 +458,18 @@ function LinhaItem({
               onMudarAberto={setIsHorarioAberto}
               isCompacto
               className="ml-1.5"
+            />
+          )}
+          {!isEditando && !isTransferido && !isSobreposto && (
+            <AvisosDaTarefa
+              alvo={{ tipo: 'item', id: item.id }}
+              data={data}
+              horario={item.horario}
+              titulo={item.titulo}
+              isAberto={isAvisosAberto}
+              onMudarAberto={setIsAvisosAberto}
+              isCompacto
+              className="ml-1"
             />
           )}
           {isAtrasado && !isEditando && (
@@ -478,6 +510,7 @@ function LinhaItem({
             onRenomear={() => setIsEditando(true)}
             onAdicionarSubetapa={handleAdicionarSubetapa}
             onDefinirHorario={() => setIsHorarioAberto(true)}
+            onNotificar={() => setIsAvisosAberto(true)}
             isCompacto
           />
         )}

@@ -17,7 +17,7 @@ import { preencherOrdemDosProcedimentos } from '@/domain/procedimentos'
 /** Identifica o arquivo como backup do MemorIA. */
 export const MARCA_DO_APP = 'MemorIA'
 /** Versão do formato do arquivo; mude só se a estrutura do JSON mudar. */
-export const FORMATO_ATUAL = 16
+export const FORMATO_ATUAL = 18
 
 const dataLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data fora do formato AAAA-MM-DD.')
 const texto = z.string()
@@ -196,6 +196,30 @@ const sessaoDeTempo = z.object({
   fim: texto.optional(),
 })
 
+// Formato 17: lembretes (avisos de tarefa/item); backups anteriores entram sem lembretes.
+const lembrete = z.object({
+  ...base,
+  alvoTipo: z.enum(['tarefa', 'item']),
+  alvoId: id,
+  antecedenciaMin: z.number().int().min(0),
+  canais: z.array(z.literal('app')).catch(['app']),
+  referencia: texto.optional(),
+  disparadoEm: texto.optional(),
+  perdido: z.boolean().optional(),
+  silenciado: z.boolean().optional(),
+  visto: z.boolean().optional(),
+})
+
+// Formato 18: adiamentos (tarefa/item empurrado para um dia posterior); anteriores entram sem.
+const adiamento = z.object({
+  id,
+  tarefaId: texto.optional(),
+  itemId: texto.optional(),
+  deData: dataLocal,
+  paraData: dataLocal,
+  em: texto,
+})
+
 /** Backup anterior ao formato 10 não guardava quando arquivou: vale a última alteração. */
 function comArquivadoEm<T extends { atualizadoEm: string; arquivadoEm?: string | undefined }>(
   registro: T,
@@ -228,6 +252,10 @@ export const esquemaBackup = z.object({
       groupInstances: z.array(cardDeGrupo).optional(),
       // Formato 12: sessões de tempo.
       sessions: z.array(sessaoDeTempo).default([]),
+      // Formato 17: lembretes.
+      lembretes: z.array(lembrete).default([]),
+      // Formato 18: adiamentos.
+      adiamentos: z.array(adiamento).default([]),
     })
     .transform(({ groupInstances, subcategories, ...lidas }) => {
       const maeDe = maesDasSubcategorias(subcategories ?? [])
@@ -284,6 +312,8 @@ export const NOMES_DAS_TABELAS: Record<NomeTabela, [string, string]> = {
   groupCards: ['card de grupo', 'cards de grupo'],
   groupItems: ['item de grupo', 'itens de grupo'],
   sessions: ['sessão de tempo', 'sessões de tempo'],
+  lembretes: ['lembrete', 'lembretes'],
+  adiamentos: ['adiamento', 'adiamentos'],
 }
 
 export type Quantidades = Record<NomeTabela, number>

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   Archive,
+  Bell,
   CalendarArrowUp,
   CalendarDays,
   Clock,
@@ -41,6 +42,7 @@ import { contarNotasQueFicamAvulsas } from '@/db/repositories/note-repository'
 import { useAndamento } from '@/hooks/use-andamento'
 import { useMoverTarefas } from '@/hooks/use-mover-tarefas'
 import { useHorario } from '@/hooks/use-horario'
+import { useLembretesDe } from '@/hooks/contexto-lembretes'
 import { usePrioridade } from '@/hooks/use-prioridade'
 import { podeMarcarAndamento } from '@/domain/andamento'
 import { avisoNotasAvulsas, vinculoDoItem } from '@/lib/notas'
@@ -56,6 +58,8 @@ interface MenuItemGrupoProps {
   onAdicionarSubetapa?: () => void
   /** Abre o popover do horário na linha (ausente = o menu não oferece). */
   onDefinirHorario?: () => void
+  /** Abre o popup de avisos na linha (ausente = o menu não oferece). */
+  onNotificar?: () => void
   /** Botão ⋯ menor, para a Semana (linhas mais baixas). */
   isCompacto?: boolean
 }
@@ -71,8 +75,10 @@ export function MenuItemGrupo({
   onRenomear,
   onAdicionarSubetapa,
   onDefinirHorario,
+  onNotificar,
   isCompacto = false,
 }: MenuItemGrupoProps) {
+  const totalAvisos = useLembretesDe(item.id).length
   const { tirarDoGrupo, arquivarItem, excluirItem } = useAcoesGrupo()
   const { mover, adiar } = useMoverTarefas()
   const { marcarEmAndamento, pararAndamento } = useAndamento()
@@ -160,6 +166,16 @@ export function MenuItemGrupo({
                   }}
                 >
                   <Clock /> {item.horario ? 'Alterar horário…' : 'Definir horário…'}
+                </DropdownMenuItem>
+              )}
+              {onNotificar && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    isAbrindoCampoRef.current = true
+                    onNotificar()
+                  }}
+                >
+                  <Bell /> {totalAvisos > 0 ? `Notificar · ${totalAvisos}` : 'Notificar'}
                 </DropdownMenuItem>
               )}
               {item.horario && (

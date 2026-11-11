@@ -26,6 +26,7 @@ import { ErroDeValidacao } from '@/lib/erros'
 import { AnexosEscolhidos, BotaoAnexar } from '@/features/inicio/components/anexos-da-captura'
 import { EscolhaDoDia } from '@/components/escolha-do-dia'
 import { EscolhaDoHorario } from '@/features/inicio/components/escolha-do-horario'
+import { EscolhaDosAvisos } from '@/features/inicio/components/escolha-dos-avisos'
 import { EscolhaDoTipo } from '@/features/inicio/components/escolha-do-tipo'
 import {
   ItensDaCaptura,
@@ -57,6 +58,8 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   const { capturar } = useCaptura()
   const [anexos, setAnexos] = useState<AnexoDaCaptura[]>([])
   const [isLinkAberto, setIsLinkAberto] = useState(false)
+  /** Antecedências dos avisos escolhidos (só valem com horário). */
+  const [avisos, setAvisos] = useState<number[]>([])
   const itensRef = useRef<ItensDaCapturaHandle>(null)
   const {
     register,
@@ -104,7 +107,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     try {
       const categoria = { categoryId: dados.categoryId }
       // Grupo novo não tem horário: só a tarefa e os itens no grupo escolhido.
-      const comHorario = dados.horario ? { horario: dados.horario } : {}
+      const comHorario = dados.horario ? { horario: dados.horario, avisos } : {}
       if (modoAoCriar === 'tarefa') {
         const tarefa = dividirTexto(dados.texto)
         await capturar({
@@ -147,6 +150,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     }
     reset(valoresIniciais(hoje, modoAoCriar === 'itens' ? dados.seriesId : undefined))
     setAnexos([])
+    setAvisos([])
     focarCampoPrincipal()
   }
 
@@ -303,6 +307,15 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
           />
           {tipo === 'tarefa' && (
             <EscolhaDoHorario horario={horario} onEscolher={(novo) => setValue('horario', novo)} />
+          )}
+          {tipo === 'tarefa' && (
+            <EscolhaDosAvisos
+              data={data}
+              horario={horario}
+              avisos={avisos}
+              onMudarAvisos={setAvisos}
+              onDefinirHorario={(novo) => setValue('horario', novo)}
+            />
           )}
           <div className="ml-auto flex items-center gap-1">
             {modo === 'tarefa' && (

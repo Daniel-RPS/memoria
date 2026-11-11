@@ -11,7 +11,7 @@ import { usePeriodoDeDados, useRelatorioDeTempo } from '@/features/dados/hooks/u
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
 /**
- * Primeira seção da tela Dados: "Tempo nas tarefas".
+ * Seção da tela Dados › Tempo: "Tempo nas tarefas".
  * Exibe filtro de período, linha de resumo em 4 blocos alinhados, gráficos
  * (barras nítidas e pizza por categoria na semana/mês), busca e lista de tarefas agrupada por categoria.
  */
@@ -39,7 +39,7 @@ export function SecaoTempoTarefas() {
         <FiltroPeriodoDados
           periodo={periodo}
           hoje={hoje}
-          diasComTempo={relatorio.diasComTempo}
+          diasComDados={relatorio.diasComTempo}
           onMudar={definirPeriodo}
         />
       </div>

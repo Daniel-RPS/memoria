@@ -25,6 +25,20 @@
   --color-barra-texto: var(--barra-texto);
   --color-barra-suave: var(--barra-suave);
   --color-barra-realce: var(--barra-realce);
+  /* Arcos da roda da barra lateral (decorativos, iguais nos dois temas). */
+  --color-roda-violeta-1: #d4b8ff;
+  --color-roda-violeta-2: #b17dff;
+  --color-roda-violeta-3: #8b3dff;
+  --color-roda-violeta-4: #6420d6;
+  --color-roda-grupos: #34d399;
+  --color-roda-procedimentos: #60a5fa;
+  --color-roda-notas: #fbbf24;
+  --color-roda-categorias: #f472b6;
+  --color-roda-arquivados: #94a3b8;
+  --color-roda-backup: #fb923c;
+  --color-roda-tema: #a78bfa;
+  --color-roda-numeros: #22d3ee;
+  --color-roda-tempo: #a3e635;
 
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -140,6 +154,8 @@
   --barra-texto: var(--tinta);
   --barra-suave: var(--grafite);
   --barra-realce: color-mix(in oklab, var(--tinta) 6%, transparent);
+  /* Sombra da meia-roda da barra lateral. */
+  --sombra-roda: rgb(17 16 25 / 0.22);
 
   /* Fundo decorativo (`FundoDoApp`). */
   --fundo-mancha-1: color-mix(in oklab, var(--caneta) 12%, transparent);
@@ -180,6 +196,7 @@
 
   --barra: #121017;
   --barra-realce: rgb(255 255 255 / 0.06);
+  --sombra-roda: rgb(0 0 0 / 0.55);
 
   --fundo-mancha-1: color-mix(in oklab, var(--caneta) 22%, transparent);
   --fundo-mancha-3: color-mix(in oklab, #d36bff 10%, transparent);
@@ -299,6 +316,13 @@
   inset: 0;
   opacity: var(--fundo-grao);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+/* Meia-roda da barra lateral: entra da barra, crescendo a partir da borda esquerda. */
+@keyframes roda-entrar {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.92);
+  }
 }
 @keyframes deriva-1 {
   to {

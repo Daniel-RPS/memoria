@@ -1,4 +1,6 @@
 import { db } from '@/db/database'
+import { registrarAdiamentos } from '@/db/repositories/adiamento-repository'
+import { apagarLembretesDe } from '@/db/repositories/lembrete-repository'
 import type { DataLocal, Task, TimeSession } from '@/db/types'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
 import { soltarNotasSemAlvo } from '@/db/repositories/note-repository'
@@ -122,9 +124,19 @@ export async function arquivarTarefa(id: string) {
 export async function excluirTarefa(id: string) {
   await db.transaction(
     'rw',
-    [db.tasks, db.subtasks, db.notes, db.attachments, db.groupSeries, db.groupItems, db.sessions],
+    [
+      db.tasks,
+      db.subtasks,
+      db.notes,
+      db.attachments,
+      db.groupSeries,
+      db.groupItems,
+      db.sessions,
+      db.lembretes,
+    ],
     async () => {
       await excluirAnexosDe([{ tipo: 'task' as const, id }])
+      await apagarLembretesDe([id])
       await excluirSessoesDaTarefa(id)
       await db.subtasks.where('taskId').equals(id).delete()
       await db.tasks.delete(id)
@@ -174,6 +186,8 @@ export interface PosicaoAnterior extends CamposDeAndamento {
 export interface ResultadoMovimento {
   quantidade: number
   anteriores: PosicaoAnterior[]
+  /** Adiamentos gravados (tarefas que foram para um dia posterior); o "Desfazer" os apaga. */
+  adiamentos: string[]
 }
 
 /**
@@ -182,7 +196,7 @@ export interface ResultadoMovimento {
  * são copiados, não movidos: ver `copiarItens` em `group-repository`.)
  */
 export async function moverTarefas(ids: string[], destino: DataLocal): Promise<ResultadoMovimento> {
-  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
+  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions, db.adiamentos], async () => {
     const tarefas = (await db.tasks.bulkGet(ids)).filter((tarefa) => tarefa !== undefined)
     const maiorOrdem = await maiorOrdemDoDia(destino, new Set(ids))
     const movimentos = planejarMovimento(tarefas, destino, maiorOrdem)
@@ -197,6 +211,14 @@ export async function moverTarefas(ids: string[], destino: DataLocal): Promise<R
       { tarefas: movimentos.map(({ id }) => id) },
       momento,
     )
+    const adiamentos = await registrarAdiamentos(
+      movimentos.map(({ id, data }) => ({
+        tarefaId: id,
+        deData: porId.get(id)!.data,
+        paraData: data,
+      })),
+      momento,
+    )
     const fechadasPorTarefa = new Map<string, TimeSession[]>()
     for (const sessao of fechadas) {
       if (!sessao.tarefaId) continue
@@ -206,6 +228,7 @@ export async function moverTarefas(ids: string[], destino: DataLocal): Promise<R
     }
     return {
       quantidade: movimentos.length,
+      adiamentos,
       anteriores: movimentos.map(({ id }) => {
         const { data, ordem, emAndamento, emAndamentoDesde } = porId.get(id)!
         const sessoesFechadas = fechadasPorTarefa.get(id)
@@ -224,7 +247,7 @@ export async function moverTarefas(ids: string[], destino: DataLocal): Promise<R
 
 /** Adia pendentes um dia (ver `destinoDoAdiamento`). */
 export async function adiarTarefas(ids: string[], hoje: DataLocal): Promise<ResultadoMovimento> {
-  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
+  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions, db.adiamentos], async () => {
     const pendentes = (await db.tasks.bulkGet(ids)).filter(
       (tarefa) => tarefa?.status === 'pendente',
     )
@@ -233,11 +256,12 @@ export async function adiarTarefas(ids: string[], hoje: DataLocal): Promise<Resu
       const destino = destinoDoAdiamento(tarefa!.data, hoje)
       porDestino.set(destino, [...(porDestino.get(destino) ?? []), tarefa!.id])
     }
-    const resultado: ResultadoMovimento = { quantidade: 0, anteriores: [] }
+    const resultado: ResultadoMovimento = { quantidade: 0, anteriores: [], adiamentos: [] }
     for (const [destino, idsDoDestino] of porDestino) {
       const parcial = await moverTarefas(idsDoDestino, destino)
       resultado.quantidade += parcial.quantidade
       resultado.anteriores.push(...parcial.anteriores)
+      resultado.adiamentos.push(...parcial.adiamentos)
     }
     return resultado
   })
@@ -276,7 +300,7 @@ export async function listarPendenciasDeOntem(hoje: DataLocal) {
 
 /** Traz para o fim de hoje as tarefas soltas pendentes de ontem. */
 export async function trazerPendenciasDeOntem(hoje: DataLocal): Promise<ResultadoMovimento> {
-  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
+  return db.transaction('rw', [db.tasks, db.groupCards, db.sessions, db.adiamentos], async () => {
     const pendentes = await listarPendenciasDeOntem(hoje)
     return moverTarefas(
       pendentes.map((tarefa) => tarefa.id),
@@ -295,7 +319,7 @@ export async function soltarTarefaNoDia(
   destino: DataLocal,
   idsEmOrdemNoDestino: string[],
 ) {
-  await db.transaction('rw', [db.tasks, db.groupCards, db.sessions], async () => {
+  await db.transaction('rw', [db.tasks, db.groupCards, db.sessions, db.adiamentos], async () => {
     const tarefa = await db.tasks.get(id)
     const momento = agora()
     const mudouDeDia = Boolean(tarefa && tarefa.data !== destino)
@@ -304,8 +328,9 @@ export async function soltarTarefaNoDia(
       atualizadoEm: momento,
       ...(mudouDeDia && SEM_ANDAMENTO),
     })
-    if (mudouDeDia) {
+    if (mudouDeDia && tarefa) {
       await fecharSessoesAbertasDe({ tarefas: [id] }, momento)
+      await registrarAdiamentos([{ tarefaId: id, deData: tarefa.data, paraData: destino }], momento)
     }
     await gravarNovaPosicao(tabelaDoDia, idsEmOrdemNoDestino, id)
   })

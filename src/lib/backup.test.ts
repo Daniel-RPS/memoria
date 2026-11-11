@@ -33,6 +33,8 @@ function backupVazio(): Backup {
       groupCards: [],
       groupItems: [],
       sessions: [],
+      lembretes: [],
+      adiamentos: [],
     },
   }
 }

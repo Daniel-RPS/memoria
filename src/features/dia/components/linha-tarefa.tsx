@@ -6,6 +6,7 @@ import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-an
 import { ComBandeira } from '@/components/indicador-prioridade'
 import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
+import { AvisosDaTarefa } from '@/components/lembretes/avisos-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, Subtask, Task } from '@/db/types'
@@ -18,6 +19,7 @@ import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { BotaoProgresso } from '@/features/dia/components/botao-progresso'
 import { ListaSubtarefas } from '@/features/dia/components/lista-subtarefas'
 import { MenuTarefa } from '@/features/dia/components/menu-tarefa'
+import { useDuploCliqueParaEditar } from '@/hooks/use-duplo-clique-para-editar'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
@@ -40,6 +42,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const [isFocandoNovaSubtarefa, setIsFocandoNovaSubtarefa] = useState(false)
   const [isAnexosAbertos, setIsAnexosAbertos] = useState(false)
   const [isHorarioAberto, setIsHorarioAberto] = useState(false)
+  const [isAvisosAberto, setIsAvisosAberto] = useState(false)
   const { quantidadeAnexos } = useExtrasDaTarefa(tarefa.id)
   const isConcluida = tarefa.status === 'concluida'
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
@@ -75,6 +78,11 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
     setIsFocandoNovaSubtarefa(false)
   }
 
+  const duploClique = useDuploCliqueParaEditar(
+    () => setIsEditando(true),
+    !isEditando && !isSelecionavel,
+  )
+
   return (
     <div className="relative border-b border-pauta">
       <div
@@ -82,6 +90,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
         data-prioridade={isPrioritaria || undefined}
         data-selecionada={isSelecionada || undefined}
         {...alvoDePrioridade('tarefa', tarefa.id, tarefa.status === 'pendente')}
+        {...duploClique}
         className={cn(
           'group/linha relative flex min-h-12 items-center gap-2 pr-2 pl-1',
           isSelecionada && 'bg-accent',
@@ -117,6 +126,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               </button>
             ) : (
               <TituloEditavel
+                isComLinks
                 titulo={tarefa.titulo}
                 isEditando={isEditando}
                 onIniciarEdicao={() => setIsEditando(true)}
@@ -134,6 +144,16 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
               titulo={tarefa.titulo}
               isAberto={isHorarioAberto}
               onMudarAberto={setIsHorarioAberto}
+            />
+          )}
+          {!isEditando && (
+            <AvisosDaTarefa
+              alvo={{ tipo: 'tarefa', id: tarefa.id }}
+              data={tarefa.data}
+              horario={tarefa.horario}
+              titulo={tarefa.titulo}
+              isAberto={isAvisosAberto}
+              onMudarAberto={setIsAvisosAberto}
             />
           )}
           {!isEditando && (
@@ -185,6 +205,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
             onAdicionarSubtarefa={handleAdicionarSubtarefa}
             onAbrirAnexos={handleAbrirAnexos}
             onDefinirHorario={() => setIsHorarioAberto(true)}
+            onNotificar={() => setIsAvisosAberto(true)}
           />
         )}
       </div>

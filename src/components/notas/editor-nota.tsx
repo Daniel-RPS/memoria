@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { LinksDoCampo } from '@/components/links-do-campo'
 import { atualizarNota, excluirNota, vincularNota } from '@/db/repositories/note-repository'
 import type { Note, Vinculo } from '@/db/types'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
@@ -126,6 +127,8 @@ export function EditorNota({
           )}
         />
       </label>
+      <LinksDoCampo texto={`${titulo.valor}
+${conteudo.valor}`} className="mt-2" />
 
       <section aria-labelledby={idAnexos} className={isPainel ? 'mt-6' : 'mt-8'}>
         <h2 id={idAnexos} className={cn('mb-3 font-bold', isPainel ? 'text-base' : 'text-xl')}>

@@ -1,5 +1,6 @@
 import { ListChecks, Square } from 'lucide-react'
 import { PontoDeAndamento } from '@/components/indicador-andamento'
+import { TextoComLinks } from '@/components/texto-com-links'
 import type { ResumoDeAndamento } from '@/domain/andamento'
 import { LinkDoResumo } from '@/features/inicio/components/partes-do-resumo'
 import { ResumoLateral } from '@/features/inicio/components/resumo-lateral'
@@ -42,7 +43,9 @@ export function BlocoEmAndamento({ resumo }: BlocoEmAndamentoProps) {
                 aria-hidden
                 className="size-3.5 shrink-0 translate-y-0.5 text-caneta/75"
               />
-              <span className="break-words font-medium text-tinta">{grupo.nome}</span>
+              <span className="break-words font-medium text-tinta">
+                <TextoComLinks texto={grupo.nome} />
+              </span>
             </div>
             <span className="shrink-0 text-xs tabular-nums text-grafite">
               {textoDaQuantidade(grupo.quantidade, 'item', 'itens')}

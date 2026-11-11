@@ -5,6 +5,7 @@ import { cn } from 'cn'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
+import { useDuploCliqueParaEditar } from '@/hooks/use-duplo-clique-para-editar'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal } from '@/db/types'
@@ -73,6 +74,11 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
     }
   }
 
+  const duploClique = useDuploCliqueParaEditar(
+    () => setIsEditando(true),
+    !isEditando && !isSelecionavel,
+  )
+
   return (
     <section
       aria-label={`Grupo ${serie.titulo}`}
@@ -80,6 +86,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
     >
       {/* Selecionando, o título e o fundo do cabeçalho marcam o card (todos os pendentes). */}
       <div
+        {...duploClique}
         onClick={(evento) => {
           if (isSelecionavel && evento.target === evento.currentTarget) alternar(card.id)
         }}
@@ -119,6 +126,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
             <IconeDaEntidade icone={classificacao.icone} className="-mr-1.5 self-center" />
           )}
           <TituloEditavel
+            isComLinks
             titulo={serie.titulo}
             isEditando={isEditando}
             onIniciarEdicao={() => (isSelecionavel ? alternar(card.id) : setIsEditando(true))}

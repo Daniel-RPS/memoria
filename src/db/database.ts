@@ -1,10 +1,12 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type {
+  Adiamento,
   Attachment,
   Category,
   GroupCard,
   GroupItem,
   GroupSeries,
+  Lembrete,
   Note,
   Procedure,
   Subtask,
@@ -40,6 +42,8 @@ export class MemoriaDatabase extends Dexie {
   groupCards!: EntityTable<GroupCard, 'id'>
   groupItems!: EntityTable<GroupItem, 'id'>
   sessions!: EntityTable<TimeSession, 'id'>
+  lembretes!: EntityTable<Lembrete, 'id'>
+  adiamentos!: EntityTable<Adiamento, 'id'>
 
   constructor(nome = 'memoria') {
     super(nome)
@@ -341,6 +345,15 @@ export class MemoriaDatabase extends Dexie {
             sessao.atualizadoEm = momento
           })
       })
+    // v16: tabela `lembretes` (avisos de tarefa/item). Só tabela nova; nada a converter.
+    this.version(16).stores({
+      lembretes: 'id, alvoId',
+    })
+    // v17: tabela `adiamentos` (tarefa/item empurrado para um dia posterior). Só tabela nova:
+    // vale daqui para frente, nada a recuperar.
+    this.version(17).stores({
+      adiamentos: 'id, em',
+    })
   }
 }
 

@@ -4,13 +4,15 @@ import { AnoPage } from '@/features/ano/ano-page'
 import { ArquivadosPage } from '@/features/arquivados/arquivados-page'
 import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
-import { DadosPage } from '@/features/dados/dados-page'
+import { NumerosPage } from '@/features/dados/numeros-page'
+import { TempoPage } from '@/features/dados/tempo-page'
 import { DiaPage } from '@/features/dia/dia-page'
 import { GruposPage } from '@/features/grupos/grupos-page'
 import { InicioPage } from '@/features/inicio/inicio-page'
 import { MesPage } from '@/features/mes/mes-page'
 import { NotaPage } from '@/features/notas/nota-page'
 import { NotasPage } from '@/features/notas/notas-page'
+import { NotificacoesPage } from '@/features/notificacoes/notificacoes-page'
 import { NovoProcedimentoPage } from '@/features/procedimentos/novo-procedimento-page'
 import { ProcedimentoPage } from '@/features/procedimentos/procedimento-page'
 import { ProcedimentosPage } from '@/features/procedimentos/procedimentos-page'
@@ -28,6 +30,7 @@ export const rotas: RouteObject[] = [
       { path: '/mes/:data', element: <MesPage /> },
       { path: '/ano/:ano', element: <AnoPage /> },
       { path: '/grupos', element: <GruposPage /> },
+      { path: '/notificacoes', element: <NotificacoesPage /> },
       { path: '/procedimentos', element: <ProcedimentosPage /> },
       { path: '/procedimentos/novo', element: <NovoProcedimentoPage /> },
       { path: '/procedimentos/:id', element: <ProcedimentoPage /> },
@@ -35,7 +38,9 @@ export const rotas: RouteObject[] = [
       { path: '/notas/:id', element: <NotaPage /> },
       { path: '/categorias', element: <CategoriasPage /> },
       { path: '/arquivados', element: <ArquivadosPage /> },
-      { path: '/dados', element: <DadosPage /> },
+      { path: '/dados', element: <Navigate to="/dados/tempo" replace /> },
+      { path: '/dados/numeros', element: <NumerosPage /> },
+      { path: '/dados/tempo', element: <TempoPage /> },
       { path: '/backup', element: <BackupPage /> },
       { path: '*', element: <Navigate to="/inicio" replace /> },
     ],

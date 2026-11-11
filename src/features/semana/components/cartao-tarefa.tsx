@@ -1,11 +1,14 @@
 import { useId, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { cn } from 'cn'
 import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-andamento'
 import { IndicadorPrioridade } from '@/components/indicador-prioridade'
 import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
+import { AvisosDaTarefa } from '@/components/lembretes/avisos-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TextoComLinks } from '@/components/texto-com-links'
+import { linksDoTexto } from '@/domain/links'
 import { definirConclusao } from '@/db/repositories/task-repository'
 import type { DataLocal, Subtask, Task } from '@/db/types'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
@@ -34,6 +37,7 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
   const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
   // Sem menu ⋯ na Semana: o chip abre o popover para alterar ou remover o horário.
   const [isHorarioAberto, setIsHorarioAberto] = useState(false)
+  const [isAvisosAberto, setIsAvisosAberto] = useState(false)
   const idPainel = useId()
 
   const isEmAndamento = tarefa.status === 'pendente' && tarefa.emAndamento === true
@@ -61,12 +65,7 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
       />
       <div className="min-w-0 flex-1">
         {isPrioritaria && <IndicadorPrioridade isCompacto className="mr-1 align-[-0.125rem]" />}
-        <Link
-          to={`/dia/${tarefa.data}`}
-          className="break-words hover:underline focus-visible:outline-2 focus-visible:outline-caneta"
-        >
-          {tarefa.titulo}
-        </Link>
+        <TituloQueLevaAoDia titulo={tarefa.titulo} destino={`/dia/${tarefa.data}`} />
         {isEmAndamento && <IndicadorAndamento isCompacto className="ml-1.5" />}
         {!isSobreposto && (
           <HorarioDaTarefa
@@ -77,6 +76,18 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
             onMudarAberto={setIsHorarioAberto}
             isCompacto
             className="ml-1.5"
+          />
+        )}
+        {!isSobreposto && (
+          <AvisosDaTarefa
+            alvo={{ tipo: 'tarefa', id: tarefa.id }}
+            data={tarefa.data}
+            horario={tarefa.horario}
+            titulo={tarefa.titulo}
+            isAberto={isAvisosAberto}
+            onMudarAberto={setIsAvisosAberto}
+            isCompacto
+            className="ml-1"
           />
         )}
         {!isSobreposto && (
@@ -130,5 +141,38 @@ export function CartaoTarefa({ tarefa, subtarefas, hoje, isSobreposto }: CartaoT
         )}
       </div>
     </div>
+  )
+}
+
+const CLASSE_TITULO_DO_DIA =
+  'break-words hover:underline focus-visible:outline-2 focus-visible:outline-caneta'
+
+/**
+ * Título que abre o dia. Com endereço de site no título, um <a> não pode conter outro:
+ * o título vira um "link" acessível em span e o endereço abre o site.
+ */
+function TituloQueLevaAoDia({ titulo, destino }: { titulo: string; destino: string }) {
+  const navegar = useNavigate()
+
+  if (linksDoTexto(titulo).length === 0) {
+    return (
+      <Link to={destino} className={CLASSE_TITULO_DO_DIA}>
+        {titulo}
+      </Link>
+    )
+  }
+
+  return (
+    <span
+      role="link"
+      tabIndex={0}
+      onClick={() => void navegar(destino)}
+      onKeyDown={(evento) => {
+        if (evento.target === evento.currentTarget && evento.key === 'Enter') void navegar(destino)
+      }}
+      className={cn('cursor-pointer', CLASSE_TITULO_DO_DIA)}
+    >
+      <TextoComLinks texto={titulo} />
+    </span>
   )
 }

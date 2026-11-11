@@ -236,3 +236,54 @@ export interface TimeSession extends EntidadeBase {
   /** Momento ISO (UTC) em que o andamento parou; ausente enquanto a sessão está aberta. */
   fim?: string
 }
+
+/** Por onde o aviso chega. Por ora só dentro do app; WhatsApp e e-mail entram depois. */
+export type CanalDeAviso = 'app'
+
+/** O que recebe o lembrete: tarefa solta ou item de grupo (o id é o mesmo ao converter). */
+export type TipoAlvoDoLembrete = 'tarefa' | 'item'
+
+/**
+ * Aviso ligado a uma tarefa solta ou item de grupo, `antecedenciaMin` minutos antes do dia +
+ * horário dele. O momento NUNCA é gravado: é calculado na hora (`domain/lembretes`), então
+ * acompanha mover, adiar e mudar o horário. Concluir, arquivar ou transferir não apaga: o
+ * lembrete só é ignorado enquanto o alvo não estiver ativo.
+ */
+export interface Lembrete extends EntidadeBase {
+  alvoTipo: TipoAlvoDoLembrete
+  alvoId: string
+  /** Minutos antes do horário (0 = no horário). */
+  antecedenciaMin: number
+  canais: CanalDeAviso[]
+  /**
+   * Dia e horário do alvo (`YYYY-MM-DDTHH:mm`) quando o estado abaixo foi decidido. Se o alvo
+   * mudou de dia ou de horário, o lembrete é recalculado (volta a pendente ou é silenciado).
+   */
+  referencia?: string
+  /** Momento ISO em que disparou (com o app aberto). */
+  disparadoEm?: string
+  /** Venceu com o app fechado: aparece em "Anteriores" e conta como não visto. */
+  perdido?: boolean
+  /** O momento passou sem aviso (alvo mudou para o passado ou estava inativo): sem card nem bolinha. */
+  silenciado?: boolean
+  /** A pessoa viu o aviso (fechou o card, clicou nele ou abriu a aba Notificações). */
+  visto?: boolean
+}
+
+/**
+ * Registro de uma tarefa solta ou item de grupo empurrado para um dia POSTERIOR (adiar, mover,
+ * arrastar, levar pendentes do grupo). Gravado no mesmo lugar da mudança; a volta para um dia
+ * anterior não gera registro e o "Desfazer" apaga o que a ação gravou. Base da contagem
+ * "Adiadas" em Dados › Números (`domain/numeros`).
+ */
+export interface Adiamento {
+  id: string
+  /** Id da tarefa solta (quando foi uma tarefa solta). */
+  tarefaId?: string
+  /** Id do item de grupo no dia de onde saiu (quando foi um item). */
+  itemId?: string
+  deData: DataLocal
+  paraData: DataLocal
+  /** Momento ISO (UTC) da mudança. */
+  em: string
+}

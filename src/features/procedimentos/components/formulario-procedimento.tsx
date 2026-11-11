@@ -1,8 +1,9 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { LinksDoCampo } from '@/components/links-do-campo'
 import { CampoCategoria } from '@/components/seletor-categoria/campo-categoria'
 import { SeletorIcone } from '@/components/icones/seletor-icone'
 import {
@@ -44,6 +45,7 @@ export function FormularioProcedimento({
     handleSubmit,
     formState: { errors },
   } = formulario
+  const tituloAtual = useWatch({ control, name: 'titulo' })
 
   const onAlterarRef = useRef(onAlterar)
   useEffect(() => {
@@ -100,6 +102,7 @@ export function FormularioProcedimento({
                 className="-mx-1 h-auto rounded-sm border-transparent bg-transparent px-1 py-0.5 text-3xl font-extrabold tracking-[-0.02em] shadow-none [font-stretch:80%] placeholder:text-grafite/55 hover:bg-accent/40 focus-visible:border-caneta/50 focus-visible:bg-card focus-visible:ring-0 md:text-3xl dark:bg-transparent dark:focus-visible:bg-card"
               />
               <FieldError errors={[errors.titulo]} />
+              <LinksDoCampo texto={tituloAtual ?? ''} />
             </Field>
           </div>
 

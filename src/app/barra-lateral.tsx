@@ -1,16 +1,24 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   Archive,
+  Bell,
   Calendar,
   CalendarDays,
+  CalendarFold,
   CalendarRange,
   ChartColumn,
+  Clock,
+  Contrast,
   FolderKanban,
   HardDriveDownload,
   House,
+  ListChecks,
   ListOrdered,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
+  Settings,
+  Shapes,
   StickyNote,
   Sun,
   Tags,
@@ -18,15 +26,14 @@ import {
 import { Link, useMatch } from 'react-router'
 import { cn } from 'cn'
 import { DicaDaBarra } from '@/app/dica-da-barra'
-import {
-  GrupoCalendario,
-  GrupoCalendarioRecolhido,
-  type VisaoDoCalendario,
-} from '@/app/grupo-calendario'
-import { useGrupoCalendarioAberto } from '@/app/use-grupo-calendario-aberto'
+import { TRANSICAO_DA_BARRA, classesDoItemDaBarra } from '@/app/estilo-item-da-barra'
+import { ItemComRoda } from '@/app/roda-da-barra/item-com-roda'
+import type { SetorDaRoda } from '@/app/roda-da-barra/roda-da-barra'
+import { useRodaDaBarra } from '@/app/roda-da-barra/use-roda-da-barra'
 import { useTotalArquivados } from '@/hooks/use-arquivados'
 import { useLembreteDeBackup } from '@/hooks/use-lembrete-de-backup'
-import { SeletorAparencia } from '@/app/seletor-aparencia'
+import { useDadosDosLembretes } from '@/hooks/contexto-lembretes'
+import { textoDoBadge } from '@/domain/lembretes'
 import simboloMemoriaClaro from '@/assets/simbolo-memoria-claro.png'
 import simboloMemoria from '@/assets/simbolo-memoria.png'
 import { hoje } from '@/lib/datas'
@@ -38,13 +45,10 @@ interface LinkTelaProps {
   isRecolhida: boolean
   /** Lembrete discreto: ponto no ícone, com o texto na dica e na descrição do link. */
   aviso?: string
-  /** Total à direita, discreto; some quando é 0 (e com a barra recolhida). */
-  contador?: number
+  /** Avisos não vistos: badge vermelho à direita ou, recolhida, bolinha no ícone. */
+  naoVistos?: number
   children: string
 }
-
-// Recolher/expandir: a largura corre com a mesma mola do grupo Calendário.
-const TRANSICAO_DA_BARRA = 'duration-400 ease-mola-suave motion-reduce:transition-none'
 
 function LinkTela({
   para,
@@ -52,30 +56,29 @@ function LinkTela({
   isAtiva,
   isRecolhida,
   aviso,
-  contador,
+  naoVistos = 0,
   children,
 }: LinkTelaProps) {
+  const textoNaoVistos =
+    naoVistos > 0
+      ? `${naoVistos} ${naoVistos === 1 ? 'aviso não visto' : 'avisos não vistos'}`
+      : undefined
   return (
     <DicaDaBarra
-      texto={aviso ? `${children}: ${aviso}` : children}
+      texto={
+        aviso
+          ? `${children}: ${aviso}`
+          : textoNaoVistos
+            ? `${children}: ${textoNaoVistos}`
+            : children
+      }
       isLigada={isRecolhida || aviso !== undefined}
     >
       <Link
         to={para}
         aria-current={isAtiva ? 'page' : undefined}
-        aria-description={
-          aviso ?? (contador ? `${contador} ${contador === 1 ? 'item' : 'itens'}` : undefined)
-        }
-        className={cn(
-          // O ícone fica no lugar enquanto a barra estreita: muda só o recuo, e o nome some
-          // por opacidade (continua sendo o nome acessível do link).
-          'flex h-8 items-center gap-2.5 overflow-hidden rounded-md text-sm whitespace-nowrap transition-[padding] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-barra-texto',
-          TRANSICAO_DA_BARRA,
-          isRecolhida ? 'px-4' : 'px-2',
-          isAtiva
-            ? 'bg-caneta font-semibold text-primary-foreground'
-            : 'text-barra-suave hover:bg-barra-realce hover:text-barra-texto',
-        )}
+        aria-description={aviso ?? textoNaoVistos}
+        className={classesDoItemDaBarra(isAtiva, isRecolhida)}
       >
         <span className="relative shrink-0">
           <Icone aria-hidden className="size-4" />
@@ -84,6 +87,13 @@ function LinkTela({
               aria-hidden
               data-aviso
               className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-alerta ring-2 ring-barra"
+            />
+          )}
+          {naoVistos > 0 && isRecolhida && (
+            <span
+              aria-hidden
+              data-bolinha-nao-vistos=""
+              className="absolute -top-1 -right-1 size-2.5 rounded-full bg-destructive ring-2 ring-barra"
             />
           )}
         </span>
@@ -95,17 +105,13 @@ function LinkTela({
         >
           {children}
         </span>
-        {contador !== undefined && contador > 0 && (
+        {naoVistos > 0 && !isRecolhida && (
           <span
             aria-hidden
-            data-contador
-            className={cn(
-              'ml-auto text-xs tabular-nums transition-opacity duration-200 motion-reduce:transition-none',
-              isAtiva ? 'text-primary-foreground/80' : 'text-barra-suave',
-              isRecolhida && 'opacity-0',
-            )}
+            data-badge-nao-vistos=""
+            className="ml-auto flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-destructive px-1.5 text-[0.6875rem] leading-none font-bold text-papel tabular-nums"
           >
-            {contador}
+            {textoDoBadge(naoVistos)}
           </span>
         )}
       </Link>
@@ -173,7 +179,7 @@ interface BarraLateralProps {
   onAlternarRecolhida: () => void
 }
 
-/** Moldura lateral: nome do app, botão de recolher, as telas e, no rodapé, tema e fundo. */
+/** Moldura lateral: nome do app, botão de recolher e as telas (quatro delas abrem uma roda). */
 export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralProps) {
   const rotaDia = useMatch('/dia/:data')
   const rotaSemana = useMatch('/semana/:data')
@@ -183,8 +189,10 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const isNasCategorias = useMatch('/categorias') !== null
   const isNoBackup = useMatch('/backup') !== null
   const isNosArquivados = useMatch('/arquivados') !== null
-  const isNosDados = useMatch('/dados') !== null
+  const isNosNumeros = useMatch('/dados/numeros') !== null
+  const isNoTempo = useMatch('/dados/tempo') !== null
   const isNosGrupos = useMatch('/grupos') !== null
+  const isNasNotificacoes = useMatch('/notificacoes') !== null
   const isNasNotas = useMatch({ path: '/notas', end: false }) !== null
   const isNosProcedimentos = useMatch({ path: '/procedimentos', end: false }) !== null
   // "Semana", "Mês" e "Ano" abrem o período da data que está aberta; "Dia" abre hoje.
@@ -192,65 +200,110 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
     rotaDia?.params.data ?? rotaSemana?.params.data ?? rotaMes?.params.data ?? hoje()
   const anoAberto = rotaAno?.params.ano ?? dataAberta.slice(0, 4)
 
-  const visoes: VisaoDoCalendario[] = [
-    { para: `/dia/${hoje()}`, icone: Sun, isAtiva: rotaDia !== null, nome: 'Dia' },
-    {
-      para: `/semana/${dataAberta}`,
-      icone: CalendarDays,
-      isAtiva: rotaSemana !== null,
-      nome: 'Semana',
-    },
-    { para: `/mes/${dataAberta}`, icone: Calendar, isAtiva: rotaMes !== null, nome: 'Mês' },
-    { para: `/ano/${anoAberto}`, icone: CalendarRange, isAtiva: rotaAno !== null, nome: 'Ano' },
-  ]
   const lembreteDeBackup = useLembreteDeBackup()
   const totalArquivados = useTotalArquivados()
-  const telas: {
-    para: string
-    icone: LucideIcon
-    isAtiva: boolean
-    nome: string
-    aviso?: string
-    contador?: number
-  }[] = [
+  const { naoVistos } = useDadosDosLembretes()
+  const controleDaRoda = useRodaDaBarra()
+
+  // Setores na ordem horária: topo, direita, baixo, esquerda.
+  const setoresDoCalendario: SetorDaRoda[] = [
     {
-      para: '/grupos',
-      icone: FolderKanban,
-      isAtiva: isNosGrupos,
-      nome: 'Grupos',
+      nome: 'Dia',
+      icone: Sun,
+      classeDoArco: 'stroke-roda-violeta-1',
+      para: `/dia/${hoje()}`,
+      isAtiva: rotaDia !== null,
     },
     {
-      para: '/procedimentos',
-      icone: ListOrdered,
-      isAtiva: isNosProcedimentos,
-      nome: 'Procedimentos',
-    },
-    { para: '/notas', icone: StickyNote, isAtiva: isNasNotas, nome: 'Notas' },
-    { para: '/categorias', icone: Tags, isAtiva: isNasCategorias, nome: 'Categorias' },
-    {
-      para: '/arquivados',
-      icone: Archive,
-      isAtiva: isNosArquivados,
-      nome: 'Arquivados',
-      contador: totalArquivados,
+      nome: 'Semana',
+      icone: CalendarDays,
+      classeDoArco: 'stroke-roda-violeta-2',
+      para: `/semana/${dataAberta}`,
+      isAtiva: rotaSemana !== null,
     },
     {
-      para: '/dados',
-      icone: ChartColumn,
-      isAtiva: isNosDados,
-      nome: 'Dados',
+      nome: 'Mês',
+      icone: Calendar,
+      classeDoArco: 'stroke-roda-violeta-3',
+      para: `/mes/${dataAberta}`,
+      isAtiva: rotaMes !== null,
     },
     {
-      para: '/backup',
-      icone: HardDriveDownload,
-      isAtiva: isNoBackup,
-      nome: 'Backup',
-      aviso: lembreteDeBackup,
+      nome: 'Ano',
+      icone: CalendarRange,
+      classeDoArco: 'stroke-roda-violeta-4',
+      para: `/ano/${anoAberto}`,
+      isAtiva: rotaAno !== null,
     },
   ]
-  const { isAberto, handleAlternar } = useGrupoCalendarioAberto(
-    visoes.some((visao) => visao.isAtiva),
-  )
+  const setoresDaOrganizacao: SetorDaRoda[] = [
+    {
+      nome: 'Grupos',
+      icone: FolderKanban,
+      classeDoArco: 'stroke-roda-grupos',
+      para: '/grupos',
+      isAtiva: isNosGrupos,
+    },
+    {
+      nome: 'Procedimentos',
+      icone: ListOrdered,
+      classeDoArco: 'stroke-roda-procedimentos',
+      para: '/procedimentos',
+      isAtiva: isNosProcedimentos,
+    },
+    {
+      nome: 'Notas',
+      icone: StickyNote,
+      classeDoArco: 'stroke-roda-notas',
+      para: '/notas',
+      isAtiva: isNasNotas,
+    },
+    {
+      nome: 'Categorias',
+      icone: Tags,
+      classeDoArco: 'stroke-roda-categorias',
+      para: '/categorias',
+      isAtiva: isNasCategorias,
+    },
+  ]
+  const setoresDosAjustes: SetorDaRoda[] = [
+    {
+      nome: 'Arquivados',
+      icone: Archive,
+      classeDoArco: 'stroke-roda-arquivados',
+      para: '/arquivados',
+      isAtiva: isNosArquivados,
+      selo: totalArquivados,
+    },
+    {
+      nome: 'Backup',
+      icone: HardDriveDownload,
+      classeDoArco: 'stroke-roda-backup',
+      para: '/backup',
+      isAtiva: isNoBackup,
+      aviso: lembreteDeBackup,
+    },
+    { nome: 'Tema', icone: Contrast, classeDoArco: 'stroke-roda-tema', isTema: true },
+    // Reservado para um destino futuro: sem ação.
+    { nome: 'Reservado', icone: Plus, classeDoArco: 'stroke-border' },
+  ]
+
+  const setoresDosDados: SetorDaRoda[] = [
+    {
+      nome: 'Números',
+      icone: ListChecks,
+      classeDoArco: 'stroke-roda-numeros',
+      para: '/dados/numeros',
+      isAtiva: isNosNumeros,
+    },
+    {
+      nome: 'Tempo',
+      icone: Clock,
+      classeDoArco: 'stroke-roda-tempo',
+      para: '/dados/tempo',
+      isAtiva: isNoTempo,
+    },
+  ]
 
   return (
     // O fundo acompanha a página inteira; o conteúdo fica preso no topo ao rolar.
@@ -286,30 +339,53 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
             </button>
           </DicaDaBarra>
         </div>
-        <nav aria-label="Telas" className="mb-4 flex flex-1 flex-col gap-0.5">
+        <nav aria-label="Telas" className="flex flex-1 flex-col gap-0.5">
           <LinkTela para="/inicio" icone={House} isAtiva={isNoInicio} isRecolhida={isRecolhida}>
             Início
           </LinkTela>
-          {isRecolhida ? (
-            <GrupoCalendarioRecolhido visoes={visoes} />
-          ) : (
-            <GrupoCalendario visoes={visoes} isAberto={isAberto} onAlternar={handleAlternar} />
-          )}
-          {telas.map((tela) => (
-            <LinkTela
-              key={tela.nome}
-              para={tela.para}
-              icone={tela.icone}
-              isAtiva={tela.isAtiva}
-              isRecolhida={isRecolhida}
-              aviso={tela.aviso}
-              contador={tela.contador}
-            >
-              {tela.nome}
-            </LinkTela>
-          ))}
+          <ItemComRoda
+            id="calendario"
+            nome="Calendário"
+            icone={CalendarFold}
+            setores={setoresDoCalendario}
+            isRecolhida={isRecolhida}
+            controle={controleDaRoda}
+          />
+          <ItemComRoda
+            id="organizacao"
+            nome="Organização"
+            icone={Shapes}
+            setores={setoresDaOrganizacao}
+            isRecolhida={isRecolhida}
+            controle={controleDaRoda}
+          />
+          <ItemComRoda
+            id="ajustes"
+            nome="Ajustes"
+            icone={Settings}
+            setores={setoresDosAjustes}
+            isRecolhida={isRecolhida}
+            aviso={lembreteDeBackup}
+            controle={controleDaRoda}
+          />
+          <ItemComRoda
+            id="dados"
+            nome="Dados"
+            icone={ChartColumn}
+            setores={setoresDosDados}
+            isRecolhida={isRecolhida}
+            controle={controleDaRoda}
+          />
+          <LinkTela
+            para="/notificacoes"
+            icone={Bell}
+            isAtiva={isNasNotificacoes}
+            isRecolhida={isRecolhida}
+            naoVistos={naoVistos}
+          >
+            Notificações
+          </LinkTela>
         </nav>
-        <SeletorAparencia isRecolhida={isRecolhida} />
       </aside>
     </div>
   )

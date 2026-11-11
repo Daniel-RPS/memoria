@@ -28,6 +28,7 @@ import { numerarEtapas } from '@/lib/procedimentos'
  */
 
 const TODAS_AS_TABELAS = () => [
+  db.lembretes,
   db.categories,
   db.tasks,
   db.subtasks,

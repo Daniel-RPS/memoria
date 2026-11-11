@@ -9,7 +9,9 @@ import type {
   Task,
   TimeSession,
 } from '@/db/types'
+import { apagarAdiamentos, registrarAdiamentos } from '@/db/repositories/adiamento-repository'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
+import { apagarLembretesDe, clonarLembretesParaCopias } from '@/db/repositories/lembrete-repository'
 import { soltarNotasSemAlvo, trocarVinculoDasNotas } from '@/db/repositories/note-repository'
 import { agora, gravarNovaPosicao } from '@/db/repositories/ordenacao'
 import {
@@ -106,6 +108,7 @@ const TABELAS_DE_EXCLUSAO = [
   db.groupItems,
   db.notes,
   db.sessions,
+  db.lembretes,
 ]
 
 async function serieComTitulo(titulo: string) {
@@ -268,6 +271,7 @@ export async function adicionarItensNaSerie(
 export async function desfazerItensAdicionados(resultado: ItensAdicionados) {
   await db.transaction('rw', TABELAS_DE_EXCLUSAO, async () => {
     await db.groupItems.bulkDelete(resultado.idsItens)
+    await apagarLembretesDe(resultado.idsItens)
     await soltarNotasSemAlvo(resultado.idsItens.map((id) => ({ tipo: 'item', id })))
     if (resultado.card === 'criado') await excluirGrupo(resultado.cardId)
     else if (resultado.card === 'reaberto') await arquivarGrupo(resultado.cardId)
@@ -411,6 +415,7 @@ export async function excluirItem(id: string) {
     const item = await db.groupItems.get(id)
     if (!item) return
     await db.groupItems.delete(id)
+    await apagarLembretesDe([id])
     await db.subtasks.where('taskId').equals(id).delete()
     await excluirOuFecharSessoesDosItens([item], agora())
     await soltarNotasSemAlvo([{ tipo: 'item', id: item.cadeiaId }])
@@ -462,6 +467,7 @@ export async function excluirGrupo(cardId: string) {
     if (!card) return
     const itens = await db.groupItems.where('cardId').equals(cardId).toArray()
     await db.groupItems.where('cardId').equals(cardId).delete()
+    await apagarLembretesDe(itens.map((item) => item.id))
     await db.subtasks
       .where('taskId')
       .anyOf(itens.map((item) => item.id))
@@ -488,6 +494,8 @@ export interface ResultadoAcao {
   desfazer: MudancasDosGrupos[]
   /** Sessões abertas que foram fechadas ao transferir os itens. */
   sessoesFechadas?: TimeSession[]
+  /** Adiamentos gravados (tarefas e itens levados a um dia posterior); o "Desfazer" os apaga. */
+  adiamentos?: string[]
 }
 
 function acaoVazia(): ResultadoAcao {
@@ -501,6 +509,9 @@ const TABELAS_DA_ACAO = [
   db.groupCards,
   db.groupItems,
   db.sessions,
+  db.lembretes,
+  db.categories,
+  db.adiamentos,
 ]
 
 /**
@@ -565,15 +576,32 @@ async function carregarEstado(ids: string[], destino: DataLocal): Promise<Estado
   }
 }
 
+/**
+ * Grava as mudanças dos grupos. Lembretes acompanham: item apagado leva os seus; item novo que é
+ * cópia de outro (levado a outro dia, ou recriado ao desfazer) recebe os do item de origem.
+ */
 async function gravarMudancas({ gravar, apagar }: MudancasDosGrupos) {
+  const jaExistiam = new Set(
+    (await db.groupItems.bulkGet(gravar.itens.map((item) => item.id)))
+      .filter((item) => item !== undefined)
+      .map((item) => item!.id),
+  )
   await db.subtasks.bulkDelete(apagar.subtarefas)
   await db.groupItems.bulkDelete(apagar.itens)
+  await apagarLembretesDe(apagar.itens)
   await db.groupCards.bulkDelete(apagar.cards)
   await db.groupSeries.bulkDelete(apagar.series)
   await db.groupSeries.bulkPut(gravar.series)
   await db.groupCards.bulkPut(gravar.cards)
   await db.groupItems.bulkPut(gravar.itens)
   await db.subtasks.bulkPut(gravar.subtarefas)
+  await clonarLembretesParaCopias(
+    gravar.itens.flatMap((item) =>
+      !jaExistiam.has(item.id) && item.origemItemId && item.status === 'pendente'
+        ? [{ id: item.id, origemId: item.origemItemId }]
+        : [],
+    ),
+  )
 }
 
 /**
@@ -590,6 +618,16 @@ export async function copiarItens(ids: string[], destino: DataLocal): Promise<Re
       maiorOrdemDoDestino: await maiorOrdemDoDia(destino),
     })
     await gravarMudancas(plano.mudancas)
+    const dataDoCard = new Map(estado.cards.map((card) => [card.id, card.data]))
+    const idsLevados = new Set(ids)
+    const adiamentos = await registrarAdiamentos(
+      estado.itens.flatMap((item) => {
+        const deData = dataDoCard.get(item.cardId)
+        if (!idsLevados.has(item.id) || item.status !== 'pendente' || !deData) return []
+        return [{ itemId: item.id, deData, paraData: destino }]
+      }),
+      momento,
+    )
     const emAndamentoAntes = estado.itens.filter((i) => i.emAndamento === true)
     const desligados = emAndamentoAntes.filter((antes) => {
       const gravado = plano.mudancas.gravar.itens.find((g) => g.id === antes.id)
@@ -610,6 +648,7 @@ export async function copiarItens(ids: string[], destino: DataLocal): Promise<Re
       ...acaoVazia(),
       itensLevados: plano.itensLevados,
       desfazer: [inverterMudancas(estado, plano.mudancas)],
+      adiamentos,
       ...(sessoesFechadas && sessoesFechadas.length > 0 ? { sessoesFechadas } : {}),
     }
   })
@@ -650,7 +689,7 @@ async function adiarItensECards(itemIds: string[], cardIds: string[], hoje: Data
     const destino = destinoDoAdiamento(data, hoje)
     porDestino.set(destino, (porDestino.get(destino) ?? new Set()).add(item.id))
   }
-  const total = acaoVazia()
+  const total: ResultadoAcao = { ...acaoVazia(), adiamentos: [] }
   const sessoesFechadas: TimeSession[] = []
   for (const [destino, ids] of porDestino) {
     const parcial = await copiarItens([...ids], destino)
@@ -658,6 +697,7 @@ async function adiarItensECards(itemIds: string[], cardIds: string[], hoje: Data
     // Desfazer na ordem contrária à que foi feito.
     total.desfazer.unshift(...parcial.desfazer)
     if (parcial.sessoesFechadas) sessoesFechadas.push(...parcial.sessoesFechadas)
+    total.adiamentos!.push(...(parcial.adiamentos ?? []))
   }
   if (sessoesFechadas.length > 0) total.sessoesFechadas = sessoesFechadas
   return total
@@ -679,7 +719,12 @@ export async function moverSelecao(
     const movidas = await moverTarefas(tarefas, destino)
     const idsItens = [...(await pendentesDosCards(grupos)).map((item) => item.id), ...itens]
     const levados = await copiarItens([...new Set(idsItens)], destino)
-    return { ...levados, tarefasMovidas: movidas.quantidade, anteriores: movidas.anteriores }
+    return {
+      ...levados,
+      tarefasMovidas: movidas.quantidade,
+      anteriores: movidas.anteriores,
+      adiamentos: [...movidas.adiamentos, ...(levados.adiamentos ?? [])],
+    }
   })
 }
 
@@ -691,7 +736,12 @@ export async function adiarSelecao(
   return db.transaction('rw', TABELAS_DA_ACAO, async () => {
     const movidas = await adiarTarefas(tarefas, hoje)
     const levados = await adiarItensECards(itens, grupos, hoje)
-    return { ...levados, tarefasMovidas: movidas.quantidade, anteriores: movidas.anteriores }
+    return {
+      ...levados,
+      tarefasMovidas: movidas.quantidade,
+      anteriores: movidas.anteriores,
+      adiamentos: [...movidas.adiamentos, ...(levados.adiamentos ?? [])],
+    }
   })
 }
 
@@ -732,6 +782,7 @@ export async function desfazerAcao(resultado: ResultadoAcao) {
     await restaurarPosicoes(resultado.anteriores)
     for (const mudancas of resultado.desfazer) await gravarMudancas(mudancas)
     await restaurarSessoes({ fechadas: resultado.sessoesFechadas })
+    await apagarAdiamentos(resultado.adiamentos)
   })
 }
 

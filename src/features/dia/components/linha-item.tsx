@@ -6,8 +6,11 @@ import { FileteDeAndamento, IndicadorAndamento } from '@/components/indicador-an
 import { ComBandeira } from '@/components/indicador-prioridade'
 import { alvoDePrioridade } from '@/hooks/use-atalho-prioridade'
 import { HorarioDaTarefa } from '@/components/horario/horario-da-tarefa'
+import { AvisosDaTarefa } from '@/components/lembretes/avisos-da-tarefa'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
+import { useDuploCliqueParaEditar } from '@/hooks/use-duplo-clique-para-editar'
 import { TituloEditavel } from '@/components/titulo-editavel'
+import { TextoComLinks } from '@/components/texto-com-links'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal, GroupItem } from '@/db/types'
 import { useSubetapasDe } from '@/hooks/contexto-subetapas'
@@ -43,6 +46,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
   const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
   const [isFocandoNovaSubetapa, setIsFocandoNovaSubetapa] = useState(false)
   const [isHorarioAberto, setIsHorarioAberto] = useState(false)
+  const [isAvisosAberto, setIsAvisosAberto] = useState(false)
   const subetapas = useSubetapasDe(item.id)
   const progresso = progressoSubtarefas(subetapas)
   const idPainel = `subetapas-${item.id}`
@@ -72,6 +76,11 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
     setIsFocandoNovaSubetapa(false)
   }
 
+  const duploClique = useDuploCliqueParaEditar(
+    () => setIsEditando(true),
+    !isEditando && !isSelecionavel && !isTransferido,
+  )
+
   return (
     <div className="border-b border-pauta">
       <div
@@ -79,6 +88,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
         data-prioridade={isPrioritario || undefined}
         data-selecionada={isSelecionado || undefined}
         {...alvoDePrioridade('item', item.id, isPendente)}
+        {...duploClique}
         className={cn(
           'group/linha relative flex min-h-11 items-center gap-2 pr-2 pl-1',
           isSelecionado && 'bg-accent',
@@ -106,9 +116,12 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pl-1">
           <ComBandeira isPrioritario={isPrioritario && !isEditando}>
             {isTransferido ? (
-              <span className="min-w-0 break-words text-grafite">{item.titulo}</span>
+              <span className="min-w-0 break-words text-grafite">
+                <TextoComLinks texto={item.titulo} />
+              </span>
             ) : (
               <TituloEditavel
+                isComLinks
                 titulo={item.titulo}
                 isEditando={isEditando}
                 onIniciarEdicao={() => setIsEditando(true)}
@@ -126,6 +139,16 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
               titulo={item.titulo}
               isAberto={isHorarioAberto}
               onMudarAberto={setIsHorarioAberto}
+            />
+          )}
+          {!isEditando && !isTransferido && (
+            <AvisosDaTarefa
+              alvo={{ tipo: 'item', id: item.id }}
+              data={data}
+              horario={item.horario}
+              titulo={item.titulo}
+              isAberto={isAvisosAberto}
+              onMudarAberto={setIsAvisosAberto}
             />
           )}
           {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
@@ -161,6 +184,7 @@ export function LinhaItem({ item, data, hoje, alca }: LinhaItemProps) {
             onRenomear={() => setIsEditando(true)}
             onAdicionarSubetapa={handleAdicionarSubetapa}
             onDefinirHorario={() => setIsHorarioAberto(true)}
+            onNotificar={() => setIsAvisosAberto(true)}
           />
         )}
       </div>

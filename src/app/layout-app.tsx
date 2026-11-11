@@ -10,6 +10,7 @@ import { useViradaDoDia } from '@/hooks/use-virada-do-dia'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAtalhoCaptura } from '@/app/use-atalho-captura'
 import { useAtalhoDesfazer } from '@/hooks/use-mover-tarefas'
+import { ProvedorDeLembretes } from '@/components/lembretes/provedor-de-lembretes'
 
 /** Moldura comum: barra lateral com as telas e, ao lado, a tela aberta. */
 export function LayoutApp() {
@@ -25,7 +26,7 @@ export function LayoutApp() {
   const isNoDia = useMatch('/dia/:data') !== null
   const isNoInicio = useMatch('/inicio') !== null
   const isNasCategorias = useMatch('/categorias') !== null
-  const isNosDados = useMatch('/dados') !== null
+  const isNosDados = useMatch({ path: '/dados', end: false }) !== null
   const isNaListaDeNotas = useMatch('/notas') !== null
   // No modo Colunas o Dia precisa de espaço para as duas seções lado a lado.
   const { modo: modoDoDia } = usePreferenciasDoDia()
@@ -43,19 +44,21 @@ export function LayoutApp() {
   return (
     <TooltipProvider delayDuration={300}>
       <ProvedorPainelNotas>
-        <AplicadorDoTema />
-        <FundoDaAparencia />
-        {/* Sem cor de fundo própria: a névoa fica no <html>, com o fundo decorativo por cima. */}
-        <div className="flex min-h-dvh">
-          <BarraLateral isRecolhida={isRecolhida} onAlternarRecolhida={handleAlternar} />
-          <main className="min-w-0 flex-1">
-            <div className={cn('mx-auto px-4 pt-8 pb-16 sm:px-8', largura)}>
-              <Outlet />
-            </div>
-          </main>
-        </div>
-        <AvisoSessaoLonga />
-        <AvisosDoApp />
+        <ProvedorDeLembretes>
+          <AplicadorDoTema />
+          <FundoDaAparencia />
+          {/* Sem cor de fundo própria: a névoa fica no <html>, com o fundo decorativo por cima. */}
+          <div className="flex min-h-dvh">
+            <BarraLateral isRecolhida={isRecolhida} onAlternarRecolhida={handleAlternar} />
+            <main className="min-w-0 flex-1">
+              <div className={cn('mx-auto px-4 pt-8 pb-16 sm:px-8', largura)}>
+                <Outlet />
+              </div>
+            </main>
+          </div>
+          <AvisoSessaoLonga />
+          <AvisosDoApp />
+        </ProvedorDeLembretes>
       </ProvedorPainelNotas>
     </TooltipProvider>
   )

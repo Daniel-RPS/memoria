@@ -12,7 +12,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { TextoComLinks } from '@/components/texto-com-links'
 import type { DataLocal } from '@/db/types'
+import { linksDoTexto } from '@/domain/links'
 import { useCorDeTraco } from '@/hooks/use-cor-na-tela'
 import {
   NOMES_DOS_TIPOS,
@@ -23,6 +25,9 @@ import {
 import type { AcoesDaLinha } from '@/features/arquivados/components/acoes-da-linha'
 import { ItensDeDesarquivar } from '@/features/arquivados/components/itens-de-desarquivar'
 import { ICONES_DOS_TIPOS } from '@/features/arquivados/components/tipos-de-arquivado'
+
+const CLASSE_TITULO =
+  'block max-w-full truncate rounded-sm text-left font-medium outline-none hover:underline focus-visible:outline-2 focus-visible:outline-caneta'
 
 interface LinhaArquivadoProps {
   item: ItemArquivado
@@ -69,14 +74,30 @@ export function LinhaArquivado({
       />
       <Icone aria-hidden className="size-4 shrink-0 text-grafite" />
       <div className="min-w-0 flex-1">
-        <button
-          type="button"
-          onClick={() => acoes.onAbrir(item)}
-          className="block max-w-full truncate rounded-sm text-left font-medium outline-none hover:underline focus-visible:outline-2 focus-visible:outline-caneta"
-        >
-          {item.titulo}
-          <span className="sr-only"> ({NOMES_DOS_TIPOS[item.tipo].singular})</span>
-        </button>
+        {linksDoTexto(item.titulo).length > 0 ? (
+          // Link não pode ficar dentro de <button>: com endereço no título, o "botão" é um span.
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => acoes.onAbrir(item)}
+            onKeyDown={(evento) => {
+              if (evento.target !== evento.currentTarget) return
+              if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault()
+                acoes.onAbrir(item)
+              }
+            }}
+            className={cn(CLASSE_TITULO, 'cursor-pointer')}
+          >
+            <TextoComLinks texto={item.titulo} />
+            <span className="sr-only"> ({NOMES_DOS_TIPOS[item.tipo].singular})</span>
+          </span>
+        ) : (
+          <button type="button" onClick={() => acoes.onAbrir(item)} className={CLASSE_TITULO}>
+            {item.titulo}
+            <span className="sr-only"> ({NOMES_DOS_TIPOS[item.tipo].singular})</span>
+          </button>
+        )}
         <p className="truncate text-sm text-grafite">{item.detalhe}</p>
       </div>
 

@@ -9,6 +9,7 @@ import {
   type ItensAdicionados,
 } from '@/db/repositories/group-repository'
 import { criarTarefa, excluirTarefa } from '@/db/repositories/task-repository'
+import { criarLembretesDe } from '@/db/repositories/lembrete-repository'
 import { camposDeHorario } from '@/domain/horario'
 import { itensPreenchidos } from '@/lib/captura'
 
@@ -30,6 +31,8 @@ export type NovaCaptura =
       anotacao?: string
       /** Horário opcional `HH:mm`. */
       horario?: string
+      /** Antecedências dos avisos, em minutos (exigem horário). */
+      avisos?: number[]
     } & CategoriaDaCaptura)
   | ({
       tipo: 'grupo'
@@ -47,6 +50,8 @@ export type NovaCaptura =
       itens: string[]
       /** Horário opcional `HH:mm`, gravado em cada item criado. */
       horario?: string
+      /** Antecedências dos avisos de cada item, em minutos (exigem horário). */
+      avisos?: number[]
     }
 
 export type ResultadoCaptura =
@@ -66,10 +71,21 @@ export type ResultadoCaptura =
 export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
   if (dados.tipo === 'tarefa') {
     const categoria = { categoryId: dados.categoryId }
-    return db.transaction('rw', [db.tasks, db.groupCards, db.attachments, db.notes], async () => {
+    const tabelas = [
+      db.tasks,
+      db.groupCards,
+      db.attachments,
+      db.notes,
+      db.lembretes,
+      db.groupItems,
+      db.groupSeries,
+      db.categories,
+    ]
+    return db.transaction('rw', tabelas, async () => {
       const tarefa = await criarTarefa({ titulo: dados.titulo, data: dados.data, ...categoria })
       if (dados.horario) {
         await db.tasks.update(tarefa.id, camposDeHorario(dados.horario))
+        await criarLembretesDe([{ tipo: 'tarefa', id: tarefa.id }], dados.avisos ?? [])
       }
       const dono = { tipo: 'task' as const, id: tarefa.id }
       for (const anexo of dados.anexos ?? []) {
@@ -87,6 +103,10 @@ export async function capturar(dados: NovaCaptura): Promise<ResultadoCaptura> {
     if (dados.horario) {
       const campos = camposDeHorario(dados.horario)
       await Promise.all(adicionados.idsItens.map((id) => db.groupItems.update(id, campos)))
+      await criarLembretesDe(
+        adicionados.idsItens.map((id) => ({ tipo: 'item' as const, id })),
+        dados.avisos ?? [],
+      )
     }
     return { tipo: 'em-grupo', ...adicionados }
   }

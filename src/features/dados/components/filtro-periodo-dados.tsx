@@ -11,7 +11,8 @@ import { deDataLocal, paraDataLocal } from '@/lib/datas'
 interface FiltroPeriodoDadosProps {
   periodo: PeriodoDeDados
   hoje: DataLocal
-  diasComTempo?: Set<DataLocal>
+  /** Dias com bolinha no calendário (Tempo: com tempo medido; Números: com tarefas). */
+  diasComDados?: Set<DataLocal>
   onMudar: (novo: PeriodoDeDados) => void
 }
 
@@ -26,12 +27,12 @@ const BOTAO_SEGMENTO =
 
 /**
  * Filtro de período em botões compactos (segmentado):
- * Hoje · Esta semana · Este mês · Escolher… (dia único).
+ * Hoje · Esta semana · Este mês · Escolher… (dia único). O mesmo nas telas Tempo e Números.
  */
 export function FiltroPeriodoDados({
   periodo,
   hoje,
-  diasComTempo,
+  diasComDados,
   onMudar,
 }: FiltroPeriodoDadosProps) {
   const [isCalendarioAberto, setIsCalendarioAberto] = useState(false)
@@ -92,7 +93,7 @@ export function FiltroPeriodoDados({
             selected={diaSelecionado ? deDataLocal(diaSelecionado) : undefined}
             disabled={{ after: deDataLocal(hoje) }}
             modifiers={{
-              comTempo: (data) => (diasComTempo ? diasComTempo.has(paraDataLocal(data)) : false),
+              comTempo: (data) => (diasComDados ? diasComDados.has(paraDataLocal(data)) : false),
             }}
             onSelect={(data) => {
               if (!data) return
