@@ -271,17 +271,16 @@ export interface Lembrete extends EntidadeBase {
 }
 
 /**
- * Registro de uma tarefa solta ou item de grupo empurrado para um dia POSTERIOR (adiar, mover,
- * arrastar, levar pendentes do grupo). Gravado no mesmo lugar da mudança; a volta para um dia
- * anterior não gera registro e o "Desfazer" apaga o que a ação gravou. Base da contagem
- * "Adiadas" em Dados › Números (`domain/numeros`).
+ * Registro de uma tarefa solta movida para um dia POSTERIOR (adiar, mover, arrastar). A tarefa
+ * solta é movida sem deixar nada no dia de origem; este registro é o "transferido" dela (o item
+ * de grupo já deixa o seu, com status `transferido`). Gravado no mesmo lugar da mudança; a volta
+ * para um dia anterior não gera registro e o "Desfazer" apaga o que a ação gravou. Base das
+ * "não concluídas" e "Adiadas" em Dados › Números (`domain/numeros`).
  */
 export interface Adiamento {
   id: string
-  /** Id da tarefa solta (quando foi uma tarefa solta). */
-  tarefaId?: string
-  /** Id do item de grupo no dia de onde saiu (quando foi um item). */
-  itemId?: string
+  /** Id da tarefa solta (o mesmo do item, se ela virou item de grupo depois). */
+  tarefaId: string
   deData: DataLocal
   paraData: DataLocal
   /** Momento ISO (UTC) da mudança. */

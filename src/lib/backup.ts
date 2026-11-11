@@ -210,11 +210,11 @@ const lembrete = z.object({
   visto: z.boolean().optional(),
 })
 
-// Formato 18: adiamentos (tarefa/item empurrado para um dia posterior); anteriores entram sem.
+// Formato 18: adiamentos (tarefa solta movida para um dia posterior); anteriores entram sem.
+// Registro sem `tarefaId` (de item, gravado por uma versão de teste) é ignorado.
 const adiamento = z.object({
   id,
   tarefaId: texto.optional(),
-  itemId: texto.optional(),
   deData: dataLocal,
   paraData: dataLocal,
   em: texto,
@@ -255,7 +255,12 @@ export const esquemaBackup = z.object({
       // Formato 17: lembretes.
       lembretes: z.array(lembrete).default([]),
       // Formato 18: adiamentos.
-      adiamentos: z.array(adiamento).default([]),
+      adiamentos: z
+        .array(adiamento)
+        .default([])
+        .transform((lista) =>
+          lista.flatMap(({ tarefaId, ...resto }) => (tarefaId ? [{ ...resto, tarefaId }] : [])),
+        ),
     })
     .transform(({ groupInstances, subcategories, ...lidas }) => {
       const maeDe = maesDasSubcategorias(subcategories ?? [])

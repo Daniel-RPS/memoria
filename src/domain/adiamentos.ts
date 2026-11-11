@@ -1,9 +1,8 @@
 import type { Adiamento, DataLocal } from '@/db/types'
 
-/** Uma tarefa solta ou item que mudou (ou vai mudar) de dia. */
+/** Uma tarefa solta que mudou (ou vai mudar) de dia. */
 export interface MudancaDeDia {
-  tarefaId?: string
-  itemId?: string
+  tarefaId: string
   deData: DataLocal
   paraData: DataLocal
 }
@@ -21,8 +20,7 @@ export function registrosDeAdiamento(
     .filter((mudanca) => mudanca.paraData > mudanca.deData)
     .map((mudanca) => ({
       id: novoId(),
-      ...(mudanca.tarefaId !== undefined && { tarefaId: mudanca.tarefaId }),
-      ...(mudanca.itemId !== undefined && { itemId: mudanca.itemId }),
+      tarefaId: mudanca.tarefaId,
       deData: mudanca.deData,
       paraData: mudanca.paraData,
       em: momento,

@@ -10,13 +10,18 @@ import type {
   Task,
 } from '@/db/types'
 import { intervaloDoPeriodoDeDados, type PeriodoDeDados } from '@/domain/tempo'
-import { deDataLocal, hoje as diaLocalDe, paraDataLocal, somarDias } from '@/lib/datas'
+import { deDataLocal, paraDataLocal, somarDias } from '@/lib/datas'
 
 /**
  * Regras da tela Dados › Números, sem banco nem UI. Tarefa = tarefa solta ou item de grupo (o
- * grupo em si e as subetapas não contam). Cada uma conta no dia em que está agora: o registro
- * "transferido" que um item deixa no card de origem não conta de novo. Arquivada conta; excluída
- * não existe mais no banco.
+ * grupo em si e as subetapas não contam). Cada tarefa vale em CADA dia em que esteve na lista e,
+ * nesse dia, cai numa classe só:
+ * - concluída: marcada como feita;
+ * - não concluída: transferida para outro dia sem concluir, ou pendente num dia que já passou;
+ * - em aberto: pendente hoje ou num dia futuro.
+ * A transferência é lida do que o app já guarda: o item "transferido" que fica no card de origem
+ * e, para a tarefa solta (que é MOVIDA, sem deixar registro no dia), o `Adiamento` gravado ao
+ * movê-la para um dia posterior. Arquivada conta; excluída não existe mais no banco.
  */
 
 /** Tudo o que a tela lê do banco. */
@@ -29,12 +34,29 @@ export interface DadosDeNumeros {
   adiamentos: Adiamento[]
 }
 
-/** Tarefa solta ou item, já no formato da contagem. */
-interface TarefaContada {
+export type ClasseDaTarefa = 'concluida' | 'naoConcluida' | 'emAberto'
+
+/** Uma tarefa num dia em que esteve na lista, já classificada. */
+interface TarefaNoDia {
   data: DataLocal
-  isConcluida: boolean
-  isArquivada: boolean
+  classe: ClasseDaTarefa
+  /** Saiu deste dia para um posterior sem ser concluída (conta em "Adiadas"). */
+  isTransferida: boolean
+  /** Atrasada como no Início: pendente, não arquivada, num dia que passou. */
+  isAtrasada: boolean
   categoryId?: string
+  /**
+   * A mesma tarefa ao longo dos dias: `cadeiaId` no item (marcador, cópias e origem) e o id na
+   * tarefa solta (o mesmo do adiamento e do item, se ela virou item).
+   */
+  cadeia: string
+}
+
+/** Quantas de cada classe. */
+export interface ContagemPorClasse {
+  concluidas: number
+  naoConcluidas: number
+  emAberto: number
 }
 
 export interface ComparacaoComAnterior {
@@ -44,34 +66,34 @@ export interface ComparacaoComAnterior {
   texto: string
 }
 
-export interface ColunaPorDia {
+export interface ColunaPorDia extends ContagemPorClasse {
   data: DataLocal
-  concluidas: number
-  pendentes: number
   /** Rótulo do eixo ("seg", "5"); vazio quando o dia não leva rótulo. */
   rotuloDoEixo: string
-  /** "qua, 11 nov · 4 concluídas · 2 pendentes". */
+  /** "qua, 11 nov · 4 concluídas · 2 não concluídas · 1 em aberto" (sem os zeros). */
   dica: string
 }
 
-export interface BarraPorCategoria {
+export interface BarraPorCategoria extends ContagemPorClasse {
   /** `null` = sem categoria. */
   id: string | null
   nome: string
   /** Cor salva da categoria; ausente = neutra. */
   cor?: string
-  concluidas: number
   total: number
 }
 
-export interface RelatorioDeNumeros {
+export interface RelatorioDeNumeros extends ContagemPorClasse {
+  /** Concluídas + não concluídas + em aberto. */
   total: number
-  concluidas: number
+  /** Pendentes que não foram transferidas (não concluídas no passado + em aberto). */
   pendentes: number
   atrasadas: number
+  /** Transferidas para outro dia, pelo dia de origem. */
   adiadas: number
-  /** Concluídas sobre o total, inteiro (0 sem tarefas). */
+  /** Sobre o total, inteiros (0 sem tarefas). */
   percentualConcluidas: number
+  percentualNaoConcluidas: number
   /** Ausente quando o período anterior não tem tarefas. */
   comparacao?: ComparacaoComAnterior
   /** Só em Esta semana e Este mês. */
@@ -127,42 +149,117 @@ function isNoIntervalo(data: DataLocal, { inicio, fim }: Intervalo) {
   return data >= inicio && data <= fim
 }
 
-/** Tarefas soltas e itens de grupo (sem os registros "transferido"), com o dia em que estão. */
-function tarefasContadas(dados: DadosDeNumeros): TarefaContada[] {
+/** Pendente: em aberto se o dia ainda não passou; senão, não concluída. */
+function classeDaPendente(data: DataLocal, hoje: DataLocal): ClasseDaTarefa {
+  return data < hoje ? 'naoConcluida' : 'emAberto'
+}
+
+/** Cada tarefa em cada dia em que esteve na lista, já classificada. */
+function tarefasNosDias(dados: DadosDeNumeros, hoje: DataLocal): TarefaNoDia[] {
   const cardPorId = new Map(dados.cards.map((card) => [card.id, card]))
   const categoriaDaSerie = new Map(dados.series.map((serie) => [serie.id, serie.categoryId]))
-  const soltas = dados.tarefas.map((tarefa) => ({
-    data: tarefa.data,
+  const categoriaPorTarefa = new Map<string, string | undefined>()
+  const cadeiaPorTarefa = new Map<string, string>()
+
+  const soltas = dados.tarefas.map((tarefa): TarefaNoDia => {
+    categoriaPorTarefa.set(tarefa.id, tarefa.categoryId)
+    cadeiaPorTarefa.set(tarefa.id, tarefa.id)
     // Arquivada guarda `concluidaEm` se foi concluída antes de arquivar.
-    isConcluida:
+    const isConcluida =
       tarefa.status === 'concluida' ||
-      (tarefa.status === 'arquivada' && tarefa.concluidaEm !== undefined),
-    isArquivada: tarefa.status === 'arquivada',
-    categoryId: tarefa.categoryId,
-  }))
-  const itens = dados.itens.flatMap((item) => {
+      (tarefa.status === 'arquivada' && tarefa.concluidaEm !== undefined)
+    return {
+      data: tarefa.data,
+      classe: isConcluida ? 'concluida' : classeDaPendente(tarefa.data, hoje),
+      isTransferida: false,
+      isAtrasada: tarefa.status === 'pendente' && tarefa.data < hoje,
+      categoryId: tarefa.categoryId,
+      cadeia: tarefa.id,
+    }
+  })
+
+  const itens = dados.itens.flatMap((item): TarefaNoDia[] => {
     const card = cardPorId.get(item.cardId)
-    if (!card || item.status === 'transferido') return []
-    const isArquivado = item.status === 'arquivado' || card.arquivado
+    if (!card) return []
+    const categoryId = categoriaDaSerie.get(card.seriesId)
+    categoriaPorTarefa.set(item.id, categoryId)
+    cadeiaPorTarefa.set(item.id, item.cadeiaId)
+    if (item.status === 'transferido') {
+      return [
+        {
+          data: card.data,
+          classe: 'naoConcluida',
+          isTransferida: true,
+          isAtrasada: false,
+          categoryId,
+          cadeia: item.cadeiaId,
+        },
+      ]
+    }
+    const isConcluido =
+      item.status === 'concluido' || (item.status === 'arquivado' && item.concluidoEm !== undefined)
     return [
       {
         data: card.data,
-        isConcluida:
-          item.status === 'concluido' ||
-          (item.status === 'arquivado' && item.concluidoEm !== undefined),
-        isArquivada: isArquivado,
-        categoryId: categoriaDaSerie.get(card.seriesId),
+        classe: isConcluido ? 'concluida' : classeDaPendente(card.data, hoje),
+        isTransferida: false,
+        isAtrasada: item.status === 'pendente' && !card.arquivado && card.data < hoje,
+        categoryId,
+        cadeia: item.cadeiaId,
       },
     ]
   })
-  return [...soltas, ...itens]
+
+  // Tarefa solta movida para um dia posterior: não concluída no dia de onde saiu. O id segue o
+  // mesmo se ela virou item; se foi excluída, não conta.
+  const movidas = dados.adiamentos.flatMap((adiamento): TarefaNoDia[] => {
+    const cadeia = cadeiaPorTarefa.get(adiamento.tarefaId)
+    if (cadeia === undefined) return []
+    return [
+      {
+        data: adiamento.deData,
+        classe: 'naoConcluida',
+        isTransferida: true,
+        isAtrasada: false,
+        categoryId: categoriaPorTarefa.get(adiamento.tarefaId),
+        cadeia,
+      },
+    ]
+  })
+
+  return semMarcadoresRepetidos([...soltas, ...itens, ...movidas])
 }
 
 /**
- * Atrasada: pendente (não arquivada) num dia que já passou, a mesma regra das Atrasadas do Início.
+ * A mesma tarefa conta no máximo uma vez por dia: o marcador de transferência só vale se a cadeia
+ * não estiver viva (feita, pendente ou arquivada) naquele dia, e dois marcadores da mesma cadeia
+ * no mesmo dia (saiu, voltou e saiu de novo) contam como um.
  */
-function isAtrasada(tarefa: TarefaContada, hoje: DataLocal) {
-  return !tarefa.isConcluida && !tarefa.isArquivada && tarefa.data < hoje
+function semMarcadoresRepetidos(tarefas: TarefaNoDia[]): TarefaNoDia[] {
+  const vivas = tarefas.filter((tarefa) => !tarefa.isTransferida)
+  const ocupados = new Set(vivas.map((tarefa) => `${tarefa.cadeia}|${tarefa.data}`))
+  const marcadores = tarefas.filter((tarefa) => {
+    if (!tarefa.isTransferida) return false
+    const chave = `${tarefa.cadeia}|${tarefa.data}`
+    if (ocupados.has(chave)) return false
+    ocupados.add(chave)
+    return true
+  })
+  return [...vivas, ...marcadores]
+}
+
+function contarClasses(tarefas: TarefaNoDia[]): ContagemPorClasse {
+  const contagem: ContagemPorClasse = { concluidas: 0, naoConcluidas: 0, emAberto: 0 }
+  for (const tarefa of tarefas) {
+    if (tarefa.classe === 'concluida') contagem.concluidas += 1
+    else if (tarefa.classe === 'naoConcluida') contagem.naoConcluidas += 1
+    else contagem.emAberto += 1
+  }
+  return contagem
+}
+
+function percentual(parte: number, total: number) {
+  return total > 0 ? Math.round((parte / total) * 100) : 0
 }
 
 /** Diferença com sinal tipográfico: "+4", "−2", "0". */
@@ -176,16 +273,28 @@ function plural(quantidade: number, singular: string, varias: string) {
   return `${quantidade} ${quantidade === 1 ? singular : varias}`
 }
 
+/** "4 concluídas · 2 não concluídas · 1 em aberto", sem as partes zeradas. */
+export function textoDasClasses(
+  { concluidas, naoConcluidas, emAberto }: ContagemPorClasse,
+  isComEmAberto = true,
+) {
+  return [
+    concluidas > 0 && plural(concluidas, 'concluída', 'concluídas'),
+    naoConcluidas > 0 && plural(naoConcluidas, 'não concluída', 'não concluídas'),
+    isComEmAberto && emAberto > 0 && `${emAberto} em aberto`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 function montarPorDia(
-  doPeriodo: TarefaContada[],
+  doPeriodo: TarefaNoDia[],
   intervalo: Intervalo,
   tipo: 'semana' | 'mes',
 ): ColunaPorDia[] {
   const colunas: ColunaPorDia[] = []
   for (let data = intervalo.inicio; data <= intervalo.fim; data = somarDias(data, 1)) {
-    const doDia = doPeriodo.filter((tarefa) => tarefa.data === data)
-    const concluidas = doDia.filter((tarefa) => tarefa.isConcluida).length
-    const pendentes = doDia.length - concluidas
+    const contagem = contarClasses(doPeriodo.filter((tarefa) => tarefa.data === data))
     const dia = deDataLocal(data)
     const numeroDoDia = dia.getDate()
     const rotuloDoEixo =
@@ -194,40 +303,38 @@ function montarPorDia(
         : numeroDoDia === 1 || numeroDoDia % 5 === 0
           ? String(numeroDoDia)
           : ''
+    const diaPorExtenso = format(dia, 'EEEEEE, d MMM', { locale: ptBR })
+    const detalhe = textoDasClasses(contagem)
     colunas.push({
       data,
-      concluidas,
-      pendentes,
+      ...contagem,
       rotuloDoEixo,
-      dica: `${format(dia, 'EEEEEE, d MMM', { locale: ptBR })} · ${plural(concluidas, 'concluída', 'concluídas')} · ${plural(pendentes, 'pendente', 'pendentes')}`,
+      dica: detalhe ? `${diaPorExtenso} · ${detalhe}` : `${diaPorExtenso} · nenhuma tarefa`,
     })
   }
   return colunas
 }
 
-function montarPorCategoria(
-  doPeriodo: TarefaContada[],
-  categorias: Category[],
-): BarraPorCategoria[] {
+function montarPorCategoria(doPeriodo: TarefaNoDia[], categorias: Category[]): BarraPorCategoria[] {
   const categoriaPorId = new Map(categorias.map((categoria) => [categoria.id, categoria]))
-  const barras = new Map<string | null, BarraPorCategoria>()
+  const doGrupo = new Map<string | null, TarefaNoDia[]>()
   for (const tarefa of doPeriodo) {
-    const categoria = tarefa.categoryId ? categoriaPorId.get(tarefa.categoryId) : undefined
-    const chave = categoria?.id ?? null
-    const barra = barras.get(chave) ?? {
-      id: chave,
+    const chave = (tarefa.categoryId && categoriaPorId.get(tarefa.categoryId)?.id) || null
+    doGrupo.set(chave, [...(doGrupo.get(chave) ?? []), tarefa])
+  }
+  const barras = [...doGrupo].map(([id, tarefas]): BarraPorCategoria => {
+    const categoria = id ? categoriaPorId.get(id) : undefined
+    return {
+      id,
       nome: categoria?.nome ?? 'Sem categoria',
       ...(categoria && { cor: categoria.cor }),
-      concluidas: 0,
-      total: 0,
+      ...contarClasses(tarefas),
+      total: tarefas.length,
     }
-    barra.total += 1
-    if (tarefa.isConcluida) barra.concluidas += 1
-    barras.set(chave, barra)
-  }
+  })
   // Empate no total: segue a ordem das categorias; "Sem categoria" por último.
   const ordem = (id: string | null) => (id ? (categoriaPorId.get(id)?.ordem ?? 0) : Infinity)
-  return [...barras.values()].sort((a, b) => b.total - a.total || ordem(a.id) - ordem(b.id))
+  return barras.sort((a, b) => b.total - a.total || ordem(a.id) - ordem(b.id))
 }
 
 /** Monta todos os números da tela para o período. */
@@ -237,11 +344,11 @@ export function montarRelatorioDeNumeros(
   hoje: DataLocal,
 ): RelatorioDeNumeros {
   const intervalo = intervaloDoPeriodoDeDados(periodo, hoje)
-  const todas = tarefasContadas(dados)
+  const todas = tarefasNosDias(dados, hoje)
   const doPeriodo = todas.filter((tarefa) => isNoIntervalo(tarefa.data, intervalo))
   const total = doPeriodo.length
-  const concluidas = doPeriodo.filter((tarefa) => tarefa.isConcluida).length
-  const pendentes = total - concluidas
+  const contagem = contarClasses(doPeriodo)
+  const adiadas = doPeriodo.filter((tarefa) => tarefa.isTransferida).length
 
   const anterior = periodoAnterior(periodo, hoje)
   const totalAnterior = anterior
@@ -255,18 +362,14 @@ export function montarRelatorioDeNumeros(
         }
       : undefined
 
-  // Pelo dia (local) em que a mudança foi feita, não pelo dia de destino.
-  const adiadas = dados.adiamentos.filter((adiamento) =>
-    isNoIntervalo(diaLocalDe(new Date(adiamento.em)), intervalo),
-  ).length
-
   return {
     total,
-    concluidas,
-    pendentes,
-    atrasadas: doPeriodo.filter((tarefa) => isAtrasada(tarefa, hoje)).length,
+    ...contagem,
+    pendentes: total - contagem.concluidas - adiadas,
+    atrasadas: doPeriodo.filter((tarefa) => tarefa.isAtrasada).length,
     adiadas,
-    percentualConcluidas: total > 0 ? Math.round((concluidas / total) * 100) : 0,
+    percentualConcluidas: percentual(contagem.concluidas, total),
+    percentualNaoConcluidas: percentual(contagem.naoConcluidas, total),
     ...(comparacao && { comparacao }),
     ...((periodo.tipo === 'semana' || periodo.tipo === 'mes') && {
       porDia: montarPorDia(doPeriodo, intervalo, periodo.tipo),

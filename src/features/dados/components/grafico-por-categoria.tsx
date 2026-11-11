@@ -1,10 +1,42 @@
-import type { BarraPorCategoria } from '@/domain/numeros'
+import { cn } from 'cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { textoDasClasses, type BarraPorCategoria } from '@/domain/numeros'
+import { COR_EM_ABERTO, COR_NAO_CONCLUIDAS } from '@/features/dados/components/cores-dos-numeros'
 import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 
+interface Segmento {
+  chave: string
+  quantidade: number
+  dica: string
+  /** Classe de fundo (não concluídas); a parte concluída usa `cor`. */
+  classe?: string
+  cor?: string
+}
+
+function segmentosDa(barra: BarraPorCategoria, cor: string): Segmento[] {
+  const segmentos: Segmento[] = [
+    {
+      chave: 'concluidas',
+      quantidade: barra.concluidas,
+      dica: `${barra.concluidas} ${barra.concluidas === 1 ? 'concluída' : 'concluídas'}`,
+      cor,
+    },
+    {
+      chave: 'nao-concluidas',
+      quantidade: barra.naoConcluidas,
+      dica: `${barra.naoConcluidas} ${barra.naoConcluidas === 1 ? 'não concluída' : 'não concluídas'}`,
+      classe: COR_NAO_CONCLUIDAS.fundo,
+    },
+    // Sem fundo próprio: o trilho já é o cinza de "em aberto".
+    { chave: 'em-aberto', quantidade: barra.emAberto, dica: `${barra.emAberto} em aberto` },
+  ]
+  return segmentos.filter((segmento) => segmento.quantidade > 0)
+}
+
 /**
- * Uma barra de progresso por categoria (já ordenadas pelo total): bolinha e nome, "8 de 10"
- * (concluídas de total) e a parte concluída na cor da categoria sobre o trilho. Sem categoria =
- * cor neutra.
+ * Uma barra por categoria (já ordenadas pelo total), com 100% = total da categoria, em
+ * segmentos: concluídas na cor da categoria, não concluídas em âmbar e em aberto no trilho
+ * neutro. Passar o mouse num segmento mostra a contagem dele. Sem categoria = cor neutra.
  */
 export function GraficoPorCategoria({ barras }: { barras: BarraPorCategoria[] }) {
   const corNaTela = useCorNaTela()
@@ -19,7 +51,7 @@ export function GraficoPorCategoria({ barras }: { barras: BarraPorCategoria[] })
       <ul className="grid gap-3">
         {barras.map((barra) => {
           const cor = barra.cor ? corNaTela(barra.cor) : 'var(--grafite)'
-          const percentual = barra.total > 0 ? (barra.concluidas / barra.total) * 100 : 0
+          const resumo = textoDasClasses(barra, false) || `${barra.emAberto} em aberto`
           return (
             <li key={barra.id ?? 'sem-categoria'} className="grid gap-1.5 text-sm">
               <div className="flex min-w-0 items-center gap-2">
@@ -30,21 +62,30 @@ export function GraficoPorCategoria({ barras }: { barras: BarraPorCategoria[] })
                 />
                 <span className="truncate text-tinta">{barra.nome}</span>
                 <span className="ml-auto shrink-0 text-xs font-medium whitespace-nowrap text-grafite tabular-nums">
-                  {barra.concluidas} de {barra.total}
+                  {resumo}
                 </span>
               </div>
               <div
-                role="progressbar"
-                aria-label={`${barra.nome}: ${barra.concluidas} de ${barra.total} concluídas`}
-                aria-valuemin={0}
-                aria-valuemax={barra.total}
-                aria-valuenow={barra.concluidas}
-                className="h-[7px] overflow-hidden rounded-full bg-muted"
+                role="img"
+                aria-label={`${barra.nome}: ${textoDasClasses(barra)}`}
+                className={cn('flex h-[7px] overflow-hidden rounded-full', COR_EM_ABERTO.fundo)}
               >
-                <div
-                  className="h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none"
-                  style={{ width: `${percentual}%`, backgroundColor: cor }}
-                />
+                {segmentosDa(barra, cor).map((segmento) => (
+                  <Tooltip key={segmento.chave}>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={cn('h-full', segmento.classe)}
+                        style={{
+                          width: `${(segmento.quantidade / barra.total) * 100}%`,
+                          ...(segmento.cor && { backgroundColor: segmento.cor }),
+                        }}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{segmento.dica}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
               </div>
             </li>
           )

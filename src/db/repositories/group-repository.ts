@@ -9,7 +9,7 @@ import type {
   Task,
   TimeSession,
 } from '@/db/types'
-import { apagarAdiamentos, registrarAdiamentos } from '@/db/repositories/adiamento-repository'
+import { apagarAdiamentos } from '@/db/repositories/adiamento-repository'
 import { excluirAnexosDe } from '@/db/repositories/attachment-repository'
 import { apagarLembretesDe, clonarLembretesParaCopias } from '@/db/repositories/lembrete-repository'
 import { soltarNotasSemAlvo, trocarVinculoDasNotas } from '@/db/repositories/note-repository'
@@ -494,7 +494,10 @@ export interface ResultadoAcao {
   desfazer: MudancasDosGrupos[]
   /** Sessões abertas que foram fechadas ao transferir os itens. */
   sessoesFechadas?: TimeSession[]
-  /** Adiamentos gravados (tarefas e itens levados a um dia posterior); o "Desfazer" os apaga. */
+  /**
+   * Adiamentos gravados (tarefas soltas movidas para um dia posterior); o "Desfazer" os apaga.
+   * Item levado não precisa: o registro "transferido" fica no card de origem.
+   */
   adiamentos?: string[]
 }
 
@@ -618,16 +621,6 @@ export async function copiarItens(ids: string[], destino: DataLocal): Promise<Re
       maiorOrdemDoDestino: await maiorOrdemDoDia(destino),
     })
     await gravarMudancas(plano.mudancas)
-    const dataDoCard = new Map(estado.cards.map((card) => [card.id, card.data]))
-    const idsLevados = new Set(ids)
-    const adiamentos = await registrarAdiamentos(
-      estado.itens.flatMap((item) => {
-        const deData = dataDoCard.get(item.cardId)
-        if (!idsLevados.has(item.id) || item.status !== 'pendente' || !deData) return []
-        return [{ itemId: item.id, deData, paraData: destino }]
-      }),
-      momento,
-    )
     const emAndamentoAntes = estado.itens.filter((i) => i.emAndamento === true)
     const desligados = emAndamentoAntes.filter((antes) => {
       const gravado = plano.mudancas.gravar.itens.find((g) => g.id === antes.id)
@@ -648,7 +641,6 @@ export async function copiarItens(ids: string[], destino: DataLocal): Promise<Re
       ...acaoVazia(),
       itensLevados: plano.itensLevados,
       desfazer: [inverterMudancas(estado, plano.mudancas)],
-      adiamentos,
       ...(sessoesFechadas && sessoesFechadas.length > 0 ? { sessoesFechadas } : {}),
     }
   })
@@ -689,7 +681,7 @@ async function adiarItensECards(itemIds: string[], cardIds: string[], hoje: Data
     const destino = destinoDoAdiamento(data, hoje)
     porDestino.set(destino, (porDestino.get(destino) ?? new Set()).add(item.id))
   }
-  const total: ResultadoAcao = { ...acaoVazia(), adiamentos: [] }
+  const total = acaoVazia()
   const sessoesFechadas: TimeSession[] = []
   for (const [destino, ids] of porDestino) {
     const parcial = await copiarItens([...ids], destino)
@@ -697,7 +689,6 @@ async function adiarItensECards(itemIds: string[], cardIds: string[], hoje: Data
     // Desfazer na ordem contrária à que foi feito.
     total.desfazer.unshift(...parcial.desfazer)
     if (parcial.sessoesFechadas) sessoesFechadas.push(...parcial.sessoesFechadas)
-    total.adiamentos!.push(...(parcial.adiamentos ?? []))
   }
   if (sessoesFechadas.length > 0) total.sessoesFechadas = sessoesFechadas
   return total
@@ -723,7 +714,7 @@ export async function moverSelecao(
       ...levados,
       tarefasMovidas: movidas.quantidade,
       anteriores: movidas.anteriores,
-      adiamentos: [...movidas.adiamentos, ...(levados.adiamentos ?? [])],
+      adiamentos: movidas.adiamentos,
     }
   })
 }
@@ -740,7 +731,7 @@ export async function adiarSelecao(
       ...levados,
       tarefasMovidas: movidas.quantidade,
       anteriores: movidas.anteriores,
-      adiamentos: [...movidas.adiamentos, ...(levados.adiamentos ?? [])],
+      adiamentos: movidas.adiamentos,
     }
   })
 }
