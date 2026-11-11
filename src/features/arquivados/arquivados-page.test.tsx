@@ -8,10 +8,13 @@ import { criarNota } from '@/db/repositories/note-repository'
 import { criarProcedimento } from '@/db/repositories/procedure-repository'
 import { criarTarefa } from '@/db/repositories/task-repository'
 import { CHAVE_TIPO_DOS_ARQUIVADOS } from '@/features/arquivados/arquivados-page'
+import { abrirMenuDaBarra } from '@/test/menu-da-barra'
 import { renderizarApp } from '@/test/renderizar-app'
 
-function navegacao() {
-  return screen.getByRole('navigation', { name: 'Telas' })
+/** Destino Arquivados no menu Ajustes da barra lateral (o contador vai na descrição). */
+async function itemArquivadosNaBarra(usuario: ReturnType<typeof userEvent.setup>) {
+  const menu = await abrirMenuDaBarra(usuario, 'Ajustes')
+  return within(menu).getByRole('menuitem', { name: 'Arquivados' })
 }
 
 async function arquivarUmDeCada() {
@@ -38,18 +41,18 @@ describe('tela Arquivados', () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
   })
 
-  it('o item fica entre Categorias e Dados, sem contador quando não há nada', async () => {
+  it('o item fica em Ajustes, antes de Backup, sem contador quando não há nada', async () => {
+    const usuario = userEvent.setup()
     renderizarApp('/arquivados')
-    const links = await within(navegacao()).findAllByRole('link')
-    const nomes = links.map((link) => link.textContent)
-    const indice = nomes.indexOf('Arquivados')
-    expect(nomes[indice - 1]).toBe('Categorias')
-    expect(nomes[indice + 1]).toBe('Dados')
-    expect(nomes[indice + 2]).toBe('Backup')
-    expect(within(navegacao()).getByRole('link', { name: 'Arquivados' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    const menu = await abrirMenuDaBarra(usuario, 'Ajustes')
+    const nomes = within(menu)
+      .getAllByRole('menuitem')
+      .map((item) => item.getAttribute('aria-label'))
+    expect(nomes).toEqual(['Arquivados', 'Backup', 'Tema', 'Em breve'])
+    const arquivados = within(menu).getByRole('menuitem', { name: 'Arquivados' })
+    expect(arquivados).toHaveAttribute('aria-current', 'page')
+    expect(arquivados).not.toHaveAttribute('aria-description')
+    expect(arquivados.querySelector('[data-selo]')).toBeNull()
     expect(
       await screen.findByText(
         'Nada arquivado. Use Arquivar no menu ⋯ de uma tarefa, grupo, nota ou procedimento.',
@@ -72,10 +75,9 @@ describe('tela Arquivados', () => {
       expect(within(regiao).getByText(titulo)).toBeInTheDocument()
     }
     expect(screen.getByRole('radio', { name: /^Todos/ })).toHaveTextContent('4')
-    expect(within(navegacao()).getByRole('link', { name: 'Arquivados' })).toHaveAttribute(
-      'aria-description',
-      '4 itens',
-    )
+    const arquivados = await itemArquivadosNaBarra(usuario)
+    expect(arquivados).toHaveAttribute('aria-description', '4 itens')
+    expect(arquivados.querySelector('[data-selo]')).toHaveTextContent('4')
 
     await usuario.click(screen.getByRole('radio', { name: /^Notas/ }))
     expect(screen.queryByText('Ligar para Fulano')).not.toBeInTheDocument()
@@ -100,11 +102,7 @@ describe('tela Arquivados', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /^Senha do roteador/ })).not.toBeInTheDocument(),
     )
-    await waitFor(() =>
-      expect(within(navegacao()).getByRole('link', { name: 'Arquivados' })).toHaveAttribute(
-        'aria-description',
-        '3 itens',
-      ),
-    )
+    const arquivados = await itemArquivadosNaBarra(usuario)
+    await waitFor(() => expect(arquivados).toHaveAttribute('aria-description', '3 itens'))
   })
 })

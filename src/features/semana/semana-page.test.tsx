@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
 import { criarTarefa } from '@/db/repositories/task-repository'
+import { escolherNaBarra } from '@/test/menu-da-barra'
 import { renderizarApp } from '@/test/renderizar-app'
 
 // Quinta-feira; a semana vai de segunda 26/10 a domingo 1/11.
@@ -48,7 +49,7 @@ describe('Visão de semana', () => {
     const usuario = userEvent.setup()
     const router = renderizarApp(`/dia/${QUINTA}`)
 
-    await usuario.click(await screen.findByRole('link', { name: 'Semana' }))
+    await escolherNaBarra(usuario, 'Calendário', 'Semana')
     expect(router.state.location.pathname).toBe(`/semana/${QUINTA}`)
     expect(
       await screen.findByRole('list', { name: 'Pendentes de quinta-feira, 29 de outubro' }),

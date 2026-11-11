@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { db } from '@/db/database'
 import { criarCategoria } from '@/db/repositories/category-repository'
 import { criarTarefa, definirConclusao } from '@/db/repositories/task-repository'
+import { escolherNaBarra } from '@/test/menu-da-barra'
 import { renderizarApp } from '@/test/renderizar-app'
 
 describe('Visão de mês', () => {
@@ -110,9 +111,9 @@ describe('Visão de ano', () => {
     const usuario = userEvent.setup()
     const router = renderizarApp('/dia/2025-06-15')
 
-    await usuario.click(await screen.findByRole('link', { name: 'Mês' }))
+    await escolherNaBarra(usuario, 'Calendário', 'Mês')
     expect(router.state.location.pathname).toBe('/mes/2025-06-15')
-    await usuario.click(await screen.findByRole('link', { name: 'Ano' }))
+    await escolherNaBarra(usuario, 'Calendário', 'Ano')
     expect(router.state.location.pathname).toBe('/ano/2025')
   })
 })

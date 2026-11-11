@@ -23,8 +23,7 @@ describe('Notas', () => {
     await usuario.type(screen.getByLabelText('Texto da nota'), 'Pintar a varanda')
     expect(await screen.findByText('Salvo')).toBeInTheDocument()
 
-    const navegacao = screen.getByRole('navigation', { name: 'Telas' })
-    await usuario.click(within(navegacao).getByRole('link', { name: 'Notas' }))
+    await router.navigate('/notas')
     const lista = await screen.findByRole('region', { name: 'Lista de notas' })
     expect(await within(lista).findByText('Ideias para a casa')).toBeInTheDocument()
     expect(within(lista).getByText('Pintar a varanda')).toBeInTheDocument()
@@ -33,12 +32,11 @@ describe('Notas', () => {
   it('não perde o texto ao sair logo depois de digitar', async () => {
     const usuario = userEvent.setup()
     const nota = await criarNota()
-    renderizarApp(`/notas/${nota.id}`)
+    const router = renderizarApp(`/notas/${nota.id}`)
 
     await usuario.type(await screen.findByLabelText('Texto da nota'), 'Última frase')
     // Sai antes do atraso de gravação terminar.
-    const navegacao = screen.getByRole('navigation', { name: 'Telas' })
-    await usuario.click(within(navegacao).getByRole('link', { name: 'Notas' }))
+    await router.navigate('/notas')
 
     await waitFor(async () => expect((await db.notes.get(nota.id))?.conteudo).toBe('Última frase'))
   })
