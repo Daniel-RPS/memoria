@@ -50,7 +50,7 @@ export function ListaSubtarefas({
   }
 
   return (
-    <div>
+    <div data-no-drag="" data-sem-arrasto="">
       <ListaOrdenavel
         itens={subtarefas}
         rotulo={`Subetapas de ${dono.titulo}`}

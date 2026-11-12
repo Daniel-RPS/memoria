@@ -5,6 +5,7 @@ describe('visão do dia', () => {
   it('lê modo e ordem com padrão Lista e Grupos primeiro', () => {
     expect(lerModoDoDia(null)).toBe('lista')
     expect(lerModoDoDia('colunas')).toBe('colunas')
+    expect(lerModoDoDia('cartoes')).toBe('cartoes')
     expect(lerModoDoDia('outro')).toBe('lista')
     expect(lerOrdemDoDia(null)).toBe('grupos')
     expect(lerOrdemDoDia('soltas')).toBe('soltas')

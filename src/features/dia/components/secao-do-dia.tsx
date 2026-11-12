@@ -7,7 +7,7 @@ interface SecaoDoDiaProps {
   /** Contagem ao lado do título ("2", "1/3") e o mesmo em palavras para o leitor de tela. */
   contagem: { texto: string; rotulo: string }
   /** Texto do botão de criar, ex.: "Novo grupo". */
-  rotuloAdicionar: string
+  rotuloAdicionar?: string
   isRecolhida: boolean
   onAlternar: () => void
   /** No modo Colunas, recolhida vira uma faixa estreita com o nome na vertical. */
@@ -16,8 +16,12 @@ interface SecaoDoDiaProps {
   isSemAdicionar?: boolean
   /** Linha discreta quando não há nada na seção. */
   textoVazio?: string
+  /** Ícone antes do título da seção (ex.: ListChecks). */
+  icone?: ReactNode
+  /** Ação customizada do botão de criar se não usar o campo embutido. */
+  onAdicionar?: () => void
   /** Campo de criar, aberto pelo botão; `fechar` volta ao botão. */
-  campo: (fechar: () => void) => ReactNode
+  campo?: (fechar: () => void) => ReactNode
   children?: ReactNode
 }
 
@@ -35,6 +39,8 @@ export function SecaoDoDia({
   isFaixa = false,
   isSemAdicionar = false,
   textoVazio,
+  icone,
+  onAdicionar,
   campo,
   children,
 }: SecaoDoDiaProps) {
@@ -44,7 +50,11 @@ export function SecaoDoDia({
 
   function handleAdicionar() {
     if (isRecolhida) onAlternar()
-    setIsCriando(true)
+    if (onAdicionar) {
+      onAdicionar()
+    } else {
+      setIsCriando(true)
+    }
   }
 
   return (
@@ -79,6 +89,7 @@ export function SecaoDoDia({
               !isRecolhida && 'rotate-90',
             )}
           />
+          {icone && <span className="shrink-0">{icone}</span>}
           <span className="whitespace-nowrap">{titulo}</span>
           <span aria-hidden className="text-grafite/70">
             ·
@@ -87,7 +98,7 @@ export function SecaoDoDia({
             {contagem.texto}
           </span>
         </button>
-        {!isSemAdicionar && (
+        {!isSemAdicionar && rotuloAdicionar && (
           <button
             type="button"
             onClick={handleAdicionar}
@@ -105,7 +116,7 @@ export function SecaoDoDia({
       <div id={idConteudo} hidden={isRecolhida}>
         {!isRecolhida && (
           <>
-            {isCriando && !isSemAdicionar && (
+            {isCriando && !isSemAdicionar && campo && (
               <div className="border-b border-pauta">{campo(() => setIsCriando(false))}</div>
             )}
             {textoVazio && !isCriando && (

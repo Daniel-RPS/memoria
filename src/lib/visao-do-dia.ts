@@ -1,8 +1,8 @@
 import type { Task } from '@/db/types'
 import type { EntradaDoDia, GrupoDoDia } from '@/lib/grupos'
 
-/** Como a visão Dia mostra as duas seções: empilhadas ou lado a lado. */
-export const MODOS_DO_DIA = ['lista', 'colunas'] as const
+/** Como a visão Dia mostra as duas seções: empilhadas, lado a lado ou em grade de cartões. */
+export const MODOS_DO_DIA = ['lista', 'colunas', 'cartoes'] as const
 export type ModoDoDia = (typeof MODOS_DO_DIA)[number]
 
 /** Qual seção vem primeiro (em cima na Lista, à esquerda nas Colunas). */
@@ -11,7 +11,9 @@ export type OrdemDoDia = (typeof ORDENS_DO_DIA)[number]
 export type SecaoDoDia = OrdemDoDia
 
 export function lerModoDoDia(valor: string | null): ModoDoDia {
-  return valor === 'colunas' ? 'colunas' : 'lista'
+  if (valor === 'colunas') return 'colunas'
+  if (valor === 'cartoes') return 'cartoes'
+  return 'lista'
 }
 
 export function lerOrdemDoDia(valor: string | null): OrdemDoDia {

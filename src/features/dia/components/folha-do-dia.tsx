@@ -1,4 +1,5 @@
 import { cn } from 'cn'
+import { ListChecks } from 'lucide-react'
 import type { DataLocal, GroupItem, Task } from '@/db/types'
 import { ContextoSubetapas } from '@/hooks/contexto-subetapas'
 import { blocoDe, type Bloco } from '@/domain/ordem-de-exibicao'
@@ -14,8 +15,11 @@ import { ContextoSelecao, useSelecao } from '@/features/dia/hooks/use-selecao'
 import { useTarefasDoDia } from '@/features/dia/hooks/use-tarefas-do-dia'
 import { AvisoPendenciasOntem } from '@/features/dia/components/aviso-pendencias-ontem'
 import { BarraSelecao } from '@/features/dia/components/barra-selecao'
+import { CartaoNovoGrupo } from '@/features/dia/components/cartao-novo-grupo'
 import { FerramentasDoDia } from '@/features/dia/components/ferramentas-do-dia'
 import { GrupoConcluidas } from '@/features/dia/components/grupo-concluidas'
+import { GrupoConcluidasDoCard } from '@/features/dia/components/grupo-concluidas-do-card'
+import { LinhaItem } from '@/features/dia/components/linha-item'
 import { ListaDoDia } from '@/features/dia/components/lista-do-dia'
 import { NovaTarefa } from '@/features/dia/components/nova-tarefa'
 import { NovoGrupo } from '@/features/dia/components/novo-grupo'
@@ -35,16 +39,14 @@ const COLUNAS_DA_GRADE = {
 }
 
 /**
- * A folha do dia em duas seções fixas, "Grupos" e "Tarefas soltas", empilhadas (Lista) ou lado
- * a lado (Colunas, só com espaço: estreita, volta a empilhar sem mudar a preferência). Quais
- * seções estão recolhidas e quais grupos estão abertos é lembrado entre visitas
- * (`useLayoutDoDia`); grupo sem estado salvo abre recolhido.
+ * A folha do dia em Lista, Colunas ou Cartões.
  */
 export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
   const { entradas, concluidas, subtarefasPorTarefa, extras, isCarregando } = useTarefasDoDia(data)
   const { modo, ordem, handleEscolherModo, handleEscolherOrdem } = usePreferenciasDoDia()
   const { isSecaoRecolhida, handleAlternarSecao } = useLayoutDoDia()
   const { grupos: cards, soltas } = separarSecoes(entradas)
+
   // O que dá para selecionar: tarefas soltas, cards com pendentes e itens pendentes.
   const gruposComPendentes = cards.filter(podeCopiarGrupo)
   const idsGrupos = gruposComPendentes.map((grupo) => grupo.card.id)
@@ -87,6 +89,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
   })
   const gruposLembrados = useGruposLembrados()
   const isColunas = modo === 'colunas'
+  const isCartoes = modo === 'cartoes'
   const [primeira, segunda] = secoesNaOrdem(ordem)
   const contagemSoltas = contagemDasSoltas(soltas.length, concluidas.length)
 
@@ -122,6 +125,113 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                 hoje={hoje}
               >
                 {(listas) => {
+                  if (isCartoes) {
+                    const textoVazioSoltas =
+                      !isCarregando && soltas.length === 0
+                        ? concluidas.length > 0
+                          ? 'Nenhuma tarefa solta pendente'
+                          : 'Nenhuma tarefa solta'
+                        : undefined
+
+                    const cartoesGrupos = cards.map((grupo) => {
+                      const itensConcluidos = grupo.itens.filter(
+                        (item) => item.status === 'concluido' || item.status === 'transferido',
+                      )
+                      const blocoConcluidas =
+                        itensConcluidos.length > 0 ? (
+                          <GrupoConcluidasDoCard quantidade={itensConcluidos.length}>
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5 pt-1">
+                              {itensConcluidos.map((item) => (
+                                <LinhaItem
+                                  key={item.id}
+                                  item={item}
+                                  data={grupo.card.data}
+                                  hoje={hoje}
+                                  variant="card"
+                                />
+                              ))}
+                            </div>
+                          </GrupoConcluidasDoCard>
+                        ) : undefined
+
+                      return listas.renderGrupoCard(grupo, { concluidas: blocoConcluidas })
+                    })
+
+                    const cartaoNovo = (
+                      <CartaoNovoGrupo
+                        key="cartao-novo-grupo"
+                        data={data}
+                        isSemAdicionar={selecao.isSelecionando}
+                      />
+                    )
+
+                    const secaoGrupos = (
+                      <SecaoDoDia
+                        key="secao-grupos"
+                        titulo="Grupos"
+                        contagem={{
+                          texto: String(cards.length),
+                          rotulo: cards.length === 1 ? '1 grupo' : `${cards.length} grupos`,
+                        }}
+                        isRecolhida={isSecaoRecolhida('grupos')}
+                        onAlternar={() => handleAlternarSecao('grupos')}
+                        isSemAdicionar={selecao.isSelecionando}
+                        textoVazio={
+                          !isCarregando && cards.length === 0 ? 'Nenhum grupo neste dia' : undefined
+                        }
+                      >
+                        <div className="mt-3 flex flex-col gap-4 w-full">
+                          {cartoesGrupos}
+                          {cartaoNovo}
+                        </div>
+                      </SecaoDoDia>
+                    )
+
+                    const secaoSoltas = (
+                      <SecaoDoDia
+                        key="secao-soltas"
+                        titulo="Tarefas soltas"
+                        contagem={contagemSoltas}
+                        rotuloAdicionar="Nova tarefa"
+                        icone={<ListChecks className="size-4 text-grafite" />}
+                        isRecolhida={isSecaoRecolhida('soltas')}
+                        onAlternar={() => handleAlternarSecao('soltas')}
+                        isSemAdicionar={selecao.isSelecionando}
+                        textoVazio={textoVazioSoltas}
+                        campo={(fechar) => <NovaTarefa data={data} onFechar={fechar} />}
+                      >
+                        <div className="mt-3 w-full">
+                          {listas.renderSoltasCard({
+                            contagemTexto: contagemSoltas.texto,
+                            concluidas: (
+                              <GrupoConcluidas
+                                concluidas={concluidas}
+                                subtarefasPorTarefa={subtarefasPorTarefa}
+                                hoje={hoje}
+                                variant="card"
+                              />
+                            ),
+                            isSemAdicionar: selecao.isSelecionando,
+                          })}
+                        </div>
+                      </SecaoDoDia>
+                    )
+
+                    const secoesOrdenadas =
+                      ordem === 'soltas'
+                        ? [secaoSoltas, secaoGrupos]
+                        : [secaoGrupos, secaoSoltas]
+
+                    return (
+                      <div
+                        data-modo={modo}
+                        className="mt-2 flex flex-col gap-6 w-full"
+                      >
+                        {secoesOrdenadas}
+                      </div>
+                    )
+                  }
+
                   const secoes = {
                     grupos: (
                       <SecaoDoDia

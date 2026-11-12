@@ -29,13 +29,20 @@ interface LinhaTarefaProps {
   hoje: DataLocal
   /** Alça de arrastar; ausente nas concluídas. */
   alca?: ReactNode
+  variant?: 'line' | 'card'
 }
 
 /**
- * Uma linha pautada: caixa de seleção, título, selo de atraso, progresso e menu.
- * As subtarefas abrem logo abaixo, recuadas.
+ * Uma linha pautada ou cartão: caixa de seleção, título, selo de atraso, progresso e menu.
+ * No modo 'card', vira um cartão para a grade de cartões.
  */
-export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps) {
+export function LinhaTarefa({
+  tarefa,
+  subtarefas,
+  hoje,
+  alca,
+  variant = 'line',
+}: LinhaTarefaProps) {
   const { definirConclusao, renomearTarefa } = useAcoesTarefa()
   const [isEditando, setIsEditando] = useState(false)
   const [isSubtarefasAbertas, setIsSubtarefasAbertas] = useState(false)
@@ -54,9 +61,7 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
   const idPainel = `subtarefas-${tarefa.id}`
   const idPainelAnexos = `anexos-${tarefa.id}`
   const { isSelecionando, selecionados, alternar } = useSelecaoDaFolha()
-  // No modo "Selecionar", pendentes viram itens de seleção (sem arrastar, editar nem menu).
   const isSelecionavel = isSelecionando && !isConcluida
-  // Destaque também fora do modo: Shift+clique e Ctrl+clique selecionam sem entrar nele.
   const isSelecionada = !isConcluida && selecionados.has(tarefa.id)
 
   function handleSalvarTitulo(titulo: string) {
@@ -82,6 +87,189 @@ export function LinhaTarefa({ tarefa, subtarefas, hoje, alca }: LinhaTarefaProps
     () => setIsEditando(true),
     !isEditando && !isSelecionavel,
   )
+
+  const corCategoria = classificacao ? corNaTela(classificacao.cor) : undefined
+
+  if (variant === 'card') {
+    return (
+      <div
+        className={cn(
+          'group/linha relative flex h-full flex-col justify-between overflow-hidden rounded-md border border-pauta bg-papel p-2.5 pl-3 transition-colors motion-reduce:transition-none hover:border-caneta/45 shadow-xs',
+          isSelecionada && 'bg-accent border-caneta/50',
+          isConcluida && 'opacity-60 bg-papel/50',
+        )}
+      >
+        {/* Faixa de 3px na esquerda com a cor da categoria (sem categoria: cinza neutro) */}
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-[3px]"
+          style={{ backgroundColor: corCategoria ?? 'var(--color-pauta)' }}
+        />
+
+        {isEmAndamento && <FileteDeAndamento />}
+
+        {/* Topo do cartão: checkbox, título e menu */}
+        <div className="flex items-start gap-2">
+          <div data-sem-arrasto="" className="mt-0.5 shrink-0">
+            {isSelecionavel ? (
+              <Checkbox
+                checked={isSelecionada}
+                onCheckedChange={() => alternar(tarefa.id)}
+                aria-label={`Selecionar ${tarefa.titulo}`}
+                className="size-4 rounded-full border-2 border-caneta data-[state=checked]:bg-caneta"
+              />
+            ) : (
+              <Checkbox
+                checked={isConcluida}
+                onCheckedChange={(marcada) => void definirConclusao(tarefa.id, marcada === true)}
+                aria-label={isConcluida ? `Desmarcar ${tarefa.titulo}` : `Concluir ${tarefa.titulo}`}
+                className="size-4 rounded-[4px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
+              />
+            )}
+          </div>
+
+          <div
+            data-em-andamento={isEmAndamento || undefined}
+            data-prioridade={isPrioritaria || undefined}
+            data-selecionada={isSelecionada || undefined}
+            {...alvoDePrioridade('tarefa', tarefa.id, tarefa.status === 'pendente')}
+            {...duploClique}
+            data-sem-arrasto={isEditando ? '' : undefined}
+            className="min-w-0 flex-1 leading-snug"
+          >
+            <ComBandeira isPrioritario={isPrioritaria && !isEditando}>
+              {isSelecionavel ? (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => alternar(tarefa.id)}
+                  className="min-w-0 text-left text-[0.8125rem] font-medium leading-snug break-words"
+                >
+                  {tarefa.titulo}
+                </button>
+              ) : (
+                <TituloEditavel
+                  isComLinks
+                  titulo={tarefa.titulo}
+                  isEditando={isEditando}
+                  onIniciarEdicao={() => setIsEditando(true)}
+                  onSalvar={handleSalvarTitulo}
+                  onCancelar={() => setIsEditando(false)}
+                  className={cn(
+                    'text-[0.8125rem] font-medium leading-snug break-words',
+                    isConcluida && 'text-grafite line-through decoration-tinta/50',
+                  )}
+                />
+              )}
+            </ComBandeira>
+          </div>
+
+          {!isSelecionavel && (
+            <div data-sem-arrasto="" className="shrink-0">
+              <MenuTarefa
+                tarefa={tarefa}
+                hoje={hoje}
+                onRenomear={() => setIsEditando(true)}
+                onAdicionarSubtarefa={handleAdicionarSubtarefa}
+                onAbrirAnexos={handleAbrirAnexos}
+                onDefinirHorario={() => setIsHorarioAberto(true)}
+                onNotificar={() => setIsAvisosAberto(true)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Rodapé do cartão: indicadores e badges */}
+        <div data-sem-arrasto="" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-grafite">
+          {isEmAndamento && !isEditando && <IndicadorAndamento desde={tarefa.emAndamentoDesde} isCompacto />}
+          {!isEditando && (
+            <HorarioDaTarefa
+              alvo={{ tipo: 'tarefa', id: tarefa.id }}
+              horario={tarefa.horario}
+              titulo={tarefa.titulo}
+              isAberto={isHorarioAberto}
+              onMudarAberto={setIsHorarioAberto}
+              isCompacto
+            />
+          )}
+          {!isEditando && (
+            <AvisosDaTarefa
+              alvo={{ tipo: 'tarefa', id: tarefa.id }}
+              data={tarefa.data}
+              horario={tarefa.horario}
+              titulo={tarefa.titulo}
+              isAberto={isAvisosAberto}
+              onMudarAberto={setIsAvisosAberto}
+              isCompacto
+            />
+          )}
+          {!isEditando && (
+            <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />
+          )}
+          {dias !== null && !isEditando && (
+            <span className="text-[0.6875rem] font-medium whitespace-nowrap text-alerta">
+              {textoDiasPendente(dias)}
+            </span>
+          )}
+          {progresso && !isEditando && (
+            <BotaoProgresso
+              progresso={progresso}
+              tituloTarefa={tarefa.titulo}
+              isAberto={isSubtarefasAbertas}
+              idPainel={idPainel}
+              onAlternar={handleAlternarSubtarefas}
+              isCompacto
+            />
+          )}
+          {quantidadeAnexos > 0 && !isEditando && (
+            <button
+              type="button"
+              onClick={() => setIsAnexosAbertos((atual) => !atual)}
+              aria-expanded={isAnexosAbertos}
+              aria-controls={idPainelAnexos}
+              aria-label={`Anexos de ${tarefa.titulo}: ${quantidadeAnexos === 1 ? '1 anexo' : `${quantidadeAnexos} anexos`}`}
+              className="flex items-center gap-0.5 rounded-sm text-xs text-grafite tabular-nums hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta"
+            >
+              <Paperclip aria-hidden className="size-3" />
+              {quantidadeAnexos}
+            </button>
+          )}
+        </div>
+
+        {/* Rodapé da categoria: bolinha + nome */}
+        {classificacao && !isEditando && (
+          <div data-sem-arrasto="" className="mt-1.5 flex items-center gap-1.5 text-xs text-grafite">
+            <span
+              aria-hidden
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: corCategoria }}
+            />
+            <span className="truncate">{classificacao.rotulo}</span>
+          </div>
+        )}
+
+        {/* Painéis expandidos dentro do cartão */}
+        {isAnexosAbertos && (
+          <div id={idPainelAnexos} data-no-drag="" data-sem-arrasto="" className="mt-2 border-t border-pauta/60 pt-2">
+            <PainelAnexos
+              dono={{ tipo: 'task', id: tarefa.id }}
+              descricaoDono={`da tarefa ${tarefa.titulo}`}
+            />
+          </div>
+        )}
+        {isSubtarefasAbertas && (
+          <div id={idPainel} data-no-drag="" data-sem-arrasto="" className="mt-2 border-t border-pauta/60 pt-2">
+            <ListaSubtarefas
+              dono={tarefa}
+              subtarefas={subtarefas}
+              isFocandoNovaSubtarefa={isFocandoNovaSubtarefa}
+              onFechar={() => setIsSubtarefasAbertas(false)}
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="relative border-b border-pauta">

@@ -1,4 +1,4 @@
-import { CheckSquare, Columns2, Ellipsis, Rows3, type LucideIcon } from 'lucide-react'
+import { CheckSquare, Columns2, Ellipsis, LayoutGrid, Rows3, type LucideIcon } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,6 +24,7 @@ interface FerramentasDoDiaProps {
 const OPCOES_DE_MODO: { modo: ModoDoDia; rotulo: string; Icone: LucideIcon }[] = [
   { modo: 'lista', rotulo: 'Lista', Icone: Rows3 },
   { modo: 'colunas', rotulo: 'Colunas', Icone: Columns2 },
+  { modo: 'cartoes', rotulo: 'Cartões', Icone: LayoutGrid },
 ]
 
 /** "Selecionar", o alternador Lista/Colunas e o menu ⋯ com a ordem das seções. */

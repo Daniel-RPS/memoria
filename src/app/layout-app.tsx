@@ -28,14 +28,14 @@ export function LayoutApp() {
   const isNasCategorias = useMatch('/categorias') !== null
   const isNosDados = useMatch({ path: '/dados', end: false }) !== null
   const isNaListaDeNotas = useMatch('/notas') !== null
-  // No modo Colunas o Dia precisa de espaço para as duas seções lado a lado.
+  // No modo Colunas ou Cartões o Dia precisa de espaço para as colunas/grade.
   const { modo: modoDoDia } = usePreferenciasDoDia()
-  const isDiaEmColunas = isNoDia && modoDoDia === 'colunas'
+  const isDiaLargo = isNoDia && (modoDoDia === 'colunas' || modoDoDia === 'cartoes')
   const largura = isNaSemana
     ? 'max-w-[96rem]'
     : isNoMesOuAno || isNoInicio
       ? 'max-w-6xl'
-      : isNasCategorias || isNaListaDeNotas || isDiaEmColunas || isNosDados
+      : isNasCategorias || isNaListaDeNotas || isDiaLargo || isNosDados
         ? 'max-w-5xl'
         : isNosProcedimentos || isNoDia
           ? 'max-w-3xl'

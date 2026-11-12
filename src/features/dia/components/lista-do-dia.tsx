@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -17,6 +17,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import {
+  rectSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -44,22 +45,101 @@ import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { useAcoesTarefa } from '@/features/dia/hooks/use-acoes-tarefa'
 import { AlcaArrastar } from '@/components/alca-arrastar'
 import { CardGrupo } from '@/features/dia/components/card-grupo'
+import { CartaoNovoItemGrupo } from '@/features/dia/components/cartao-novo-item-grupo'
+import { DayCard } from '@/features/dia/components/day-card'
 import { ItemPendente } from '@/features/dia/components/item-pendente'
 import { LinhaItem } from '@/features/dia/components/linha-item'
+
+export interface ListasRenderProps {
+  grupos: ReactNode
+  soltas: ReactNode
+  renderGrupoCard: (grupo: GrupoDoDia, opcoes?: { concluidas?: ReactNode }) => ReactNode
+  renderSoltasCard: (opcoes: {
+    contagemTexto: string
+    onNovaTarefa?: () => void
+    concluidas?: ReactNode
+    formularioNovo?: ReactNode
+    isSemAdicionar?: boolean
+    textoVazio?: string
+  }) => ReactNode
+}
 
 interface ListaDoDiaProps {
   data: DataLocal
   entradas: EntradaDoDia[]
   subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
-  /** Monta as seções com as duas listas (cards e tarefas soltas), dentro do mesmo arrastar. */
-  children: (listas: { grupos: ReactNode; soltas: ReactNode }) => ReactNode
+  /** Monta as seções com as listas, dentro do mesmo arrastar. */
+  children: (listas: ListasRenderProps) => ReactNode
 }
 
 /** Coluna dos cards de grupo do dia. */
 const GRUPOS = 'grupos'
 /** Coluna das tarefas soltas; as outras colunas são os itens pendentes de cada card. */
 const SOLTAS = 'soltas'
+
+function isElementoInterativo(elemento: Element | null): boolean {
+  if (!elemento) return false
+  return Boolean(
+    elemento.closest(
+      'input, textarea, select, button, a, [contenteditable="true"], [role="menu"], [role="dialog"], [data-no-drag], [data-sem-arrasto]',
+    ),
+  )
+}
+
+class SensorPonteiroSeguro extends PointerSensor {
+  static activators = [
+    {
+      eventName: 'onPointerDown' as const,
+      handler: (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { nativeEvent: event }: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { onActivation }: any,
+      ) => {
+        if (!event.isPrimary || event.button !== 0) return false
+        if (event.target instanceof Element && isElementoInterativo(event.target)) return false
+        onActivation?.({ event })
+        return true
+      },
+    },
+  ] as unknown as typeof PointerSensor.activators
+}
+
+class SensorTecladoSeguro extends KeyboardSensor {
+  static activators = [
+    {
+      eventName: 'onKeyDown' as const,
+      handler: (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        event: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {
+          keyboardCodes = {
+            start: ['Space', 'Enter'],
+            cancel: ['Escape'],
+            end: ['Space', 'Enter'],
+          },
+          onActivation,
+        }: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { active }: any,
+      ) => {
+        const { code } = event.nativeEvent
+        const target = event.target
+        if (target instanceof Element && isElementoInterativo(target)) return false
+        if (keyboardCodes.start.includes(code)) {
+          const activator = active.activatorNode.current
+          if (activator && target !== activator) return false
+          event.nativeEvent.preventDefault()
+          onActivation?.({ event: event.nativeEvent })
+          return true
+        }
+        return false
+      },
+    },
+  ] as unknown as typeof KeyboardSensor.activators
+}
 /** Prefixo da área de soltar dos itens de um card (o resto é o id do card). */
 const PREFIXO_ITENS = 'itens:'
 /** Área de soltar da lista de tarefas soltas (recebe item tirado do card mesmo com ela vazia). */
@@ -108,8 +188,8 @@ export function ListaDoDia({
   const [lote, setLote] = useState<string[] | null>(null)
   const selecao = useSelecaoDaFolha()
   const sensores = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(SensorPonteiroSeguro, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
+    useSensor(SensorTecladoSeguro, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   // Quando o banco devolve o dia gravado, a ordem otimista é substituída.
@@ -221,10 +301,31 @@ export function ListaDoDia({
   }
 
   function handleDragStart({ active }: DragStartEvent) {
+    // Se o elemento ativo atual no DOM for um campo de texto ou elemento interativo, cancela imediatamente
+    if (
+      document.activeElement instanceof Element &&
+      isElementoInterativo(document.activeElement)
+    ) {
+      return
+    }
     setIdAtivo(String(active.id))
     setOrigem(colunaDe(colunas, String(active.id)) ?? null)
     setLote(loteDe(String(active.id)))
   }
+
+  // Cancelar arrasto e limpar overlay se a janela perder foco
+  useEffect(() => {
+    function handleBlur() {
+      if (idAtivo) {
+        setIdAtivo(null)
+        setOrigem(null)
+        setLote(null)
+        setColunas(colunasDe(entradas))
+      }
+    }
+    window.addEventListener('blur', handleBlur)
+    return () => window.removeEventListener('blur', handleBlur)
+  }, [idAtivo, entradas])
 
   /** Solta o lote: as linhas entram juntas, na ordem, onde foi solto (uma operação, um aviso). */
   async function soltarLote(movidos: string[], idAlvo: string) {
@@ -321,23 +422,82 @@ export function ListaDoDia({
       </ul>
     </SortableContext>
   )
+
+  const soltasItens = colunas[SOLTAS].map((id) => (
+    <EntradaSolta
+      key={id}
+      id={id}
+      tarefaPorId={tarefaPorId}
+      itemPorId={itemPorId}
+      subtarefasPorTarefa={subtarefasPorTarefa}
+      hoje={hoje}
+      data={data}
+    />
+  ))
+
   const soltas = (
     <SortableContext id={SOLTAS} items={colunas[SOLTAS]} strategy={verticalListSortingStrategy}>
       <AreaDasSoltas chave={colunas[SOLTAS].join('|')} isArrastando={idAtivo !== null}>
-        {colunas[SOLTAS].map((id) => (
-          <EntradaSolta
-            key={id}
-            id={id}
-            tarefaPorId={tarefaPorId}
-            itemPorId={itemPorId}
-            subtarefasPorTarefa={subtarefasPorTarefa}
-            hoje={hoje}
-            data={data}
-          />
-        ))}
+        {soltasItens}
       </AreaDasSoltas>
     </SortableContext>
   )
+
+  const renderGrupoCard = (grupo: GrupoDoDia, opcoes?: { concluidas?: ReactNode }) => {
+    const idsPendentes = colunas[grupo.card.id] ?? []
+    return (
+      <CardOrdenavelCustomizado
+        key={grupo.card.id}
+        grupo={grupo}
+        idsPendentes={idsPendentes}
+        tarefaPorId={tarefaPorId}
+        itemPorId={itemPorId}
+        subtarefasPorTarefa={subtarefasPorTarefa}
+        hoje={hoje}
+        concluidas={opcoes?.concluidas}
+      />
+    )
+  }
+
+  const renderSoltasCard = (opcoes: {
+    contagemTexto: string
+    onNovaTarefa?: () => void
+    concluidas?: ReactNode
+    formularioNovo?: ReactNode
+    isSemAdicionar?: boolean
+    textoVazio?: string
+  }) => {
+    const soltasCards = colunas[SOLTAS].map((id) => (
+      <EntradaSolta
+        key={id}
+        id={id}
+        tarefaPorId={tarefaPorId}
+        itemPorId={itemPorId}
+        subtarefasPorTarefa={subtarefasPorTarefa}
+        hoje={hoje}
+        data={data}
+        variant="card"
+      />
+    ))
+
+    return (
+      <SortableContext id={SOLTAS} items={colunas[SOLTAS]} strategy={rectSortingStrategy}>
+        <div className="flex flex-col gap-3">
+          {opcoes.formularioNovo}
+          {soltasCards.length > 0 ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5">
+              {soltasCards}
+            </div>
+          ) : opcoes.textoVazio && !opcoes.formularioNovo ? (
+            <p className="border-b border-pauta py-3 pl-7 text-sm text-grafite">
+              {opcoes.textoVazio}
+            </p>
+          ) : null}
+          {opcoes.concluidas}
+        </div>
+      </SortableContext>
+    )
+  }
 
   return (
     <DndContext
@@ -351,7 +511,7 @@ export function ListaDoDia({
     >
       {/* Arrastando em lote, as outras selecionadas ficam esmaecidas (index.css). */}
       <div className="contents" data-arrastando-lote={lote ? '' : undefined}>
-        {children({ grupos, soltas })}
+        {children({ grupos, soltas, renderGrupoCard, renderSoltasCard })}
       </div>
       <DragOverlay dropAnimation={null}>
         {idAtivo && (
@@ -398,6 +558,7 @@ interface EntradaProps {
   hoje: DataLocal
   /** Dia da folha (para itens que estão de passagem fora do card). */
   data: DataLocal
+  variant?: 'line' | 'card'
 }
 
 /**
@@ -411,6 +572,7 @@ function EntradaSolta({
   subtarefasPorTarefa,
   hoje,
   data,
+  variant = 'line',
 }: EntradaProps) {
   const tarefa = tarefaPorId.get(id)
   if (tarefa) {
@@ -419,22 +581,27 @@ function EntradaSolta({
         tarefa={tarefa}
         subtarefas={subtarefasPorTarefa.get(id) ?? SEM_SUBTAREFAS}
         hoje={hoje}
+        variant={variant}
       />
     )
   }
   const item = itemPorId.get(id)
-  return item ? <ItemDeGrupoOrdenavel item={item} data={data} hoje={hoje} /> : null
+  return item ? (
+    <ItemDeGrupoOrdenavel item={item} data={data} hoje={hoje} variant={variant} />
+  ) : null
 }
 
-/** Item pendente do card, arrastável pela alça (reordena, sai do card ou vai para outro). */
+/** Item pendente do card, arrastável pela alça ou pelo cartão (reordena, sai do card ou vai para outro). */
 function ItemDeGrupoOrdenavel({
   item,
   data,
   hoje,
+  variant = 'line',
 }: {
   item: GroupItem
   data: DataLocal
   hoje: DataLocal
+  variant?: 'line' | 'card'
 }) {
   const {
     attributes,
@@ -445,6 +612,26 @@ function ItemDeGrupoOrdenavel({
     transition,
     isDragging,
   } = useSortable({ id: item.id })
+
+  if (variant === 'card') {
+    return (
+      <div
+        ref={setNodeRef}
+        data-flip-id={item.id}
+        style={{ transform: CSS.Translate.toString(transform), transition }}
+        className={cn('relative h-full select-none', isDragging && 'z-10 opacity-40')}
+        {...attributes}
+        {...listeners}
+      >
+        <LinhaItem
+          item={item}
+          data={data}
+          hoje={hoje}
+          variant="card"
+        />
+      </div>
+    )
+  }
 
   return (
     <li
@@ -552,5 +739,101 @@ function CardOrdenavel({
         }
       />
     </li>
+  )
+}
+
+interface CardOrdenavelCustomizadoProps extends CardOrdenavelProps {
+  concluidas?: ReactNode
+}
+
+/** Card de grupo no modo "Cartões": arrastável pelo cabeçalho no mesmo SortableContext dos grupos. */
+function CardOrdenavelCustomizado({
+  grupo,
+  idsPendentes,
+  tarefaPorId,
+  itemPorId,
+  subtarefasPorTarefa,
+  hoje,
+  concluidas,
+}: CardOrdenavelCustomizadoProps) {
+  const { id, data } = grupo.card
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+  const { setNodeRef: setAreaRef, isOver } = useDroppable({ id: `${PREFIXO_ITENS}${id}` })
+  const { active } = useDndContext()
+  const listaAnimada = useAnimarReordenacao<HTMLDivElement>(idsPendentes.join('|'), active !== null)
+
+  const itensCards = idsPendentes.map((idItem) => {
+    const item = itemPorId.get(idItem)
+    if (item) {
+      return (
+        <ItemDeGrupoOrdenavel
+          key={idItem}
+          item={item}
+          data={data}
+          hoje={hoje}
+          variant="card"
+        />
+      )
+    }
+    const tarefa = tarefaPorId.get(idItem)
+    return tarefa ? (
+      <ItemPendente
+        key={idItem}
+        tarefa={tarefa}
+        subtarefas={subtarefasPorTarefa.get(idItem) ?? SEM_SUBTAREFAS}
+        hoje={hoje}
+        variant="card"
+      />
+    ) : null
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn('relative w-full', isDragging && 'z-10 opacity-40')}
+    >
+      <SortableContext id={id} items={idsPendentes} strategy={rectSortingStrategy}>
+        <div
+          ref={(elemento) => {
+            setAreaRef(elemento)
+            listaAnimada(elemento)
+          }}
+          className={cn('h-full transition-colors', isOver && 'bg-accent/40')}
+        >
+          <DayCard
+            grupo={grupo}
+            titulo={grupo.serie.titulo}
+            hoje={hoje}
+            alca={
+              <AlcaArrastar
+                rotulo={`Mover grupo ${grupo.serie.titulo}`}
+                ref={setActivatorNodeRef}
+                attributes={attributes}
+                listeners={listeners}
+                grupoDeHover="cabecalho"
+              />
+            }
+            totalPendentes={idsPendentes.length}
+            pendentes={
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5">
+                {itensCards}
+                <CartaoNovoItemGrupo cardId={id} tituloGrupo={grupo.serie.titulo} />
+              </div>
+            }
+            concluidas={concluidas}
+            subtitulo={idsPendentes.length === 0 && !concluidas ? 'Nenhum item pendente' : undefined}
+          />
+        </div>
+      </SortableContext>
+    </div>
   )
 }

@@ -8,12 +8,18 @@ interface GrupoConcluidasProps {
   concluidas: Task[]
   subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
+  variant?: 'line' | 'card'
 }
 
 const SEM_SUBTAREFAS: Subtask[] = []
 
 /** Tarefas soltas concluídas do dia, riscadas, num grupo recolhível no fim da seção. */
-export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: GrupoConcluidasProps) {
+export function GrupoConcluidas({
+  concluidas,
+  subtarefasPorTarefa,
+  hoje,
+  variant = 'line',
+}: GrupoConcluidasProps) {
   const { isRecolhido, alternar } = useConcluidasRecolhidas()
   const quantidade = concluidas.length
 
@@ -37,19 +43,36 @@ export function GrupoConcluidas({ concluidas, subtarefasPorTarefa, hoje }: Grupo
         />
         Concluídas ({quantidade})
       </button>
-      {!isRecolhido && (
-        <ul id="lista-concluidas" aria-label="Concluídas" className="border-t border-pauta">
-          {concluidas.map((tarefa) => (
-            <li key={tarefa.id}>
+      {!isRecolhido &&
+        (variant === 'card' ? (
+          <div
+            id="lista-concluidas"
+            aria-label="Concluídas"
+            className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5 pt-1"
+          >
+            {concluidas.map((tarefa) => (
               <LinhaTarefa
+                key={tarefa.id}
                 tarefa={tarefa}
                 subtarefas={subtarefasPorTarefa.get(tarefa.id) ?? SEM_SUBTAREFAS}
                 hoje={hoje}
+                variant="card"
               />
-            </li>
-          ))}
-        </ul>
-      )}
+            ))}
+          </div>
+        ) : (
+          <ul id="lista-concluidas" aria-label="Concluídas" className="border-t border-pauta">
+            {concluidas.map((tarefa) => (
+              <li key={tarefa.id}>
+                <LinhaTarefa
+                  tarefa={tarefa}
+                  subtarefas={subtarefasPorTarefa.get(tarefa.id) ?? SEM_SUBTAREFAS}
+                  hoje={hoje}
+                />
+              </li>
+            ))}
+          </ul>
+        ))}
     </div>
   )
 }

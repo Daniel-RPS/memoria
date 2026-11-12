@@ -9,10 +9,11 @@ interface ItemPendenteProps {
   tarefa: Task
   subtarefas: Subtask[]
   hoje: DataLocal
+  variant?: 'line' | 'card'
 }
 
-/** Linha de tarefa pendente que pode ser arrastada pela alça. */
-export function ItemPendente({ tarefa, subtarefas, hoje }: ItemPendenteProps) {
+/** Linha de tarefa pendente que pode ser arrastada pela alça ou pelo próprio cartão. */
+export function ItemPendente({ tarefa, subtarefas, hoje, variant = 'line' }: ItemPendenteProps) {
   const {
     attributes,
     listeners,
@@ -22,6 +23,26 @@ export function ItemPendente({ tarefa, subtarefas, hoje }: ItemPendenteProps) {
     transition,
     isDragging,
   } = useSortable({ id: tarefa.id })
+
+  if (variant === 'card') {
+    return (
+      <div
+        ref={setNodeRef}
+        data-flip-id={tarefa.id}
+        style={{ transform: CSS.Translate.toString(transform), transition }}
+        className={cn('relative h-full select-none', isDragging && 'z-10 opacity-40')}
+        {...attributes}
+        {...listeners}
+      >
+        <LinhaTarefa
+          tarefa={tarefa}
+          subtarefas={subtarefas}
+          hoje={hoje}
+          variant="card"
+        />
+      </div>
+    )
+  }
 
   return (
     <li
