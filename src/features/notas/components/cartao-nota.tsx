@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Camera, Link2, Mic, PenLine, type LucideIcon } from 'lucide-react'
+import { Camera, FileText, Link2, Mic, PenLine, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { MenuDoCartao } from '@/components/menu-do-cartao'
 import { CaminhoDoVinculo } from '@/components/notas/caminho-do-vinculo'
@@ -10,6 +10,7 @@ import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { previaDaNota, tituloDaNota, type NotaComDono } from '@/lib/notas'
 
 const ANEXOS: { tipo: TipoAnexo; Icone: LucideIcon; nome: string }[] = [
+  { tipo: 'documento', Icone: FileText, nome: 'documento' },
   { tipo: 'foto', Icone: Camera, nome: 'foto' },
   { tipo: 'desenho', Icone: PenLine, nome: 'desenho' },
   { tipo: 'audio', Icone: Mic, nome: 'áudio' },
@@ -21,6 +22,7 @@ interface CartaoNotaProps {
   /** Cor da faixa (já ajustada para o tema); sem categoria = neutra. */
   cor: string
   tiposDeAnexo?: Set<TipoAnexo>
+  quantosDocumentos?: number
 }
 
 /**
@@ -28,7 +30,7 @@ interface CartaoNotaProps {
  * quem pertence (com links para o Dia) e "editada há…" com os tipos de anexo. O cartão todo
  * abre a nota; os links do vínculo ficam por cima.
  */
-export function CartaoNota({ item, cor, tiposDeAnexo }: CartaoNotaProps) {
+export function CartaoNota({ item, cor, tiposDeAnexo, quantosDocumentos }: CartaoNotaProps) {
   const { nota, dono } = item
   const previa = previaDaNota(nota)
   const anexos = ANEXOS.filter(({ tipo }) => tiposDeAnexo?.has(tipo))
@@ -66,7 +68,12 @@ export function CartaoNota({ item, cor, tiposDeAnexo }: CartaoNotaProps) {
             className="flex items-center gap-1.5"
           >
             {anexos.map(({ tipo, Icone }) => (
-              <Icone key={tipo} aria-hidden className="size-3.5" />
+              <span key={tipo} className="flex items-center gap-0.5">
+                <Icone aria-hidden className="size-3.5" />
+                {tipo === 'documento' && quantosDocumentos !== undefined && quantosDocumentos > 1 && (
+                  <span className="text-[0.6875rem] font-bold tabular-nums">{quantosDocumentos}</span>
+                )}
+              </span>
             ))}
           </span>
         )}

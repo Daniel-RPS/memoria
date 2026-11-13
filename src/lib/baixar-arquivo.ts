@@ -1,6 +1,7 @@
-/** Faz o navegador baixar `conteudo` como um arquivo com o nome dado. */
-export function baixarArquivo(nome: string, conteudo: string, tipo = 'application/json') {
-  const url = URL.createObjectURL(new Blob([conteudo], { type: tipo }))
+/** Faz o navegador baixar `conteudo` (string ou Blob) como um arquivo com o nome dado. */
+export function baixarArquivo(nome: string, conteudo: string | Blob, tipo = 'application/json') {
+  const blob = typeof conteudo === 'string' ? new Blob([conteudo], { type: tipo }) : conteudo
+  const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = nome

@@ -130,7 +130,15 @@ const procedimento = z.object({
   categoryId: texto.optional(),
   // Formatos 5 a 13; religada à categoria-mãe ao ler.
   subcategoryId: texto.optional(),
-  etapas: z.array(z.object({ id, texto, ordem: z.number() })),
+  favorito: z.boolean().optional(),
+  etapas: z.array(
+    z.object({
+      id,
+      texto,
+      ordem: z.number(),
+      rotulo: z.string().optional(),
+    }),
+  ),
   // Formato 15; antes, preenchida ao ler pelo título (`preencherOrdemDosProcedimentos`).
   ordem: z.number().optional(),
   icone,
@@ -173,14 +181,16 @@ const nota = z.object({
   arquivadoEm: texto.optional(),
 })
 
-/** No arquivo, o conteúdo binário do anexo (foto, desenho, áudio) vai em base64. */
+/** No arquivo, o conteúdo binário do anexo (foto, desenho, áudio, documento) vai em base64. */
 const anexoNoArquivo = z.object({
   ...base,
   dono,
-  tipo: z.enum(['foto', 'desenho', 'audio', 'link']),
+  tipo: z.enum(['foto', 'desenho', 'audio', 'link', 'documento']),
   nome: texto,
   mime: texto.optional(),
   url: texto.optional(),
+  extensao: texto.optional(),
+  tamanho: z.number().optional(),
   conteudo: z.object({ tipo: texto, base64: z.string() }).optional(),
 })
 

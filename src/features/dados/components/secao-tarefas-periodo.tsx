@@ -5,10 +5,11 @@ import { GraficoPorDia } from '@/features/dados/components/grafico-por-dia'
 import { ResumoNumeros } from '@/features/dados/components/resumo-numeros'
 import { useRelatorioDeNumeros } from '@/features/dados/hooks/use-dados-numeros'
 import { usePeriodoDeDados } from '@/features/dados/hooks/use-dados-tempo'
+import { textoCompletoDoPeriodo } from '@/domain/periodo'
 
 /**
  * Seção "Tarefas no período" da tela Números: o mesmo filtro (e a mesma escolha lembrada) do
- * Tempo, os 4 blocos do resumo e os gráficos Por dia (semana e mês) e Por categoria.
+ * Tempo e da Visão geral, os blocos do resumo e os gráficos Por dia e Por categoria.
  */
 export function SecaoTarefasPeriodo() {
   const [periodo, definirPeriodo] = usePeriodoDeDados()
@@ -16,18 +17,28 @@ export function SecaoTarefasPeriodo() {
 
   if (!relatorio) return null
 
+  const isVeioDeEscolher = periodo.tipo === 'escolher'
+  const linhaPeriodoCompleto = isVeioDeEscolher
+    ? textoCompletoDoPeriodo(periodo.dias)
+    : undefined
+
   return (
     <section aria-labelledby="titulo-tarefas-periodo" className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="titulo-tarefas-periodo" className="text-lg font-bold tracking-tight text-tinta">
-          Tarefas no período
-        </h2>
-        <FiltroPeriodoDados
-          periodo={periodo}
-          hoje={hoje}
-          diasComDados={relatorio.diasComTarefas}
-          onMudar={definirPeriodo}
-        />
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="titulo-tarefas-periodo" className="text-lg font-bold tracking-tight text-tinta">
+            Tarefas no período
+          </h2>
+          <FiltroPeriodoDados
+            periodo={periodo}
+            hoje={hoje}
+            diasComDados={relatorio.diasComTarefas}
+            onMudar={definirPeriodo}
+          />
+        </div>
+        {linhaPeriodoCompleto && (
+          <p className="text-xs text-grafite/80 break-words">{linhaPeriodoCompleto}</p>
+        )}
       </div>
 
       <ResumoNumeros relatorio={relatorio} />

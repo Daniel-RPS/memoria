@@ -10,6 +10,7 @@ import { CartaoNota } from '@/features/notas/components/cartao-nota'
 interface ListaDeNotasProps {
   blocos: BlocoDeNotas[]
   anexosPorNota: Map<string, Set<TipoAnexo>>
+  docsPorNota?: Map<string, number>
   /** Onde fica lembrado o que está recolhido (um por modo: `notas:categoria`…). */
   escopo: string
   /** Busca ou filtro ativo: os blocos abrem sozinhos, sem mudar o estado salvo. */
@@ -17,7 +18,13 @@ interface ListaDeNotasProps {
 }
 
 /** Blocos recolhíveis (categoria, grupo ou dia), cada um com os cartões em grade. */
-export function ListaDeNotas({ blocos, anexosPorNota, escopo, isFiltrando }: ListaDeNotasProps) {
+export function ListaDeNotas({
+  blocos,
+  anexosPorNota,
+  docsPorNota,
+  escopo,
+  isFiltrando,
+}: ListaDeNotasProps) {
   const corNaTela = useCorNaTela()
   const corDeTraco = useCorDeTraco()
   const secoes = useSecoesRecolhidas(escopo, isFiltrando)
@@ -57,6 +64,7 @@ export function ListaDeNotas({ blocos, anexosPorNota, escopo, isFiltrando }: Lis
                     item={item}
                     cor={item.dono.cor ? corDeTraco(item.dono.cor) : 'var(--grafite)'}
                     tiposDeAnexo={anexosPorNota.get(item.nota.id)}
+                    quantosDocumentos={docsPorNota?.get(item.nota.id)}
                   />
                 </li>
               ))}

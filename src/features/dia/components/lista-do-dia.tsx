@@ -80,6 +80,8 @@ const SOLTAS = 'soltas'
 
 function isElementoInterativo(elemento: Element | null): boolean {
   if (!elemento) return false
+  // Alças de arrasto são botões, mas devem permitir arrasto!
+  if (elemento.closest('button[aria-label^="Mover"], [data-alca-arrasto]')) return false
   return Boolean(
     elemento.closest(
       'input, textarea, select, button, a, [contenteditable="true"], [role="menu"], [role="dialog"], [data-no-drag], [data-sem-arrasto]',
@@ -825,8 +827,8 @@ function CardOrdenavelCustomizado({
             totalPendentes={idsPendentes.length}
             pendentes={
               <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5">
-                {itensCards}
                 <CartaoNovoItemGrupo cardId={id} tituloGrupo={grupo.serie.titulo} />
+                {itensCards}
               </div>
             }
             concluidas={concluidas}

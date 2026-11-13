@@ -207,16 +207,45 @@ export async function carregarAlvosParaVincular(): Promise<DadosDosVinculos> {
   }
 }
 
-/** Tipos de anexo de cada nota (para os ícones do cartão), sem carregar os arquivos. */
-export async function tiposDeAnexoDasNotas(ids: string[]) {
-  const tipos = new Map<string, Set<TipoAnexo>>()
-  if (ids.length === 0) return tipos
+export interface MetadadosAnexosNota {
+  tipos: Set<TipoAnexo>
+  quantosDocumentos: number
+  nomesAnexos: string[]
+}
+
+/** Metadados dos anexos de cada nota (tipos, contagem de documentos e nomes para busca), sem carregar blobs. */
+export async function metadadosDeAnexosDasNotas(ids: string[]) {
+  const mapa = new Map<string, MetadadosAnexosNota>()
+  if (ids.length === 0) return mapa
   await db.attachments
     .where('[dono.tipo+dono.id]')
     .anyOf(ids.map((id) => ['note', id]))
     .each((anexo) => {
-      tipos.set(anexo.dono.id, (tipos.get(anexo.dono.id) ?? new Set()).add(anexo.tipo))
+      const notaId = anexo.dono.id
+      const meta = mapa.get(notaId) ?? {
+        tipos: new Set<TipoAnexo>(),
+        quantosDocumentos: 0,
+        nomesAnexos: [],
+      }
+      meta.tipos.add(anexo.tipo)
+      if (anexo.tipo === 'documento') {
+        meta.quantosDocumentos += 1
+      }
+      if (anexo.nome) {
+        meta.nomesAnexos.push(anexo.nome)
+      }
+      mapa.set(notaId, meta)
     })
+  return mapa
+}
+
+/** Tipos de anexo de cada nota (para os ícones do cartão), sem carregar os arquivos. */
+export async function tiposDeAnexoDasNotas(ids: string[]) {
+  const metadados = await metadadosDeAnexosDasNotas(ids)
+  const tipos = new Map<string, Set<TipoAnexo>>()
+  for (const [id, meta] of metadados.entries()) {
+    tipos.set(id, meta.tipos)
+  }
   return tipos
 }
 

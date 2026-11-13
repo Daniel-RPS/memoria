@@ -11,7 +11,7 @@ import type {
 } from '@/db/types'
 import { listarCategorias } from '@/db/repositories/category-repository'
 import { excluirGrupo, excluirItem } from '@/db/repositories/group-repository'
-import { carregarDadosDosVinculos, excluirNota } from '@/db/repositories/note-repository'
+import { carregarDadosDosVinculos, excluirNota, metadadosDeAnexosDasNotas } from '@/db/repositories/note-repository'
 import { agora } from '@/db/repositories/ordenacao'
 import { excluirProcedimento } from '@/db/repositories/procedure-repository'
 import { excluirTarefa, maiorOrdemDoDia } from '@/db/repositories/task-repository'
@@ -251,7 +251,7 @@ export async function carregarArquivados(): Promise<DadosDoArquivo> {
     ]),
   ]
   const cards = existentes(await db.groupCards.bulkGet(idsCards))
-  const [itens, subtarefas, series, vinculos, categorias] = await Promise.all([
+  const [itens, subtarefas, series, vinculos, categorias, metadadosAnexos] = await Promise.all([
     db.groupItems.where('cardId').anyOf(idsCards).toArray(),
     db.subtasks
       .where('taskId')
@@ -260,7 +260,12 @@ export async function carregarArquivados(): Promise<DadosDoArquivo> {
     db.groupSeries.bulkGet([...new Set(cards.map((card) => card.seriesId))]),
     carregarDadosDosVinculos(notas),
     listarCategorias(),
+    metadadosDeAnexosDasNotas(notas.map((n) => n.id)),
   ])
+  const nomesAnexosPorNota = new Map<string, string[]>()
+  for (const [id, meta] of metadadosAnexos.entries()) {
+    nomesAnexosPorNota.set(id, meta.nomesAnexos)
+  }
   return {
     tarefas,
     subtarefas,
@@ -271,6 +276,7 @@ export async function carregarArquivados(): Promise<DadosDoArquivo> {
     procedimentos,
     vinculos,
     categorias,
+    nomesAnexosPorNota,
   }
 }
 

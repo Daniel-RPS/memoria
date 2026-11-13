@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Folder } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
 import { IndicadorNotas } from '@/components/notas/indicador-notas'
+import { ChevronRecolher, ConteudoRecolhivel } from '@/components/secao-recolhivel'
 import { useDuploCliqueParaEditar } from '@/hooks/use-duplo-clique-para-editar'
+import { useGrupoLembrado } from '@/hooks/use-grupos-lembrados'
 import { TituloEditavel } from '@/components/titulo-editavel'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DataLocal } from '@/db/types'
@@ -68,6 +70,9 @@ export function DayCard({
 
   const card = grupo.card
   const serie = grupo.serie
+  const idConteudo = useId()
+  const { isAberto, handleAlternar } = useGrupoLembrado(serie.id)
+  const isRecolhido = !isAberto
   const isEncerrado = isGrupoEncerrado(grupo)
   const emAndamento = contarEmAndamento(grupo.itens)
   const prioritarios = contarPrioritarios(grupo.itens)
@@ -143,7 +148,19 @@ export function DayCard({
             aria-label={`Selecionar grupo ${titulo}`}
             className="mx-1 size-5 rounded-full border-2 border-caneta data-[state=checked]:bg-caneta"
           />
-        ) : null}
+        ) : (
+          <button
+            type="button"
+            data-sem-arrasto=""
+            onClick={handleAlternar}
+            aria-expanded={!isRecolhido}
+            aria-controls={idConteudo}
+            aria-label={isRecolhido ? `Abrir ${titulo}` : `Recolher ${titulo}`}
+            className="flex size-7 shrink-0 items-center justify-center rounded-sm text-grafite hover:text-tinta focus-visible:outline-2 focus-visible:outline-caneta"
+          >
+            <ChevronRecolher isAberta={!isRecolhido} />
+          </button>
+        )}
 
         {/* Ícone de pasta em quadradinho arredondado de ~30px tingido */}
         <div
@@ -260,16 +277,18 @@ export function DayCard({
       </header>
 
       {/* Grade interna de cartões */}
-      <div className="p-3 pl-4">
-        {pendentes}
+      <ConteudoRecolhivel id={idConteudo} isAberta={!isRecolhido}>
+        <div className="p-3 pl-4">
+          {pendentes}
 
-        {subtitulo && (
-          <p className="py-2 text-xs text-grafite italic">{subtitulo}</p>
-        )}
+          {subtitulo && (
+            <p className="py-2 text-xs text-grafite italic">{subtitulo}</p>
+          )}
 
-        {/* Concluídas (bloco recolhível) */}
-        {concluidas}
-      </div>
+          {/* Concluídas (bloco recolhível) */}
+          {concluidas}
+        </div>
+      </ConteudoRecolhivel>
     </article>
   )
 }

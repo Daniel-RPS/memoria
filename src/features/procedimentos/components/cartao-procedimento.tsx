@@ -2,7 +2,7 @@ import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type Pointer
 import { useDndContext } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Star } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
 import { IconeDaEntidade } from '@/components/icones/icone-da-entidade'
@@ -11,7 +11,7 @@ import { IndicadorNotas } from '@/components/notas/indicador-notas'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Procedure } from '@/db/types'
-import { moverProcedimento } from '@/db/repositories/procedure-repository'
+import { alternarFavoritoProcedimento, moverProcedimento } from '@/db/repositories/procedure-repository'
 import type { DirecaoDeMover } from '@/domain/procedimentos'
 import { useQuantasNotas } from '@/hooks/contexto-painel-notas'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
@@ -153,6 +153,39 @@ export function CartaoProcedimento({ procedimento, cor, ordem }: CartaoProcedime
           void arquivarComAviso({ procedimentos: [procedimento.id] }, ['procedimento'])
         }
       />
+      <div className="absolute top-1.5 right-8 z-10">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={procedimento.favorito ? `Remover dos favoritos: ${procedimento.titulo}` : `Favoritar: ${procedimento.titulo}`}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                void alternarFavoritoProcedimento(procedimento.id)
+              }}
+              className={cn(
+                'text-grafite transition-colors hover:text-amber-500 focus-visible:opacity-100 focus-visible:text-amber-500 motion-reduce:transition-none',
+                procedimento.favorito
+                  ? 'opacity-100 text-amber-500 hover:text-amber-600'
+                  : 'opacity-0 group-focus-within/cartao-menu:opacity-100 group-hover/cartao-menu:opacity-100',
+              )}
+            >
+              <Star
+                className={cn(
+                  'size-3.5',
+                  procedimento.favorito ? 'fill-amber-500 text-amber-500' : 'text-grafite',
+                )}
+              />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {procedimento.favorito ? 'Remover dos favoritos' : 'Favoritar'}
+          </TooltipContent>
+        </Tooltip>
+      </div>
       {ordem && (
         <div className="absolute top-9 right-1.5 z-10 flex flex-col">
           <SetaDeOrdem

@@ -187,6 +187,19 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
       </div>
 
       <div id={idItens} hidden={isRecolhido} className="pl-6">
+        {!isSelecionando && (
+          <div className="flex items-center pl-1">
+            <span className="w-5 shrink-0" />
+            <div className="min-w-0 flex-1 pl-2">
+              <CampoNovoItem
+                rotulo="Adicionar item"
+                nomeAcessivel={`Adicionar item em ${serie.titulo}`}
+                tamanho="compacto"
+                onCriar={(titulo) => criarItem(card.id, titulo)}
+              />
+            </div>
+          </div>
+        )}
         {pendentes ?? (
           <ul aria-label={`Itens de ${serie.titulo}`}>
             {grupo.itens
@@ -206,19 +219,6 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
               </li>
             ))}
           </ul>
-        )}
-        {!isSelecionando && (
-          <div className="flex items-center pl-1">
-            <span className="w-5 shrink-0" />
-            <div className="min-w-0 flex-1 pl-2">
-              <CampoNovoItem
-                rotulo="Adicionar item"
-                nomeAcessivel={`Adicionar item em ${serie.titulo}`}
-                tamanho="compacto"
-                onCriar={(titulo) => criarItem(card.id, titulo)}
-              />
-            </div>
-          </div>
         )}
       </div>
     </section>

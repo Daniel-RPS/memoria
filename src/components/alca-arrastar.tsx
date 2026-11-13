@@ -28,6 +28,7 @@ export function AlcaArrastar({
     <button
       ref={ref}
       type="button"
+      data-alca-arrasto=""
       aria-label={rotulo}
       className={cn(
         'flex h-8 w-5 cursor-grab touch-none items-center justify-center rounded-sm text-grafite opacity-0 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-caneta active:cursor-grabbing',

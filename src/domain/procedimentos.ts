@@ -1,6 +1,16 @@
 import type { Procedure } from '@/db/types'
 
 /**
+ * Rótulo exibido para uma etapa: se houver rótulo personalizado não vazio, usa ele;
+ * caso contrário, usa o padrão automático "Etapa {posicao}".
+ */
+export function rotuloDaEtapa(posicao: number, rotuloPersonalizado?: string | null): string {
+  const limpo = rotuloPersonalizado?.trim()
+  if (limpo) return limpo
+  return `Etapa ${posicao}`
+}
+
+/**
  * Ordem manual dos procedimentos dentro da categoria, sem banco: a ordem de exibição, subir e
  * descer uma posição, onde entra o novo e o que muda ao trocar de categoria. O repositório só
  * lê e grava (`procedure-repository`).

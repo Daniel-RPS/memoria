@@ -28,6 +28,8 @@ export interface NovoAnexo {
   nome: string
   blob?: Blob
   url?: string
+  extensao?: string
+  tamanho?: number
 }
 
 export async function adicionarAnexo(dados: NovoAnexo): Promise<Attachment> {
@@ -40,10 +42,19 @@ export async function adicionarAnexo(dados: NovoAnexo): Promise<Attachment> {
     mime: dados.blob?.type || undefined,
     blob: dados.blob,
     url: dados.url,
+    extensao: dados.extensao,
+    tamanho: dados.tamanho ?? dados.blob?.size,
     criadoEm: momento,
     atualizadoEm: momento,
   }
-  await db.attachments.add(anexo)
+  try {
+    await db.attachments.add(anexo)
+  } catch (erro) {
+    if (erro instanceof Error && erro.name === 'QuotaExceededError') {
+      throw new Error('Sem espaço no navegador para guardar este arquivo.')
+    }
+    throw erro
+  }
   return anexo
 }
 

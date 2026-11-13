@@ -480,13 +480,21 @@ export function buscarNotas<T extends Pick<Note, 'titulo' | 'conteudo'>>(
   })
 }
 
-/** Busca no título, no texto e nos nomes do vínculo (categoria, grupo, tarefa, item). */
-export function buscarNotasComDono(notas: NotaComDono[], termo: string) {
+/** Busca no título, no texto, nos nomes do vínculo (categoria, grupo, tarefa, item) e nos nomes de anexos. */
+export function buscarNotasComDono(
+  notas: (NotaComDono & { nomesAnexos?: string[] })[],
+  termo: string,
+) {
   const palavras = palavrasDe(termo)
   if (palavras.length === 0) return notas
-  return notas.filter(({ nota, dono }) => {
+  return notas.filter(({ nota, dono, nomesAnexos }) => {
     const texto = normalizar(
-      [nota.titulo, nota.conteudo, ...dono.caminho.map((trecho) => trecho.texto)].join('\n'),
+      [
+        nota.titulo,
+        nota.conteudo,
+        ...dono.caminho.map((trecho) => trecho.texto),
+        ...(nomesAnexos ?? []),
+      ].join('\n'),
     )
     return palavras.every((palavra) => texto.includes(palavra))
   })

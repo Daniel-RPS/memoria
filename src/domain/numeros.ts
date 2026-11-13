@@ -1,4 +1,4 @@
-import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns'
+import { endOfMonth, format, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type {
   Adiamento,
@@ -9,20 +9,12 @@ import type {
   GroupSeries,
   Task,
 } from '@/db/types'
-import { intervaloDoPeriodoDeDados, type PeriodoDeDados } from '@/domain/tempo'
-import { deDataLocal, paraDataLocal, somarDias } from '@/lib/datas'
-
-/**
- * Regras da tela Dados › Números, sem banco nem UI. Tarefa = tarefa solta ou item de grupo (o
- * grupo em si e as subetapas não contam). Cada tarefa vale em CADA dia em que esteve na lista e,
- * nesse dia, cai numa classe só:
- * - concluída: marcada como feita;
- * - não concluída: transferida para outro dia sem concluir, ou pendente num dia que já passou;
- * - em aberto: pendente hoje ou num dia futuro.
- * A transferência é lida do que o app já guarda: o item "transferido" que fica no card de origem
- * e, para a tarefa solta (que é MOVIDA, sem deixar registro no dia), o `Adiamento` gravado ao
- * movê-la para um dia posterior. Arquivada conta; excluída não existe mais no banco.
- */
+import {
+  agruparDiasEmIntervalos,
+  resolverDiasDoPeriodo,
+  type PeriodoDeDados,
+} from '@/domain/periodo'
+import { deDataLocal, diasEntre, paraDataLocal, somarDias } from '@/lib/datas'
 
 /** Tudo o que a tela lê do banco. */
 export interface DadosDeNumeros {
@@ -37,7 +29,7 @@ export interface DadosDeNumeros {
 export type ClasseDaTarefa = 'concluida' | 'naoConcluida' | 'emAberto'
 
 /** Uma tarefa num dia em que esteve na lista, já classificada. */
-interface TarefaNoDia {
+export interface TarefaNoDia {
   data: DataLocal
   classe: ClasseDaTarefa
   /** Saiu deste dia para um posterior sem ser concluída (conta em "Adiadas"). */
@@ -45,10 +37,6 @@ interface TarefaNoDia {
   /** Atrasada como no Início: pendente, não arquivada, num dia que passou. */
   isAtrasada: boolean
   categoryId?: string
-  /**
-   * A mesma tarefa ao longo dos dias: `cadeiaId` no item (marcador, cópias e origem) e o id na
-   * tarefa solta (o mesmo do adiamento e do item, se ela virou item).
-   */
   cadeia: string
 }
 
@@ -60,93 +48,102 @@ export interface ContagemPorClasse {
 }
 
 export interface ComparacaoComAnterior {
-  /** Total do período menos o do anterior. */
   diferenca: number
-  /** "+4 vs semana passada", "−2 vs ontem". */
   texto: string
 }
 
 export interface ColunaPorDia extends ContagemPorClasse {
   data: DataLocal
-  /** Rótulo do eixo ("seg", "5"); vazio quando o dia não leva rótulo. */
+  /** Rótulo do eixo ("seg", "5", "03/11"); vazio quando não leva rótulo. */
   rotuloDoEixo: string
-  /** "qua, 11 nov · 4 concluídas · 2 não concluídas · 1 em aberto" (sem os zeros). */
+  /** Texto completo para o tooltip. */
   dica: string
+  /** Se deve haver um espaçamento maior antes desta coluna (entre períodos desconectados). */
+  temEspacoAntes?: boolean
 }
 
 export interface BarraPorCategoria extends ContagemPorClasse {
-  /** `null` = sem categoria. */
   id: string | null
   nome: string
-  /** Cor salva da categoria; ausente = neutra. */
   cor?: string
   total: number
 }
 
 export interface RelatorioDeNumeros extends ContagemPorClasse {
-  /** Concluídas + não concluídas + em aberto. */
   total: number
-  /** Pendentes que não foram transferidas (não concluídas no passado + em aberto). */
   pendentes: number
   atrasadas: number
-  /** Transferidas para outro dia, pelo dia de origem. */
   adiadas: number
-  /** Sobre o total, inteiros (0 sem tarefas). */
   percentualConcluidas: number
   percentualNaoConcluidas: number
-  /** Ausente quando o período anterior não tem tarefas. */
   comparacao?: ComparacaoComAnterior
-  /** Só em Esta semana e Este mês. */
   porDia?: ColunaPorDia[]
-  /** Pelo total, maior primeiro; só categorias com tarefas no período. */
   porCategoria: BarraPorCategoria[]
-  /** Dias com ao menos uma tarefa (bolinhas do calendário de "Escolher…"). */
   diasComTarefas: Set<DataLocal>
 }
 
-/** Intervalo inclusive de dias locais. */
-interface Intervalo {
-  inicio: DataLocal
-  fim: DataLocal
-}
-
-/** Período anterior ao filtro, com o rótulo da comparação. Sem anterior (intervalo legado): nada. */
+/**
+ * Calcula o período imediatamente anterior de mesmo tamanho ou relativo:
+ * - Hoje -> ontem
+ * - 1 dia escolhido -> dia anterior
+ * - Esta semana -> semana passada
+ * - Este mês -> mês passado
+ * - Intervalo contínuo de 2+ dias -> intervalo imediatamente anterior de mesmo tamanho
+ * - Múltiplos períodos ou dias soltos -> undefined (omite a linha)
+ */
 export function periodoAnterior(
   periodo: PeriodoDeDados,
+  diasDoPeriodo: DataLocal[],
   hoje: DataLocal,
-): { intervalo: Intervalo; rotulo: string } | undefined {
-  const atual = intervaloDoPeriodoDeDados(periodo, hoje)
-  switch (periodo.tipo) {
-    case 'hoje': {
-      const ontem = somarDias(hoje, -1)
-      return { intervalo: { inicio: ontem, fim: ontem }, rotulo: 'ontem' }
-    }
-    case 'dia': {
-      const anterior = somarDias(periodo.dia, -1)
-      return { intervalo: { inicio: anterior, fim: anterior }, rotulo: 'dia anterior' }
-    }
-    case 'semana':
-      return {
-        intervalo: { inicio: somarDias(atual.inicio, -7), fim: somarDias(atual.inicio, -1) },
-        rotulo: 'semana passada',
-      }
-    case 'mes': {
-      const mesPassado = subMonths(deDataLocal(atual.inicio), 1)
-      return {
-        intervalo: {
-          inicio: paraDataLocal(startOfMonth(mesPassado)),
-          fim: paraDataLocal(endOfMonth(mesPassado)),
-        },
-        rotulo: 'mês passado',
-      }
-    }
-    case 'intervalo':
-      return undefined
-  }
-}
+): { dias: Set<DataLocal>; rotulo: string } | undefined {
+  if (diasDoPeriodo.length === 0) return undefined
 
-function isNoIntervalo(data: DataLocal, { inicio, fim }: Intervalo) {
-  return data >= inicio && data <= fim
+  if (periodo.tipo === 'hoje') {
+    const ontem = somarDias(hoje, -1)
+    return { dias: new Set([ontem]), rotulo: 'ontem' }
+  }
+
+  if (periodo.tipo === 'semana') {
+    const primeiro = diasDoPeriodo[0]
+    const dias = new Set<DataLocal>()
+    for (let i = 7; i >= 1; i -= 1) {
+      dias.add(somarDias(primeiro, -i))
+    }
+    return { dias, rotulo: 'semana passada' }
+  }
+
+  if (periodo.tipo === 'mes') {
+    const dataRef = deDataLocal(diasDoPeriodo[0])
+    const mesPassado = subMonths(dataRef, 1)
+    const inicio = paraDataLocal(startOfMonth(mesPassado))
+    const fim = paraDataLocal(endOfMonth(mesPassado))
+    const dias = new Set<DataLocal>()
+    for (let d = inicio; d <= fim; d = somarDias(d, 1)) {
+      dias.add(d)
+    }
+    return { dias, rotulo: 'mês passado' }
+  }
+
+  // Tipo 'escolher'
+  if (diasDoPeriodo.length === 1) {
+    const anterior = somarDias(diasDoPeriodo[0], -1)
+    return { dias: new Set([anterior]), rotulo: 'dia anterior' }
+  }
+
+  // 2+ dias em 'escolher': verificar se é intervalo contínuo
+  const intervalos = agruparDiasEmIntervalos(diasDoPeriodo)
+  if (intervalos.length === 1) {
+    const tamanho = diasDoPeriodo.length
+    const primeiro = intervalos[0].inicio
+    const dias = new Set<DataLocal>()
+    for (let i = tamanho; i >= 1; i -= 1) {
+      dias.add(somarDias(primeiro, -i))
+    }
+    return { dias, rotulo: 'período anterior' }
+  }
+
+  // Vários períodos ou dias soltos: omite a comparação
+  return undefined
 }
 
 /** Pendente: em aberto se o dia ainda não passou; senão, não concluída. */
@@ -155,7 +152,7 @@ function classeDaPendente(data: DataLocal, hoje: DataLocal): ClasseDaTarefa {
 }
 
 /** Cada tarefa em cada dia em que esteve na lista, já classificada. */
-function tarefasNosDias(dados: DadosDeNumeros, hoje: DataLocal): TarefaNoDia[] {
+export function tarefasNosDias(dados: DadosDeNumeros, hoje: DataLocal): TarefaNoDia[] {
   const cardPorId = new Map(dados.cards.map((card) => [card.id, card]))
   const categoriaDaSerie = new Map(dados.series.map((serie) => [serie.id, serie.categoryId]))
   const categoriaPorTarefa = new Map<string, string | undefined>()
@@ -164,7 +161,6 @@ function tarefasNosDias(dados: DadosDeNumeros, hoje: DataLocal): TarefaNoDia[] {
   const soltas = dados.tarefas.map((tarefa): TarefaNoDia => {
     categoriaPorTarefa.set(tarefa.id, tarefa.categoryId)
     cadeiaPorTarefa.set(tarefa.id, tarefa.id)
-    // Arquivada guarda `concluidaEm` se foi concluída antes de arquivar.
     const isConcluida =
       tarefa.status === 'concluida' ||
       (tarefa.status === 'arquivada' && tarefa.concluidaEm !== undefined)
@@ -210,8 +206,6 @@ function tarefasNosDias(dados: DadosDeNumeros, hoje: DataLocal): TarefaNoDia[] {
     ]
   })
 
-  // Tarefa solta movida para um dia posterior: não concluída no dia de onde saiu. O id segue o
-  // mesmo se ela virou item; se foi excluída, não conta.
   const movidas = dados.adiamentos.flatMap((adiamento): TarefaNoDia[] => {
     const cadeia = cadeiaPorTarefa.get(adiamento.tarefaId)
     if (cadeia === undefined) return []
@@ -230,11 +224,6 @@ function tarefasNosDias(dados: DadosDeNumeros, hoje: DataLocal): TarefaNoDia[] {
   return semMarcadoresRepetidos([...soltas, ...itens, ...movidas])
 }
 
-/**
- * A mesma tarefa conta no máximo uma vez por dia: o marcador de transferência só vale se a cadeia
- * não estiver viva (feita, pendente ou arquivada) naquele dia, e dois marcadores da mesma cadeia
- * no mesmo dia (saiu, voltou e saiu de novo) contam como um.
- */
 function semMarcadoresRepetidos(tarefas: TarefaNoDia[]): TarefaNoDia[] {
   const vivas = tarefas.filter((tarefa) => !tarefa.isTransferida)
   const ocupados = new Set(vivas.map((tarefa) => `${tarefa.cadeia}|${tarefa.data}`))
@@ -262,7 +251,6 @@ function percentual(parte: number, total: number) {
   return total > 0 ? Math.round((parte / total) * 100) : 0
 }
 
-/** Diferença com sinal tipográfico: "+4", "−2", "0". */
 function comSinal(numero: number) {
   if (numero > 0) return `+${numero}`
   if (numero < 0) return `−${Math.abs(numero)}`
@@ -273,7 +261,6 @@ function plural(quantidade: number, singular: string, varias: string) {
   return `${quantidade} ${quantidade === 1 ? singular : varias}`
 }
 
-/** "4 concluídas · 2 não concluídas · 1 em aberto", sem as partes zeradas. */
 export function textoDasClasses(
   { concluidas, naoConcluidas, emAberto }: ContagemPorClasse,
   isComEmAberto = true,
@@ -287,31 +274,128 @@ export function textoDasClasses(
     .join(' · ')
 }
 
-function montarPorDia(
+/** Monta as colunas do gráfico Por dia para um conjunto de dias. */
+function montarColunasPorDia(
   doPeriodo: TarefaNoDia[],
-  intervalo: Intervalo,
-  tipo: 'semana' | 'mes',
+  diasOrdenados: DataLocal[],
+  periodoTipo: PeriodoDeDados['tipo'],
 ): ColunaPorDia[] {
+  const totalDias = diasOrdenados.length
+  if (totalDias <= 1) return []
+
+  const tarefasPorData = new Map<DataLocal, TarefaNoDia[]>()
+  for (const t of doPeriodo) {
+    const lista = tarefasPorData.get(t.data) ?? []
+    lista.push(t)
+    tarefasPorData.set(t.data, lista)
+  }
+
+  // <= 120 dias: uma coluna por dia
+  if (totalDias <= 120) {
+    const colunas: ColunaPorDia[] = []
+    const isSemana = periodoTipo === 'semana'
+    const isMes = periodoTipo === 'mes'
+
+    for (let i = 0; i < totalDias; i += 1) {
+      const data = diasOrdenados[i]
+      const tarefasDoDia = tarefasPorData.get(data) ?? []
+      const contagem = contarClasses(tarefasDoDia)
+      const diaObj = deDataLocal(data)
+      const numeroDoDia = diaObj.getDate()
+
+      const diaAnterior = i > 0 ? diasOrdenados[i - 1] : undefined
+      const temEspacoAntes = diaAnterior ? diasEntre(diaAnterior, data) > 1 : false
+
+      let rotuloDoEixo = ''
+      if (isSemana) {
+        rotuloDoEixo = format(diaObj, 'EEEEEE', { locale: ptBR })
+      } else if (isMes) {
+        rotuloDoEixo = numeroDoDia === 1 || numeroDoDia % 5 === 0 ? String(numeroDoDia) : ''
+      } else {
+        // Trecho em 'escolher': início de trecho ou a cada ~5 colunas
+        if (i === 0 || temEspacoAntes || i % 5 === 0) {
+          rotuloDoEixo = format(diaObj, 'dd/MM')
+        }
+      }
+
+      const diaPorExtenso = format(diaObj, 'EEEEEE, d MMM', { locale: ptBR })
+      const detalhe = textoDasClasses(contagem)
+      colunas.push({
+        data,
+        ...contagem,
+        rotuloDoEixo,
+        dica: detalhe ? `${diaPorExtenso} · ${detalhe}` : `${diaPorExtenso} · nenhuma tarefa`,
+        temEspacoAntes,
+      })
+    }
+    return colunas
+  }
+
+  // > 120 dias: uma coluna por semana (segunda a domingo recortada pelo período)
+  // Agrupa os dias consecutivos/semanas
+  const semanasMap = new Map<string, DataLocal[]>()
+  for (const data of diasOrdenados) {
+    const d = deDataLocal(data)
+    const seg = paraDataLocal(startOfWeek(d, { weekStartsOn: 1 }))
+    const lista = semanasMap.get(seg) ?? []
+    lista.push(data)
+    semanasMap.set(seg, lista)
+  }
+
   const colunas: ColunaPorDia[] = []
-  for (let data = intervalo.inicio; data <= intervalo.fim; data = somarDias(data, 1)) {
-    const contagem = contarClasses(doPeriodo.filter((tarefa) => tarefa.data === data))
-    const dia = deDataLocal(data)
-    const numeroDoDia = dia.getDate()
-    const rotuloDoEixo =
-      tipo === 'semana'
-        ? format(dia, 'EEEEEE', { locale: ptBR })
-        : numeroDoDia === 1 || numeroDoDia % 5 === 0
-          ? String(numeroDoDia)
-          : ''
-    const diaPorExtenso = format(dia, 'EEEEEE, d MMM', { locale: ptBR })
+  const chavesSemanas = [...semanasMap.keys()].sort()
+
+  for (let i = 0; i < chavesSemanas.length; i += 1) {
+    const seg = chavesSemanas[i]
+    const diasDestaSemana = semanasMap.get(seg)!
+    const primeiroDia = diasDestaSemana[0]
+    const ultimoDia = diasDestaSemana[diasDestaSemana.length - 1]
+
+    let concluidas = 0
+    let naoConcluidas = 0
+    let emAberto = 0
+
+    for (const d of diasDestaSemana) {
+      const tarefasDoDia = tarefasPorData.get(d) ?? []
+      const c = contarClasses(tarefasDoDia)
+      concluidas += c.concluidas
+      naoConcluidas += c.naoConcluidas
+      emAberto += c.emAberto
+    }
+
+    const contagem: ContagemPorClasse = { concluidas, naoConcluidas, emAberto }
+
+    const semanaAnteriorSeg = i > 0 ? chavesSemanas[i - 1] : undefined
+    const temEspacoAntes = semanaAnteriorSeg
+      ? diasEntre(semanasMap.get(semanaAnteriorSeg)!.slice(-1)[0], primeiroDia) > 1
+      : false
+
+    let rotuloDoEixo = ''
+    if (i === 0 || temEspacoAntes || i % 5 === 0) {
+      rotuloDoEixo = format(deDataLocal(primeiroDia), 'dd/MM')
+    }
+
+    const dInicio = deDataLocal(primeiroDia)
+    const dFim = deDataLocal(ultimoDia)
+    const intervaloExtenso =
+      primeiroDia === ultimoDia
+        ? format(dInicio, "d 'de' MMM", { locale: ptBR })
+        : `${format(dInicio, 'dd MMM', { locale: ptBR })} – ${format(dFim, 'dd MMM', { locale: ptBR })}`
+
     const detalhe = textoDasClasses(contagem)
+    const dica = detalhe
+      ? `${intervaloExtenso} · ${detalhe}`
+      : `${intervaloExtenso} · nenhuma tarefa`
+
     colunas.push({
-      data,
+      data: primeiroDia,
       ...contagem,
       rotuloDoEixo,
-      dica: detalhe ? `${diaPorExtenso} · ${detalhe}` : `${diaPorExtenso} · nenhuma tarefa`,
+      dica,
+      temEspacoAntes,
     })
   }
+
   return colunas
 }
 
@@ -332,27 +416,27 @@ function montarPorCategoria(doPeriodo: TarefaNoDia[], categorias: Category[]): B
       total: tarefas.length,
     }
   })
-  // Empate no total: segue a ordem das categorias; "Sem categoria" por último.
   const ordem = (id: string | null) => (id ? (categoriaPorId.get(id)?.ordem ?? 0) : Infinity)
   return barras.sort((a, b) => b.total - a.total || ordem(a.id) - ordem(b.id))
 }
 
-/** Monta todos os números da tela para o período. */
+/** Monta todos os números da tela para o período baseado em conjunto de dias. */
 export function montarRelatorioDeNumeros(
   dados: DadosDeNumeros,
   periodo: PeriodoDeDados,
   hoje: DataLocal,
 ): RelatorioDeNumeros {
-  const intervalo = intervaloDoPeriodoDeDados(periodo, hoje)
+  const diasDoPeriodo = resolverDiasDoPeriodo(periodo, hoje)
+  const setDias = new Set(diasDoPeriodo)
   const todas = tarefasNosDias(dados, hoje)
-  const doPeriodo = todas.filter((tarefa) => isNoIntervalo(tarefa.data, intervalo))
+  const doPeriodo = todas.filter((tarefa) => setDias.has(tarefa.data))
   const total = doPeriodo.length
   const contagem = contarClasses(doPeriodo)
   const adiadas = doPeriodo.filter((tarefa) => tarefa.isTransferida).length
 
-  const anterior = periodoAnterior(periodo, hoje)
+  const anterior = periodoAnterior(periodo, diasDoPeriodo, hoje)
   const totalAnterior = anterior
-    ? todas.filter((tarefa) => isNoIntervalo(tarefa.data, anterior.intervalo)).length
+    ? todas.filter((tarefa) => anterior.dias.has(tarefa.data)).length
     : 0
   const comparacao =
     anterior && totalAnterior > 0
@@ -360,6 +444,11 @@ export function montarRelatorioDeNumeros(
           diferenca: total - totalAnterior,
           texto: `${comSinal(total - totalAnterior)} vs ${anterior.rotulo}`,
         }
+      : undefined
+
+  const porDia =
+    diasDoPeriodo.length >= 2
+      ? montarColunasPorDia(doPeriodo, diasDoPeriodo, periodo.tipo)
       : undefined
 
   return {
@@ -371,9 +460,7 @@ export function montarRelatorioDeNumeros(
     percentualConcluidas: percentual(contagem.concluidas, total),
     percentualNaoConcluidas: percentual(contagem.naoConcluidas, total),
     ...(comparacao && { comparacao }),
-    ...((periodo.tipo === 'semana' || periodo.tipo === 'mes') && {
-      porDia: montarPorDia(doPeriodo, intervalo, periodo.tipo),
-    }),
+    ...(porDia && { porDia }),
     porCategoria: montarPorCategoria(doPeriodo, dados.categorias),
     diasComTarefas: new Set(todas.map((tarefa) => tarefa.data)),
   }

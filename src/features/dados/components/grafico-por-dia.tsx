@@ -53,7 +53,10 @@ export function GraficoPorDia({ colunas }: { colunas: ColunaPorDia[] }) {
                 tabIndex={0}
                 aria-label={coluna.dica}
                 data-coluna-dia={coluna.data}
-                className="group/coluna flex flex-1 cursor-default justify-center rounded-t-sm outline-none focus-visible:ring-2 focus-visible:ring-caneta"
+                className={cn(
+                  'group/coluna flex flex-1 cursor-default justify-center rounded-t-sm outline-none focus-visible:ring-2 focus-visible:ring-caneta',
+                  coluna.temEspacoAntes && 'ml-2.5',
+                )}
               >
                 <svg
                   aria-hidden
@@ -88,7 +91,10 @@ export function GraficoPorDia({ colunas }: { colunas: ColunaPorDia[] }) {
         {colunas.map((coluna) => (
           <span
             key={coluna.data}
-            className="flex-1 text-center text-[0.625rem] leading-none whitespace-nowrap text-grafite tabular-nums"
+            className={cn(
+              'flex-1 text-center text-[0.625rem] leading-none whitespace-nowrap text-grafite tabular-nums',
+              coluna.temEspacoAntes && 'ml-2.5',
+            )}
           >
             {coluna.rotuloDoEixo}
           </span>

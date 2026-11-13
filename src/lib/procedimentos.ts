@@ -17,15 +17,29 @@ export function etapasEmOrdem(procedimento: Pick<Procedure, 'etapas'>) {
 }
 
 /** Grava a posição de cada etapa na `ordem` (0, 1, 2…): excluir uma renumera as seguintes. */
-export function numerarEtapas(etapas: Pick<Etapa, 'id' | 'texto'>[]): Etapa[] {
-  return etapas.map(({ id, texto }, ordem) => ({ id, texto, ordem }))
+export function numerarEtapas(
+  etapas: (Pick<Etapa, 'id' | 'texto'> & { rotulo?: string })[],
+): Etapa[] {
+  return etapas.map(({ id, texto, rotulo }, ordem) => {
+    const rotuloLimpo = rotulo?.trim()
+    return {
+      id,
+      texto,
+      ordem,
+      ...(rotuloLimpo ? { rotulo: rotuloLimpo } : {}),
+    }
+  })
 }
 
 function textoPesquisavel(procedimento: Procedure) {
   // O slug da marca do ícone também conta: "github" acha o procedimento com o ícone do GitHub.
   const marca = procedimento.icone?.tipo === 'marca' ? procedimento.icone.valor : ''
   return normalizar(
-    [procedimento.titulo, marca, ...procedimento.etapas.map((etapa) => etapa.texto)].join('\n'),
+    [
+      procedimento.titulo,
+      marca,
+      ...procedimento.etapas.flatMap((etapa) => [etapa.rotulo ?? '', etapa.texto]),
+    ].join('\n'),
   )
 }
 
@@ -147,7 +161,11 @@ export function previaDoProcedimento(
   return {
     etapas: etapas
       .slice(0, ETAPAS_NA_PREVIA)
-      .map((etapa, indice) => `${indice + 1}. ${etapa.texto.trim() || 'Etapa sem texto'}`),
+      .map((etapa, indice) => {
+        const prefixo = etapa.rotulo?.trim() || `${indice + 1}.`
+        const texto = etapa.texto.trim() || 'Etapa sem texto'
+        return etapa.rotulo?.trim() ? `${prefixo}: ${texto}` : `${prefixo} ${texto}`
+      }),
     restantes: sobra > 0 ? `+ ${textoEtapas(sobra)}` : undefined,
     total: textoEtapas(etapas.length),
     isVazio: etapas.length === 0,

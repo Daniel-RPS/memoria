@@ -9,7 +9,14 @@ export const esquemaProcedimento = z.object({
   /** Emoji ou marca antes do título; ausente = sem ícone. */
   icone: esquemaIcone.optional(),
   categoryId: z.string(),
-  etapas: z.array(z.object({ id: z.string().min(1), texto: z.string() })),
+  favorito: z.boolean().optional(),
+  etapas: z.array(
+    z.object({
+      id: z.string().min(1),
+      texto: z.string(),
+      rotulo: z.string().max(40).optional(),
+    }),
+  ),
 })
 
 export type ValoresProcedimento = z.input<typeof esquemaProcedimento>
@@ -22,6 +29,11 @@ export function valoresDoFormulario(procedimento?: Procedure): ValoresProcedimen
     titulo: procedimento.titulo,
     icone: procedimento.icone,
     categoryId: procedimento.categoryId ?? '',
-    etapas: etapasEmOrdem(procedimento).map(({ id, texto }) => ({ id, texto })),
+    favorito: procedimento.favorito,
+    etapas: etapasEmOrdem(procedimento).map(({ id, texto, rotulo }) => ({
+      id,
+      texto,
+      rotulo: rotulo || undefined,
+    })),
   }
 }

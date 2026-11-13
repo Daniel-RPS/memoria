@@ -121,6 +121,7 @@ export interface DadosDoArquivo {
   /** Quem são os donos das notas arquivadas. */
   vinculos: DadosDosVinculos
   categorias: Category[]
+  nomesAnexosPorNota?: Map<string, string[]>
 }
 
 function textoDoDia(data: DataLocal) {
@@ -250,6 +251,7 @@ export function montarArquivados(dados: DadosDoArquivo, hoje: DataLocal): ItemAr
         .find((linha) => linha.trim())
         ?.trim() ?? ''
     const vinculo = textoDoVinculo(dono)
+    const nomesAnexos = dados.nomesAnexosPorNota?.get(nota.id) ?? []
     resultado.push({
       chave: `nota:${nota.id}`,
       tipo: 'nota',
@@ -261,7 +263,7 @@ export function montarArquivados(dados: DadosDoArquivo, hoje: DataLocal): ItemAr
       categoryId: dono.categoria?.id,
       categoriaNome: dono.categoria?.nome,
       cor: dono.cor,
-      corpo: [nota.titulo, nota.conteudo, vinculo].join('\n'),
+      corpo: [nota.titulo, nota.conteudo, vinculo, ...nomesAnexos].join('\n'),
       leitura: nota.conteudo,
     })
   }

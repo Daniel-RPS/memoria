@@ -4,8 +4,8 @@ import { gravarPreferencia, lerPreferencia } from '@/app/preferencia-local'
 import {
   carregarDadosDosVinculos,
   listarNotas,
+  metadadosDeAnexosDasNotas,
   obterNota,
-  tiposDeAnexoDasNotas,
 } from '@/db/repositories/note-repository'
 import type { TipoAnexo } from '@/db/types'
 import { useHoje } from '@/hooks/use-hoje'
@@ -25,25 +25,37 @@ export function useNotas() {
   const hoje = useHoje()
   const resultado = useLiveQuery(async () => {
     const notas = await listarNotas()
-    const [dados, anexos] = await Promise.all([
+    const [dados, metadados] = await Promise.all([
       carregarDadosDosVinculos(notas),
-      tiposDeAnexoDasNotas(notas.map((nota) => nota.id)),
+      metadadosDeAnexosDasNotas(notas.map((nota) => nota.id)),
     ])
     const indice = indexarVinculos(dados, hoje)
-    const comDono: NotaComDono[] = notas.map((nota) => ({
+    const comDono: (NotaComDono & { nomesAnexos?: string[] })[] = notas.map((nota) => ({
       nota,
       dono: donoDaNota(nota.vinculo, indice),
+      nomesAnexos: metadados.get(nota.id)?.nomesAnexos ?? [],
     }))
     // Grupo primeiro, depois Procedimento (cada tipo na ordem do usuário).
     const categorias = [
       ...dados.categorias.filter((categoria) => categoria.tipo === 'grupo'),
       ...dados.categorias.filter((categoria) => categoria.tipo === 'procedimento'),
     ]
-    return { notas: comDono, anexos, categorias }
+    return { notas: comDono, metadados, categorias }
   }, [hoje])
+
+  const anexosPorNota = new Map<string, Set<TipoAnexo>>()
+  const docsPorNota = new Map<string, number>()
+  if (resultado?.metadados) {
+    for (const [id, meta] of resultado.metadados.entries()) {
+      anexosPorNota.set(id, meta.tipos)
+      docsPorNota.set(id, meta.quantosDocumentos)
+    }
+  }
+
   return {
     notas: resultado?.notas ?? [],
-    anexosPorNota: resultado?.anexos ?? new Map<string, Set<TipoAnexo>>(),
+    anexosPorNota,
+    docsPorNota,
     /** Categorias de Grupo e depois as de Procedimento, na ordem do usuário ("Por categoria"). */
     categorias: resultado?.categorias ?? [],
     isCarregando: resultado === undefined,

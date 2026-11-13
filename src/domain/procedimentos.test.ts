@@ -5,7 +5,27 @@ import {
   planejarReordenarProcedimentos,
   preencherOrdemDosProcedimentos,
   procedimentosDoBloco,
+  rotuloDaEtapa,
 } from '@/domain/procedimentos'
+
+describe('rotuloDaEtapa', () => {
+  it('usa o padrão automático "Etapa N" quando não há rótulo personalizado', () => {
+    expect(rotuloDaEtapa(1)).toBe('Etapa 1')
+    expect(rotuloDaEtapa(5)).toBe('Etapa 5')
+    expect(rotuloDaEtapa(2, undefined)).toBe('Etapa 2')
+    expect(rotuloDaEtapa(3, null)).toBe('Etapa 3')
+  })
+
+  it('usa o rótulo personalizado quando preenchido', () => {
+    expect(rotuloDaEtapa(1, 'Segunda-feira')).toBe('Segunda-feira')
+    expect(rotuloDaEtapa(2, 'Backup')).toBe('Backup')
+  })
+
+  it('vazio ou só espaços volta ao padrão "Etapa N"', () => {
+    expect(rotuloDaEtapa(1, '')).toBe('Etapa 1')
+    expect(rotuloDaEtapa(4, '   ')).toBe('Etapa 4')
+  })
+})
 
 const p = (id: string, ordem: number, categoryId?: string) => ({
   id,

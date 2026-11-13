@@ -6,6 +6,7 @@ import { BackupPage } from '@/features/backup/backup-page'
 import { CategoriasPage } from '@/features/categorias/categorias-page'
 import { NumerosPage } from '@/features/dados/numeros-page'
 import { TempoPage } from '@/features/dados/tempo-page'
+import { VisaoGeralPage } from '@/features/dados/visao-geral-page'
 import { DiaPage } from '@/features/dia/dia-page'
 import { GruposPage } from '@/features/grupos/grupos-page'
 import { InicioPage } from '@/features/inicio/inicio-page'
@@ -38,7 +39,8 @@ export const rotas: RouteObject[] = [
       { path: '/notas/:id', element: <NotaPage /> },
       { path: '/categorias', element: <CategoriasPage /> },
       { path: '/arquivados', element: <ArquivadosPage /> },
-      { path: '/dados', element: <Navigate to="/dados/tempo" replace /> },
+      { path: '/dados', element: <Navigate to="/dados/visao-geral" replace /> },
+      { path: '/dados/visao-geral', element: <VisaoGeralPage /> },
       { path: '/dados/numeros', element: <NumerosPage /> },
       { path: '/dados/tempo', element: <TempoPage /> },
       { path: '/backup', element: <BackupPage /> },

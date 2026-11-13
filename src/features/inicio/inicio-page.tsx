@@ -9,6 +9,7 @@ import { BlocoEmAndamento } from '@/features/inicio/components/bloco-em-andament
 import { BlocoHoje } from '@/features/inicio/components/bloco-hoje'
 import { CapturaRapida } from '@/features/inicio/components/captura-rapida'
 import { MapaDeConclusoes } from '@/features/inicio/components/mapa-de-conclusoes'
+import { ProcedimentosFavoritos } from '@/features/inicio/components/procedimentos-favoritos'
 import { ProximosDias } from '@/features/inicio/components/proximos-dias'
 import {
   useAtrasadas,
@@ -49,6 +50,7 @@ export function InicioPage() {
         <div className="flex min-w-0 flex-col gap-6">
           <CapturaRapida key={hoje} hoje={hoje} />
           <MapaDeConclusoes hoje={hoje} />
+          <ProcedimentosFavoritos />
         </div>
         <aside
           aria-label="Hoje, atrasadas e próximos dias"

@@ -1,17 +1,12 @@
-import { useState } from 'react'
-import { CalendarDays } from 'lucide-react'
-import { ptBR } from 'react-day-picker/locale'
 import { cn } from 'cn'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { SeletorDiasEPeriodos } from '@/components/seletor-dias-e-periodos'
 import type { DataLocal } from '@/db/types'
-import { rotuloDoDiaEscolhido, type PeriodoDeDados } from '@/domain/tempo'
-import { deDataLocal, paraDataLocal } from '@/lib/datas'
+import { resolverDiasDoPeriodo, type PeriodoDeDados } from '@/domain/periodo'
 
 interface FiltroPeriodoDadosProps {
   periodo: PeriodoDeDados
   hoje: DataLocal
-  /** Dias com bolinha no calendário (Tempo: com tempo medido; Números: com tarefas). */
+  /** Dias com bolinha no calendário (Tempo: com tempo medido; Números e Visão geral: com tarefas). */
   diasComDados?: Set<DataLocal>
   onMudar: (novo: PeriodoDeDados) => void
 }
@@ -27,7 +22,7 @@ const BOTAO_SEGMENTO =
 
 /**
  * Filtro de período em botões compactos (segmentado):
- * Hoje · Esta semana · Este mês · Escolher… (dia único). O mesmo nas telas Tempo e Números.
+ * Hoje · Esta semana · Este mês · Escolher… (vários dias e períodos). O mesmo em Visão geral, Números e Tempo.
  */
 export function FiltroPeriodoDados({
   periodo,
@@ -35,10 +30,8 @@ export function FiltroPeriodoDados({
   diasComDados,
   onMudar,
 }: FiltroPeriodoDadosProps) {
-  const [isCalendarioAberto, setIsCalendarioAberto] = useState(false)
-  const isDiaEscolhido = periodo.tipo === 'dia'
-  const rotuloDia = rotuloDoDiaEscolhido(periodo)
-  const diaSelecionado = periodo.tipo === 'dia' ? periodo.dia : undefined
+  const isEscolherAtivo = periodo.tipo === 'escolher'
+  const diasDoPeriodo = resolverDiasDoPeriodo(periodo, hoje)
 
   return (
     <div
@@ -66,48 +59,13 @@ export function FiltroPeriodoDados({
         )
       })}
 
-      <Popover open={isCalendarioAberto} onOpenChange={setIsCalendarioAberto}>
-        <PopoverTrigger
-          type="button"
-          aria-pressed={isDiaEscolhido}
-          aria-label={
-            isDiaEscolhido && rotuloDia ? `Dia selecionado: ${rotuloDia}` : 'Escolher um dia'
-          }
-          className={cn(
-            BOTAO_SEGMENTO,
-            isDiaEscolhido
-              ? 'bg-caneta text-primary-foreground'
-              : 'text-grafite hover:bg-accent hover:text-tinta',
-          )}
-        >
-          <CalendarDays aria-hidden className="size-3.5" />
-          <span>{rotuloDia ?? 'Escolher…'}</span>
-        </PopoverTrigger>
-        <PopoverContent align="start" collisionPadding={8} className="w-auto p-2">
-          <p className="px-2 pt-1 pb-1.5 text-xs text-grafite">Escolha um dia</p>
-          <Calendar
-            mode="single"
-            locale={ptBR}
-            weekStartsOn={1}
-            defaultMonth={diaSelecionado ? deDataLocal(diaSelecionado) : deDataLocal(hoje)}
-            selected={diaSelecionado ? deDataLocal(diaSelecionado) : undefined}
-            disabled={{ after: deDataLocal(hoje) }}
-            modifiers={{
-              comTempo: (data) => (diasComDados ? diasComDados.has(paraDataLocal(data)) : false),
-            }}
-            onSelect={(data) => {
-              if (!data) return
-              const diaFormatado = paraDataLocal(data)
-              if (diaFormatado === hoje) {
-                onMudar({ tipo: 'hoje' })
-              } else {
-                onMudar({ tipo: 'dia', dia: diaFormatado })
-              }
-              setIsCalendarioAberto(false)
-            }}
-          />
-        </PopoverContent>
-      </Popover>
+      <SeletorDiasEPeriodos
+        diasSelecionados={isEscolherAtivo ? periodo.dias : diasDoPeriodo}
+        hoje={hoje}
+        diasComDados={diasComDados}
+        isAtivo={isEscolherAtivo}
+        onAplicar={(dias) => onMudar({ tipo: 'escolher', dias })}
+      />
     </div>
   )
 }

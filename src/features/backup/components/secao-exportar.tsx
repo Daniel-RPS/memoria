@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { exportarDados } from '@/db/repositories/backup-repository'
 import { useHoje } from '@/hooks/use-hoje'
 import { resumirQuantidades, nomeDoArquivo } from '@/lib/backup'
+import { formatarTamanhoBytes } from '@/domain/attachments'
 import { baixarArquivo } from '@/lib/baixar-arquivo'
 import { useArmazenamento, useDadosAtuais } from '@/features/backup/hooks/use-backup'
 
@@ -51,6 +52,11 @@ export function SecaoExportar({ ultimoBackup, onExportado }: SecaoExportarProps)
       <p className="mt-2">
         {resumo.length > 0 ? `Agora você tem ${resumo.join(', ')}.` : 'Ainda não há dados.'}
       </p>
+      {estado?.usadoBytes !== undefined && (
+        <p className="mt-1 text-[0.9375rem] text-grafite">
+          Tamanho total estimado do backup: {formatarTamanhoBytes(Math.round(estado.usadoBytes * 1.33))}.
+        </p>
+      )}
       <p className="mt-1 text-[0.9375rem] text-grafite">
         {ultimoBackup
           ? `Último backup neste navegador: ${formatDistanceToNow(parseISO(ultimoBackup), { addSuffix: true, locale: ptBR })}.`

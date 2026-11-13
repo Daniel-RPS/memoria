@@ -23,7 +23,7 @@ const CHAVE_FILTRO_DE_DIA_DAS_NOTAS = 'memoria:notas-dia'
 export function NotasPage() {
   const navigate = useNavigate()
   const [parametros, setParametros] = useSearchParams()
-  const { notas, anexosPorNota, categorias, isCarregando } = useNotas()
+  const { notas, anexosPorNota, docsPorNota, categorias, isCarregando } = useNotas()
   const { modo, handleEscolher: handleModo } = useModoDasNotas()
   const hoje = useHoje()
   const { filtro: filtroDeDia, handleMudar: handleFiltroDeDia } = useFiltroDeDia(
@@ -152,6 +152,7 @@ export function NotasPage() {
         <ListaDeNotas
           blocos={blocos}
           anexosPorNota={anexosPorNota}
+          docsPorNota={docsPorNota}
           escopo={`notas:${modo}`}
           isFiltrando={isFiltrando}
         />

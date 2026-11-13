@@ -1,9 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { gravarPreferencia, lerPreferencia } from '@/app/preferencia-local'
+import { gravarPreferencia, lerPreferencia, removerPreferencia } from '@/app/preferencia-local'
 import {
   carregarDadosDeTempo,
   CHAVE_PERIODO_DADOS,
+  CHAVE_PERIODO_VISAO_GERAL,
   lerPeriodoDeDados,
   montarRelatorioDeTempo,
   type DadosDeTempo,
@@ -17,6 +18,17 @@ let cacheTexto: string | null | undefined
 let cacheValor: PeriodoDeDados = lerPeriodoDeDados(null)
 
 function lerInstantaneo(): PeriodoDeDados {
+  // Migração: se a chave própria da Visão geral existir, o valor dela vira a escolha
+  // compartilhada (prevalece sobre a que estava salva) e a chave é apagada.
+  const visaoGeralBruto = lerPreferencia(CHAVE_PERIODO_VISAO_GERAL)
+  if (visaoGeralBruto !== null) {
+    removerPreferencia(CHAVE_PERIODO_VISAO_GERAL)
+    gravarPreferencia(CHAVE_PERIODO_DADOS, visaoGeralBruto)
+    cacheTexto = visaoGeralBruto
+    cacheValor = lerPeriodoDeDados(visaoGeralBruto)
+    return cacheValor
+  }
+
   const bruto = lerPreferencia(CHAVE_PERIODO_DADOS)
   if (bruto !== cacheTexto) {
     cacheTexto = bruto

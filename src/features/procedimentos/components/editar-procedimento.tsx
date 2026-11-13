@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Archive, StickyNote, Trash2 } from 'lucide-react'
+import { Archive, Star, StickyNote, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import {
   AlertDialog,
@@ -12,7 +12,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { excluirProcedimento, salvarProcedimento } from '@/db/repositories/procedure-repository'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  alternarFavoritoProcedimento,
+  excluirProcedimento,
+  salvarProcedimento,
+} from '@/db/repositories/procedure-repository'
 import { useAcoesDeArquivo } from '@/hooks/use-acoes-de-arquivo'
 import { usePainelDeNotas, useQuantasNotas } from '@/hooks/contexto-painel-notas'
 import { useSalvarComAtraso } from '@/hooks/use-salvar-com-atraso'
@@ -62,6 +67,29 @@ export function EditarProcedimento({ id, titulo, valoresIniciais }: EditarProced
         onAlterar={mudar}
         situacao={
           <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={valoresIniciais.favorito ? 'Remover dos favoritos' : 'Favoritar'}
+                  onClick={() => void alternarFavoritoProcedimento(id)}
+                  className="text-grafite hover:text-amber-500 focus-visible:text-amber-500"
+                >
+                  <Star
+                    className={
+                      valoresIniciais.favorito
+                        ? 'fill-amber-500 text-amber-500'
+                        : 'text-grafite'
+                    }
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {valoresIniciais.favorito ? 'Remover dos favoritos' : 'Favoritar'}
+              </TooltipContent>
+            </Tooltip>
             <Button
               type="button"
               variant="ghost"

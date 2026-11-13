@@ -30,14 +30,14 @@ export function nomeDoLink(url: string) {
   }
 }
 
-const PREFIXO_DO_NOME: Record<Exclude<TipoAnexo, 'link'>, string> = {
+const PREFIXO_DO_NOME: Record<Exclude<TipoAnexo, 'link' | 'documento'>, string> = {
   foto: 'Foto',
   desenho: 'Desenho',
   audio: 'Áudio',
 }
 
 /** Nome automático, ex.: "Foto de 30/10 14:05". */
-export function nomePadrao(tipo: Exclude<TipoAnexo, 'link'>, momento: Date) {
+export function nomePadrao(tipo: Exclude<TipoAnexo, 'link' | 'documento'>, momento: Date) {
   return `${PREFIXO_DO_NOME[tipo]} de ${format(momento, 'dd/MM HH:mm')}`
 }
 

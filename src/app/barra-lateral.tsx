@@ -12,6 +12,7 @@ import {
   FolderKanban,
   HardDriveDownload,
   House,
+  LayoutDashboard,
   ListChecks,
   ListOrdered,
   PanelLeftClose,
@@ -189,6 +190,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const isNasCategorias = useMatch('/categorias') !== null
   const isNoBackup = useMatch('/backup') !== null
   const isNosArquivados = useMatch('/arquivados') !== null
+  const isNaVisaoGeral = useMatch('/dados/visao-geral') !== null
   const isNosNumeros = useMatch('/dados/numeros') !== null
   const isNoTempo = useMatch('/dados/tempo') !== null
   const isNosGrupos = useMatch('/grupos') !== null
@@ -289,6 +291,13 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   ]
 
   const setoresDosDados: SetorDaRoda[] = [
+    {
+      nome: 'Visão geral',
+      icone: LayoutDashboard,
+      classeDoArco: 'stroke-roda-visao-geral',
+      para: '/dados/visao-geral',
+      isAtiva: isNaVisaoGeral,
+    },
     {
       nome: 'Números',
       icone: ListChecks,

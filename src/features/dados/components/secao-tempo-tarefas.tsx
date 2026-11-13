@@ -4,6 +4,7 @@ import { cn } from 'cn'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { filtrarCategoriasDeTempo, formatarDuracao } from '@/domain/tempo'
+import { resolverDiasDoPeriodo, textoCompletoDoPeriodo } from '@/domain/periodo'
 import { FiltroPeriodoDados } from '@/features/dados/components/filtro-periodo-dados'
 import { GraficoPizzaCategoria, GraficoPorTarefa } from '@/features/dados/components/graficos-tempo'
 import { ListaTarefasTempo } from '@/features/dados/components/lista-tarefas-tempo'
@@ -13,7 +14,7 @@ import { useCorNaTela } from '@/hooks/use-cor-na-tela'
 /**
  * Seção da tela Dados › Tempo: "Tempo nas tarefas".
  * Exibe filtro de período, linha de resumo em 4 blocos alinhados, gráficos
- * (barras nítidas e pizza por categoria na semana/mês), busca e lista de tarefas agrupada por categoria.
+ * (barras nítidas e pizza por categoria), busca e lista de tarefas agrupada por categoria.
  */
 export function SecaoTempoTarefas() {
   const [periodo, definirPeriodo] = usePeriodoDeDados()
@@ -27,21 +28,32 @@ export function SecaoTempoTarefas() {
   const semDadosNoPeriodo = relatorio.tarefas.length === 0
   const temDados = !semDadosNoPeriodo && !semNenhumDadoNoBanco
   const categoriasFiltradas = filtrarCategoriasDeTempo(relatorio.categoriasComTarefas, busca)
-  const isVisaoDeUmDia = periodo.tipo === 'hoje' || periodo.tipo === 'dia'
+  const diasDoPeriodo = resolverDiasDoPeriodo(periodo, hoje)
+  const isVisaoDeUmDia = diasDoPeriodo.length === 1
   const mostrarPizza = relatorio.fatiasPizza.length > 0
+
+  const isVeioDeEscolher = periodo.tipo === 'escolher'
+  const linhaPeriodoCompleto = isVeioDeEscolher
+    ? textoCompletoDoPeriodo(periodo.dias)
+    : undefined
 
   return (
     <section aria-labelledby="titulo-tempo-tarefas" className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="titulo-tempo-tarefas" className="text-lg font-bold tracking-tight text-tinta">
-          Tempo nas tarefas
-        </h2>
-        <FiltroPeriodoDados
-          periodo={periodo}
-          hoje={hoje}
-          diasComDados={relatorio.diasComTempo}
-          onMudar={definirPeriodo}
-        />
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="titulo-tempo-tarefas" className="text-lg font-bold tracking-tight text-tinta">
+            Tempo nas tarefas
+          </h2>
+          <FiltroPeriodoDados
+            periodo={periodo}
+            hoje={hoje}
+            diasComDados={relatorio.diasComTempo}
+            onMudar={definirPeriodo}
+          />
+        </div>
+        {linhaPeriodoCompleto && (
+          <p className="text-xs text-grafite/80 break-words">{linhaPeriodoCompleto}</p>
+        )}
       </div>
 
       {/* Grade de 4 blocos de resumo alinhados */}

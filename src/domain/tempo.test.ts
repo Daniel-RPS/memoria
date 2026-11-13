@@ -83,15 +83,19 @@ describe('tempo: formatação e leitura de período (puro)', () => {
     expect(lerPeriodoDeDados(null)).toEqual({ tipo: 'semana' })
     expect(lerPeriodoDeDados('invalido')).toEqual({ tipo: 'semana' })
     expect(lerPeriodoDeDados(JSON.stringify({ tipo: 'hoje' }))).toEqual({ tipo: 'hoje' })
+    // Migração de formato antigo ({ tipo: 'dia', dia }) para { tipo: 'escolher', dias: [dia] }
     expect(lerPeriodoDeDados(JSON.stringify({ tipo: 'dia', dia: '2026-11-04' }))).toEqual({
-      tipo: 'dia',
-      dia: '2026-11-04',
+      tipo: 'escolher',
+      dias: ['2026-11-04'],
     })
     expect(
       lerPeriodoDeDados(
         JSON.stringify({ tipo: 'intervalo', inicio: '2026-11-01', fim: '2026-11-04' }),
       ),
-    ).toEqual({ tipo: 'intervalo', inicio: '2026-11-01', fim: '2026-11-04' })
+    ).toEqual({
+      tipo: 'escolher',
+      dias: ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04'],
+    })
   })
 })
 

@@ -1,6 +1,5 @@
-import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns'
+import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { z } from 'zod'
 import { db } from '@/db/database'
 import { agora } from '@/db/repositories/ordenacao'
 import type {
@@ -13,80 +12,37 @@ import type {
   TimeSession,
 } from '@/db/types'
 import { SEM_ANDAMENTO } from '@/lib/andamento'
-import { deDataLocal, diasEntre, isDataLocalValida, paraDataLocal, somarDias } from '@/lib/datas'
+import { deDataLocal, paraDataLocal, somarDias } from '@/lib/datas'
 import { ErroDeValidacao } from '@/lib/erros'
 import { diaLocalDoMomento } from '@/lib/filtro-de-data'
 import { normalizar } from '@/lib/procedimentos'
-import { PRIMEIRO_DIA_DA_SEMANA } from '@/lib/semana'
+import {
+  agruparDiasEmIntervalos,
+  lerPeriodoDeDados,
+  PERIODO_PADRAO_DADOS,
+  resolverDiasDoPeriodo,
+  rotuloBotaoEscolher,
+  type PeriodoDeDados,
+} from '@/domain/periodo'
+
+export { lerPeriodoDeDados, PERIODO_PADRAO_DADOS, type PeriodoDeDados }
 
 /** Chave no localStorage para lembrar o filtro de período da aba Dados. */
 export const CHAVE_PERIODO_DADOS = 'memoria:dados-periodo'
+export const CHAVE_PERIODO_VISAO_GERAL = 'memoria:visao-geral-periodo'
 
 /** Sessão ligada há 4 horas ou mais aciona o aviso de "esqueci ligado". */
 export const LIMITE_SESSAO_LONGA_MS = 4 * 60 * 60 * 1000
 
-export type PeriodoDeDados =
-  | { tipo: 'hoje' }
-  | { tipo: 'semana' }
-  | { tipo: 'mes' }
-  | { tipo: 'dia'; dia: DataLocal }
-  | { tipo: 'intervalo'; inicio: DataLocal; fim: DataLocal }
-
-export const PERIODO_PADRAO_DADOS: PeriodoDeDados = { tipo: 'semana' }
-
-const dataLocalSchema = z.string().refine((texto) => isDataLocalValida(texto))
-
-const esquemaPeriodoDeDados = z.discriminatedUnion('tipo', [
-  z.object({ tipo: z.literal('hoje') }),
-  z.object({ tipo: z.literal('semana') }),
-  z.object({ tipo: z.literal('mes') }),
-  z.object({ tipo: z.literal('dia'), dia: dataLocalSchema }),
-  z.object({ tipo: z.literal('intervalo'), inicio: dataLocalSchema, fim: dataLocalSchema }),
-])
-
-/** Lê o período salvo no localStorage; ausente ou inválido volta para "Esta semana". */
-export function lerPeriodoDeDados(texto: string | null): PeriodoDeDados {
-  if (!texto) return PERIODO_PADRAO_DADOS
-  try {
-    const lido = esquemaPeriodoDeDados.safeParse(JSON.parse(texto))
-    return lido.success ? (lido.data as PeriodoDeDados) : PERIODO_PADRAO_DADOS
-  } catch {
-    return PERIODO_PADRAO_DADOS
-  }
-}
-
-/** Primeiro e último dia local (inclusive) cobertos pelo filtro de período. */
-export function intervaloDoPeriodoDeDados(
-  periodo: PeriodoDeDados,
-  hoje: DataLocal,
-): { inicio: DataLocal; fim: DataLocal } {
-  const dataHoje = deDataLocal(hoje)
-  switch (periodo.tipo) {
-    case 'hoje':
-      return { inicio: hoje, fim: hoje }
-    case 'dia':
-      return { inicio: periodo.dia, fim: periodo.dia }
-    case 'semana':
-      return {
-        inicio: paraDataLocal(startOfWeek(dataHoje, { weekStartsOn: PRIMEIRO_DIA_DA_SEMANA })),
-        fim: paraDataLocal(endOfWeek(dataHoje, { weekStartsOn: PRIMEIRO_DIA_DA_SEMANA })),
-      }
-    case 'mes':
-      return {
-        inicio: paraDataLocal(startOfMonth(dataHoje)),
-        fim: paraDataLocal(endOfMonth(dataHoje)),
-      }
-    case 'intervalo':
-      return periodo.inicio <= periodo.fim
-        ? { inicio: periodo.inicio, fim: periodo.fim }
-        : { inicio: periodo.fim, fim: periodo.inicio }
-  }
-}
-
 /** Rótulo do dia escolhido no filtro ("qua, 12/11"). */
-export function rotuloDoDiaEscolhido(periodo: PeriodoDeDados): string | undefined {
-  if (periodo.tipo === 'dia') {
+export function rotuloDoDiaEscolhido(
+  periodo: PeriodoDeDados | { tipo: 'dia'; dia: DataLocal },
+): string | undefined {
+  if ('dia' in periodo && periodo.dia) {
     return format(deDataLocal(periodo.dia), 'cccccc, dd/MM', { locale: ptBR })
+  }
+  if (periodo.tipo === 'escolher' && periodo.dias.length === 1) {
+    return format(deDataLocal(periodo.dias[0]), 'cccccc, dd/MM', { locale: ptBR })
   }
   return undefined
 }
@@ -94,14 +50,9 @@ export function rotuloDoDiaEscolhido(periodo: PeriodoDeDados): string | undefine
 /** Rótulo curto do botão "Escolher…" quando há um intervalo personalizado ativo (legado). */
 export function rotuloDoIntervaloPersonalizado(
   periodo: PeriodoDeDados,
-  hoje: DataLocal,
 ): string | undefined {
-  if (periodo.tipo === 'dia') return rotuloDoDiaEscolhido(periodo)
-  if (periodo.tipo !== 'intervalo') return undefined
-  const { inicio, fim } = intervaloDoPeriodoDeDados(periodo, hoje)
-  const formatarDia = (dia: DataLocal) =>
-    format(deDataLocal(dia), dia.slice(0, 4) === hoje.slice(0, 4) ? 'dd/MM' : 'dd/MM/yyyy')
-  return inicio === fim ? formatarDia(inicio) : `${formatarDia(inicio)} – ${formatarDia(fim)}`
+  if (periodo.tipo === 'escolher') return rotuloBotaoEscolher(periodo.dias)
+  return undefined
 }
 
 /** Duração bruta de uma sessão em milissegundos (sessão aberta usa `agoraIso`). */
@@ -680,8 +631,15 @@ export function montarRelatorioDeTempo(
   hoje: DataLocal,
   agoraIso: string = new Date().toISOString(),
 ): RelatorioDeTempo {
-  const intervalo = intervaloDoPeriodoDeDados(periodo, hoje)
-  const { inicioMs, fimMs } = limitesDoIntervaloLocal(intervalo.inicio, intervalo.fim)
+  const diasDoPeriodo = resolverDiasDoPeriodo(periodo, hoje)
+  const setDias = new Set(diasDoPeriodo)
+  const intervalos = agruparDiasEmIntervalos(diasDoPeriodo)
+  const limitesIntervalos = intervalos.map((inv) => limitesDoIntervaloLocal(inv.inicio, inv.fim))
+
+  const minDia = diasDoPeriodo.length > 0 ? diasDoPeriodo[0] : hoje
+  const maxDia = diasDoPeriodo.length > 0 ? diasDoPeriodo[diasDoPeriodo.length - 1] : hoje
+  const intervaloCompat = { inicio: minDia, fim: maxDia }
+
   const resolverAlvo = criarResolvedorDeAlvo(dados)
 
   const mapaTarefas = new Map<
@@ -698,21 +656,37 @@ export function montarRelatorioDeTempo(
     { categoryId: string | null; nome: string; cor: string | null; tempoMs: number }
   >()
   const mapaDias = new Map<DataLocal, number>()
-  const totalDias = Math.max(0, diasEntre(intervalo.inicio, intervalo.fim))
-  for (let i = 0; i <= totalDias; i += 1) {
-    mapaDias.set(somarDias(intervalo.inicio, i), 0)
+  for (const dia of diasDoPeriodo) {
+    mapaDias.set(dia, 0)
   }
 
   let tempoTotalMs = 0
   const fatiasPorDia = new Map<DataLocal, FatiaComCategoria[]>()
 
   for (const sessao of dados.sessoes) {
-    const corte = cortarSessaoNoIntervalo(sessao, inicioMs, fimMs, agoraIso)
-    if (!corte || corte.duracaoMs <= 0) continue
+    const inicioSessaoMs = new Date(sessao.inicio).getTime()
+    const fimSessaoMs = new Date(sessao.fim ?? agoraIso).getTime()
+    if (Number.isNaN(inicioSessaoMs) || Number.isNaN(fimSessaoMs) || fimSessaoMs <= inicioSessaoMs) {
+      continue
+    }
+
+    // Verifica se toca algum dos intervalos do conjunto de dias
+    let duracaoSessaoNoPeriodo = 0
+    for (const lim of limitesIntervalos) {
+      const corte = cortarSessaoNoIntervalo(sessao, lim.inicioMs, lim.fimMs, agoraIso)
+      if (corte && corte.duracaoMs > 0) {
+        duracaoSessaoNoPeriodo += corte.duracaoMs
+      }
+    }
+    if (duracaoSessaoNoPeriodo <= 0) continue
 
     const alvo = resolverAlvo(sessao)
-    const fatias = fatiarSessaoPorDiaLocal(sessao, agoraIso, intervalo)
-    tempoTotalMs += corte.duracaoMs
+    // Fatia por dia local e filtra só os dias pertencentes ao conjunto
+    const fatiasTodas = fatiarSessaoPorDiaLocal(sessao, agoraIso)
+    const fatias = fatiasTodas.filter((f) => setDias.has(f.data) && f.duracaoMs > 0)
+    if (fatias.length === 0) continue
+
+    tempoTotalMs += duracaoSessaoNoPeriodo
 
     // Soma por dia
     for (const fatia of fatias) {
@@ -727,20 +701,18 @@ export function montarRelatorioDeTempo(
       cor: alvo.categoria?.cor ?? null,
       tempoMs: 0,
     }
-    atualCat.tempoMs += corte.duracaoMs
+    atualCat.tempoMs += duracaoSessaoNoPeriodo
     mapaCategorias.set(chaveCat, atualCat)
 
     // Coleta fatias para cálculo do tempo real
     for (const fatia of fatias) {
-      if (fatia.duracaoMs > 0) {
-        const lista = fatiasPorDia.get(fatia.data) ?? []
-        lista.push({
-          inicioMs: fatia.inicioMs,
-          fimMs: fatia.fimMs,
-          categoryId: chaveCat,
-        })
-        fatiasPorDia.set(fatia.data, lista)
-      }
+      const lista = fatiasPorDia.get(fatia.data) ?? []
+      lista.push({
+        inicioMs: fatia.inicioMs,
+        fimMs: fatia.fimMs,
+        categoryId: chaveCat,
+      })
+      fatiasPorDia.set(fatia.data, lista)
     }
 
     // Soma por tarefa/item
@@ -749,15 +721,15 @@ export function montarRelatorioDeTempo(
       entrada = { alvo, tempoTotalMs: 0, dias: new Set(), sessoes: [] }
       mapaTarefas.set(alvo.chave, entrada)
     }
-    entrada.tempoTotalMs += corte.duracaoMs
+    entrada.tempoTotalMs += duracaoSessaoNoPeriodo
     for (const fatia of fatias) entrada.dias.add(fatia.data)
     entrada.sessoes.push({
       id: sessao.id,
       inicio: sessao.inicio,
       fim: sessao.fim,
-      dataLocal: diaLocalDoMomento(new Date(corte.inicioMs).toISOString()) ?? intervalo.inicio,
+      dataLocal: fatias[0].data,
       duracaoTotalMs: duracaoDaSessaoMs(sessao, agoraIso),
-      duracaoNoPeriodoMs: corte.duracaoMs,
+      duracaoNoPeriodoMs: duracaoSessaoNoPeriodo,
       isAberta: sessao.fim === undefined,
     })
   }
@@ -788,7 +760,7 @@ export function montarRelatorioDeTempo(
     tempoMs,
   }))
 
-  const isVisaoDeUmDia = periodo.tipo === 'hoje' || periodo.tipo === 'dia'
+  const isVisaoDeUmDia = diasDoPeriodo.length === 1
   const modoTop5 = !isVisaoDeUmDia
   const graficoPorTarefa = modoTop5
     ? montarGraficoPorTarefa(tarefas, 5, false)
@@ -822,7 +794,7 @@ export function montarRelatorioDeTempo(
   const diasComTempo = listarDiasComTempo(dados.sessoes, agoraIso)
 
   return {
-    intervalo,
+    intervalo: intervaloCompat,
     tempoTotalMs,
     tempoAtivoTotalMs: metricasJornada.tempoAtivoTotalMs,
     metricasJornada,
@@ -1250,27 +1222,52 @@ export function gerarCsvDeTempo(
   hoje: DataLocal,
   agoraIso: string = new Date().toISOString(),
 ): string {
-  const intervalo = intervaloDoPeriodoDeDados(periodo, hoje)
-  const { inicioMs, fimMs } = limitesDoIntervaloLocal(intervalo.inicio, intervalo.fim)
+  const diasDoPeriodo = resolverDiasDoPeriodo(periodo, hoje)
+  const setDias = new Set(diasDoPeriodo)
+  const intervalos = agruparDiasEmIntervalos(diasDoPeriodo)
+  const limitesIntervalos = intervalos.map((inv) => limitesDoIntervaloLocal(inv.inicio, inv.fim))
   const resolverAlvo = criarResolvedorDeAlvo(dados)
 
-  const sessoesNoPeriodo = dados.sessoes
-    .map((sessao) => ({
-      sessao,
-      corte: cortarSessaoNoIntervalo(sessao, inicioMs, fimMs, agoraIso),
-    }))
-    .filter(
-      (item): item is { sessao: TimeSession; corte: TrechoDeSessao } =>
-        item.corte !== null && item.corte.duracaoMs > 0,
-    )
-    .sort((a, b) => a.sessao.inicio.localeCompare(b.sessao.inicio))
+  const sessoesNoPeriodo: Array<{ sessao: TimeSession; corte: TrechoDeSessao; dataLocal: DataLocal }> = []
+
+  for (const sessao of dados.sessoes) {
+    let duracaoTotal = 0
+    let primeiroCorte: TrechoDeSessao | null = null
+
+    for (const lim of limitesIntervalos) {
+      const corte = cortarSessaoNoIntervalo(sessao, lim.inicioMs, lim.fimMs, agoraIso)
+      if (corte && corte.duracaoMs > 0) {
+        duracaoTotal += corte.duracaoMs
+        if (!primeiroCorte) primeiroCorte = corte
+      }
+    }
+
+    if (duracaoTotal > 0 && primeiroCorte) {
+      const fatias = fatiarSessaoPorDiaLocal(sessao, agoraIso).filter((f) => setDias.has(f.data))
+      const dataLocal =
+        fatias.length > 0
+          ? fatias[0].data
+          : (diaLocalDoMomento(new Date(primeiroCorte.inicioMs).toISOString()) ?? hoje)
+      sessoesNoPeriodo.push({
+        sessao,
+        corte: {
+          inicioMs: primeiroCorte.inicioMs,
+          fimMs: primeiroCorte.inicioMs + duracaoTotal,
+          duracaoMs: duracaoTotal,
+        },
+        dataLocal,
+      })
+    }
+  }
+
+  sessoesNoPeriodo.sort((a, b) => a.sessao.inicio.localeCompare(b.sessao.inicio))
 
   const linhas = ['data,tarefa,grupo,categoria,início,fim,minutos']
-  for (const { sessao, corte } of sessoesNoPeriodo) {
+  for (const { sessao, corte, dataLocal } of sessoesNoPeriodo) {
     const alvo = resolverAlvo(sessao)
     const inicioData = new Date(corte.inicioMs)
     const fimData = new Date(corte.fimMs)
-    const data = paraDataLocal(inicioData)
+    const data = dataLocal
     const inicioHora = format(inicioData, 'HH:mm')
     const fimHora = format(fimData, 'HH:mm')
     const minutos = String(Math.max(1, Math.round(corte.duracaoMs / 60_000)))

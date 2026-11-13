@@ -28,6 +28,7 @@ function camposGravados(dados: DadosProcedimento) {
     // `undefined` ao salvar = "Sem ícone": o Dexie tira o campo do registro.
     icone: dados.icone,
     categoryId,
+    favorito: dados.favorito,
     etapas: numerarEtapas(dados.etapas),
   }
 }
@@ -87,6 +88,18 @@ export async function reordenarProcedimentos(idsEmOrdem: string[], idMovido: str
     const existentes = bloco.filter((procedimento) => procedimento !== undefined)
     const mudancas = planejarReordenarProcedimentos(existentes, idsEmOrdem, idMovido) ?? []
     await Promise.all(mudancas.map(({ id, ordem }) => db.procedures.update(id, { ordem })))
+  })
+}
+
+/** Alterna se o procedimento é favorito. */
+export async function alternarFavoritoProcedimento(id: string) {
+  await db.transaction('rw', db.procedures, async () => {
+    const atual = await db.procedures.get(id)
+    if (!atual) return
+    await db.procedures.update(id, {
+      favorito: !atual.favorito,
+      atualizadoEm: agora(),
+    })
   })
 }
 

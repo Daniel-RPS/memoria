@@ -160,6 +160,8 @@ export interface Etapa {
   id: string
   texto: string
   ordem: number
+  /** Rótulo personalizado opcional (ex: "Segunda-feira"). Ausente ou vazio = padrão ("Etapa N"). */
+  rotulo?: string
 }
 
 export interface Procedure extends EntidadeBase {
@@ -169,6 +171,8 @@ export interface Procedure extends EntidadeBase {
   etapas: Etapa[]
   /** Posição manual dentro da categoria (aceita decimais); regras em `domain/procedimentos`. */
   ordem: number
+  /** Marcado como favorito para aparecer na tela Início. */
+  favorito?: boolean
   /** Arquivado: fora da aba Procedimentos e dos seletores, sem apagar. */
   arquivado?: boolean
   arquivadoEm?: string
@@ -205,7 +209,7 @@ export interface Note extends EntidadeBase {
   arquivadoEm?: string
 }
 
-export type TipoAnexo = 'foto' | 'desenho' | 'audio' | 'link'
+export type TipoAnexo = 'foto' | 'desenho' | 'audio' | 'link' | 'documento'
 
 export interface Attachment extends EntidadeBase {
   dono: Dono
@@ -214,6 +218,8 @@ export interface Attachment extends EntidadeBase {
   mime?: string
   blob?: Blob
   url?: string
+  extensao?: string
+  tamanho?: number
 }
 
 /**
