@@ -131,8 +131,11 @@ describe('ícones novos: Cloudflare, MemorIA e genéricos', () => {
 
   it('amazon e aws não acham logotipo, só sugerem genéricos', () => {
     expect(buscarMarcas(MARCAS, 'amazon')).toEqual([])
-    expect(sugerirGenericos('amazon')).toEqual(['pacote'])
-    expect(sugerirGenericos('Amaz')).toContain('pacote')
+    expect(sugerirGenericos('amazon')).toEqual(['amazon'])
+    expect(sugerirGenericos('prime')).toEqual(['amazon'])
+    expect(sugerirGenericos('Amaz')).toContain('amazon')
+    expect(sugerirGenericos('chatgpt')).toEqual(['openai'])
+    expect(sugerirGenericos('OpenAI')).toEqual(['openai'])
     expect(sugerirGenericos('AWS')).toEqual(['nuvem', 'servidor'])
     expect(sugerirGenericos('git')).toEqual([])
   })
@@ -142,8 +145,26 @@ describe('ícones novos: Cloudflare, MemorIA e genéricos', () => {
       tipo: 'generico',
       valor: 'nuvem',
     })
-    expect(iconeValido({ tipo: 'generico', valor: 'amazon' })).toBeUndefined()
+    expect(iconeValido({ tipo: 'generico', valor: 'amazon' })).toEqual({
+      tipo: 'generico',
+      valor: 'amazon',
+    })
+    expect(iconeValido({ tipo: 'generico', valor: 'openai' })).toEqual({
+      tipo: 'generico',
+      valor: 'openai',
+    })
+    expect(iconeValido({ tipo: 'generico', valor: 'inexistente' })).toBeUndefined()
     expect(iconeValido({ tipo: 'generico', valor: 'toString' })).toBeUndefined()
+    expect(resolverIcone({ tipo: 'generico', valor: 'amazon' }, INDICE)).toEqual({
+      tipo: 'generico',
+      valor: 'amazon',
+      nome: 'Amazon',
+    })
+    expect(resolverIcone({ tipo: 'generico', valor: 'openai' }, INDICE)).toEqual({
+      tipo: 'generico',
+      valor: 'openai',
+      nome: 'OpenAI / ChatGPT',
+    })
     expect(resolverIcone({ tipo: 'generico', valor: 'pacote' }, INDICE)).toEqual({
       tipo: 'generico',
       valor: 'pacote',

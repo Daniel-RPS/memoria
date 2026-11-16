@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Cloud, Package, Server, Shapes, type LucideIcon } from 'lucide-react'
+import { Bot, Cloud, Package, Server, Shapes, type LucideIcon } from 'lucide-react'
 import { cn } from 'cn'
 import simboloMemoria from '@/assets/simbolo-memoria.png'
 import simboloMemoriaClaro from '@/assets/simbolo-memoria-claro.png'
@@ -7,7 +7,7 @@ import { enderecoDaMarca, useIndiceDeMarcas } from '@/components/icones/indice-d
 import type { Icone } from '@/db/types'
 import { useCorDeTraco } from '@/hooks/use-cor-na-tela'
 import {
-  DICA_DO_GENERICO,
+  dicaDoGenerico,
   SLUG_DO_APP,
   nomeDoIcone,
   resolverIcone,
@@ -15,6 +15,8 @@ import {
 } from '@/lib/icones'
 
 const DESENHO_GENERICO: Record<IconeGenerico, LucideIcon> = {
+  amazon: Package,
+  openai: Bot,
   pacote: Package,
   nuvem: Cloud,
   servidor: Server,
@@ -86,7 +88,7 @@ export function IconeDaEntidade({
   if (resolvido.tipo === 'generico') {
     const Desenho = DESENHO_GENERICO[resolvido.valor]
     return (
-      <span {...acessivel} title={DICA_DO_GENERICO} className="inline-flex shrink-0">
+      <span {...acessivel} title={dicaDoGenerico(resolvido.valor)} className="inline-flex shrink-0">
         <Desenho
           data-icone-generico={resolvido.valor}
           className={cn('text-grafite', medidas.caixa, className)}

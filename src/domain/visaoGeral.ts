@@ -9,12 +9,19 @@ import {
 import { somarTempoDoAlvo } from '@/domain/tempo'
 import { resolverDiasDoPeriodo, type PeriodoDeDados } from '@/domain/periodo'
 
+export interface PontoEvolucaoPorDia {
+  dia: DataLocal
+  total: number
+}
+
 /** Dados do relatório da tela Visão geral. */
 export interface RelatorioDeVisaoGeral {
   /** Quantidade de dias no período selecionado. */
   diasNoPeriodo: number
   /** Total de tarefas no período (soma das três classes). */
   totalTarefas: number
+  /** Total de tarefas por dia do período em ordem cronológica (incluindo dias com 0). */
+  porDia: PontoEvolucaoPorDia[]
   /** Contagem de tarefas concluídas, não concluídas e em aberto. */
   contagem: ContagemPorClasse
   /** Percentual de tarefas concluídas sobre o total (arredondado para inteiro). */
@@ -57,16 +64,24 @@ export function montarRelatorioVisaoGeral(
   // Percorre as tarefas uma vez só
   const todasAsTarefas = tarefasNosDias(dadosNumeros, hoje)
 
-  // Filtra as tarefas que caem nos dias do período
-  const doPeriodo = todasAsTarefas.filter((t) => setDias.has(t.data))
+  // Mapa com a contagem de tarefas por dia do período inicializado com 0 para todos os dias do período
+  const contagemPorDia = new Map<DataLocal, number>()
+  for (const dia of diasDoPeriodo) {
+    contagemPorDia.set(dia, 0)
+  }
 
+  // Filtra as tarefas que caem nos dias do período e acumula contagens no percurso único
   let concluidas = 0
   let naoConcluidas = 0
   let emAberto = 0
 
   const tarefasConcluidas: TarefaNoDia[] = []
 
-  for (const tarefa of doPeriodo) {
+  for (const tarefa of todasAsTarefas) {
+    if (!setDias.has(tarefa.data)) continue
+
+    contagemPorDia.set(tarefa.data, (contagemPorDia.get(tarefa.data) ?? 0) + 1)
+
     if (tarefa.classe === 'concluida') {
       concluidas += 1
       tarefasConcluidas.push(tarefa)
@@ -76,6 +91,11 @@ export function montarRelatorioVisaoGeral(
       emAberto += 1
     }
   }
+
+  const porDia: PontoEvolucaoPorDia[] = diasDoPeriodo.map((dia) => ({
+    dia,
+    total: contagemPorDia.get(dia) ?? 0,
+  }))
 
   const totalTarefas = concluidas + naoConcluidas + emAberto
 
@@ -119,6 +139,7 @@ export function montarRelatorioVisaoGeral(
   return {
     diasNoPeriodo,
     totalTarefas,
+    porDia,
     contagem: { concluidas, naoConcluidas, emAberto },
     percentualConcluidas,
     percentualNaoConcluidas,

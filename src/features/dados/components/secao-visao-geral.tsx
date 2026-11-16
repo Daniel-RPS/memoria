@@ -1,4 +1,5 @@
 import { FiltroVisaoGeral } from '@/features/dados/components/filtro-visao-geral'
+import { GraficoEvolucaoTarefas } from '@/features/dados/components/grafico-evolucao-tarefas'
 import { GraficoRoscaConcluidas } from '@/features/dados/components/grafico-rosca-concluidas'
 import { ResumoVisaoGeral } from '@/features/dados/components/resumo-visao-geral'
 import {
@@ -39,13 +40,23 @@ export function SecaoVisaoGeral() {
 
       <ResumoVisaoGeral relatorio={relatorio} />
 
-      <GraficoRoscaConcluidas
-        contagem={relatorio.contagem}
-        totalTarefas={relatorio.totalTarefas}
-        percentualConcluidas={relatorio.percentualConcluidas}
-        percentualNaoConcluidas={relatorio.percentualNaoConcluidas}
-        percentualEmAberto={relatorio.percentualEmAberto}
-      />
+      <div className="grid grid-cols-1 min-[900px]:grid-cols-5 gap-6 items-start">
+        <div className="min-[900px]:col-span-2">
+          <GraficoRoscaConcluidas
+            contagem={relatorio.contagem}
+            totalTarefas={relatorio.totalTarefas}
+            percentualConcluidas={relatorio.percentualConcluidas}
+            percentualNaoConcluidas={relatorio.percentualNaoConcluidas}
+            percentualEmAberto={relatorio.percentualEmAberto}
+          />
+        </div>
+        <div className="min-[900px]:col-span-3">
+          <GraficoEvolucaoTarefas
+            pontos={relatorio.porDia}
+            totalTarefas={relatorio.totalTarefas}
+          />
+        </div>
+      </div>
     </section>
   )
 }

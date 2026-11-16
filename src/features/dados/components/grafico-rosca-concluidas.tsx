@@ -103,7 +103,7 @@ export function GraficoRoscaConcluidas({
         Concluídas × não concluídas
       </h3>
 
-      <div className="flex flex-col sm:flex-row items-center gap-8 rounded-lg border border-pauta bg-papel/50 p-6">
+      <div className="flex flex-col sm:flex-row min-[900px]:flex-col xl:flex-row items-center gap-6 xl:gap-8 rounded-lg border border-pauta bg-papel/50 p-6 h-[258px]">
         {/* Rosca SVG */}
         <div className="relative size-40 shrink-0">
           <svg viewBox="0 0 160 160" className="size-full">
@@ -159,10 +159,10 @@ export function GraficoRoscaConcluidas({
           </div>
         </div>
 
-        {/* Legenda à direita */}
-        <div className="flex min-w-0 flex-1 flex-col justify-center">
+        {/* Legenda */}
+        <div className="flex min-w-0 w-full flex-1 flex-col justify-center">
           {isVazio ? (
-            <p className="text-sm text-grafite">Nenhuma tarefa neste período.</p>
+            <p className="text-sm text-grafite text-center xl:text-left">Nenhuma tarefa neste período.</p>
           ) : (
             <ul className="flex flex-col gap-2 text-xs">
               {fatias.map((fatia) => {

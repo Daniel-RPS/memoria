@@ -70,3 +70,4 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 15/11/2026: modo Cartões do Dia com áreas "Grupos" e "Tarefas soltas" em painéis destacados (`variante="painel"` em `SecaoDoDia`, paletas específicas caneta/grafite, cabeçalhos em faixa com ícones e pílulas, vão de 32px)
 - Ajuste 15/11/2026: rascunho automático em Início (captura rápida), Novo Procedimento e campos de criação do Dia (`CampoNovoItem`, `NovaTarefa`, `NovoGrupo`, `CartaoNovoItemGrupo`), com expiração de 7 dias e reabertura automática
 - Ajuste 15/11/2026: busca rápida de telas na barra lateral (`BuscaDaBarra`, `filtrarDestinos`), atalho "/", navegação por teclado e visual recolhido com lupa
+- Ajuste 15/11/2026: recarga automática no evento `vite:preloadError` (máx. 1 a cada 10s via sessionStorage) para tratar módulos dinâmicos desatualizados pós-deploy

@@ -38,38 +38,57 @@ export const MARCA_DO_APP: MarcaDoIndice = { t: 'MemorIA', s: SLUG_DO_APP, h: '8
 
 /** Ícones genéricos (lucide) oferecidos no lugar de marcas proibidas pelo Simple Icons. */
 export const GENERICOS = {
+  amazon: 'Amazon',
+  openai: 'OpenAI / ChatGPT',
   pacote: 'Pacote',
   nuvem: 'Nuvem',
   servidor: 'Servidor',
 } as const
 export type IconeGenerico = keyof typeof GENERICOS
 
-/** Dica do ícone genérico sugerido na busca. */
-export const DICA_DO_GENERICO = 'Ícone genérico (a marca não está disponível)'
+export interface EntradaGenerico {
+  slug: IconeGenerico
+  rotulo: string
+  termos: string[]
+}
 
-/**
- * Marcas que o Simple Icons não tem porque o dono pediu a retirada (Amazon, AWS): a busca
- * por elas sugere só um ícone genérico. NUNCA desenhar ou imitar o logotipo.
- */
-const MARCAS_INDISPONIVEIS: { nomes: string[]; genericos: IconeGenerico[] }[] = [
-  { nomes: ['amazon', 'amazonprime', 'primevideo'], genericos: ['pacote'] },
-  { nomes: ['aws', 'amazonwebservices'], genericos: ['nuvem', 'servidor'] },
+/** Tabela de genéricos conhecidos, com slug, rótulo e termos de busca. */
+export const TABELA_GENERICOS: EntradaGenerico[] = [
+  { slug: 'amazon', rotulo: 'Amazon', termos: ['amazon', 'prime'] },
+  { slug: 'openai', rotulo: 'OpenAI / ChatGPT', termos: ['openai', 'chatgpt', 'gpt', 'chat gpt'] },
+  { slug: 'nuvem', rotulo: 'AWS (Nuvem)', termos: ['aws', 'amazonwebservices'] },
+  { slug: 'servidor', rotulo: 'AWS (Servidor)', termos: ['aws', 'amazonwebservices'] },
 ]
 
-/** Genéricos sugeridos para a busca (vazio se o termo não é uma marca indisponível). */
+/** Itens exibidos na linha "Sem logotipo disponível" na aba Marcas. */
+export const GENERICOS_SEM_LOGOTIPO: IconeGenerico[] = ['amazon', 'openai', 'nuvem', 'servidor']
+
+/** Dica do ícone genérico sugerido. */
+export function dicaDoGenerico(slug: IconeGenerico): string {
+  if (slug === 'amazon') return 'Amazon (ícone genérico: a marca não está disponível)'
+  if (slug === 'openai') return 'OpenAI / ChatGPT (ícone genérico: a marca não está disponível)'
+  return 'Ícone genérico (a marca não está disponível)'
+}
+
+export const DICA_DO_GENERICO = 'Ícone genérico (a marca não está disponível)'
+
+/** Genéricos sugeridos para a busca (vazio se o termo não bater com marcas indisponíveis/genéricas). */
 export function sugerirGenericos(termo: string): IconeGenerico[] {
   const busca = semEspacos(termo)
-  if (busca.length < 3) return []
-  // Nome exato manda ("amazon" não puxa os de "amazonwebservices"); senão, vale o começo.
-  const exatos = MARCAS_INDISPONIVEIS.filter(({ nomes }) => nomes.includes(busca))
-  const achados = (
-    exatos.length > 0
-      ? exatos
-      : MARCAS_INDISPONIVEIS.filter(({ nomes }) =>
-          nomes.some((nome) => nome.startsWith(busca) || busca.startsWith(nome)),
-        )
-  ).flatMap(({ genericos }) => genericos)
-  return [...new Set(achados)]
+  if (!busca || busca.length < 3) return []
+
+  // Prioriza correspondência exata de termo
+  const exatos = TABELA_GENERICOS.filter((e) =>
+    e.termos.map(semEspacos).includes(busca),
+  ).map((e) => e.slug)
+  if (exatos.length > 0) return [...new Set(exatos)]
+
+  // Senão, prefixos (termo começa com busca ou busca começa com termo)
+  const parciais = TABELA_GENERICOS.filter((e) =>
+    e.termos.map(semEspacos).some((t) => t.startsWith(busca) || busca.startsWith(t)),
+  ).map((e) => e.slug)
+
+  return [...new Set(parciais)]
 }
 
 /** Ícone válido ou `undefined` (o que vier quebrado de fora é ignorado, sem erro). */

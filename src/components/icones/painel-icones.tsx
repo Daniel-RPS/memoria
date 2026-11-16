@@ -8,8 +8,9 @@ import { useIconesRecentes } from '@/components/icones/use-icones-recentes'
 import type { Icone } from '@/db/types'
 import {
   buscarMarcas,
-  DICA_DO_GENERICO,
+  dicaDoGenerico,
   GENERICOS,
+  GENERICOS_SEM_LOGOTIPO,
   MARCA_DO_APP,
   MARCAS_SUGERIDAS,
   sugerirGenericos,
@@ -224,47 +225,93 @@ function AbaMarcas({ onEscolher }: { onEscolher: (icone: Icone) => void }) {
       </CampoDeBusca>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!indice && <p className="py-8 text-center text-sm text-grafite">Carregando marcas…</p>}
-        {indice && !termo.trim() && <h3 className={TITULO_DE_SECAO}>Sugestões</h3>}
-        {genericos.length > 0 && (
+        {indice && !termo.trim() && (
           <>
-            <h3 className={TITULO_DE_SECAO}>A marca não está disponível</h3>
+            <h3 className={TITULO_DE_SECAO}>Sugestões</h3>
             <div className="grid grid-cols-8">
-              {genericos.map((valor) => (
+              {marcas.map((marca) => (
                 <button
-                  key={valor}
+                  key={marca.s}
                   type="button"
-                  aria-label={`${GENERICOS[valor]} (ícone genérico)`}
-                  title={DICA_DO_GENERICO}
+                  aria-label={marca.t}
+                  title={marca.t}
                   className={CELULA}
-                  onClick={() => onEscolher({ tipo: 'generico', valor })}
-                  onMouseEnter={() => setDica(DICA_DO_GENERICO)}
-                  onFocus={() => setDica(DICA_DO_GENERICO)}
+                  onClick={() => onEscolher({ tipo: 'marca', valor: marca.s })}
+                  onMouseEnter={() => setDica(marca.t)}
+                  onFocus={() => setDica(marca.t)}
                 >
-                  <IconeDaEntidade icone={{ tipo: 'generico', valor }} tamanho="lg" />
+                  <IconeDaEntidade icone={{ tipo: 'marca', valor: marca.s }} tamanho="lg" />
                 </button>
               ))}
+            </div>
+
+            <h3 className={TITULO_DE_SECAO}>Sem logotipo disponível</h3>
+            <div className="grid grid-cols-8">
+              {GENERICOS_SEM_LOGOTIPO.map((valor) => {
+                const dicaItem = dicaDoGenerico(valor)
+                return (
+                  <button
+                    key={valor}
+                    type="button"
+                    aria-label={`${GENERICOS[valor]} (ícone genérico)`}
+                    title={dicaItem}
+                    className={CELULA}
+                    onClick={() => onEscolher({ tipo: 'generico', valor })}
+                    onMouseEnter={() => setDica(dicaItem)}
+                    onFocus={() => setDica(dicaItem)}
+                  >
+                    <IconeDaEntidade icone={{ tipo: 'generico', valor }} tamanho="lg" />
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+        {termo.trim() && genericos.length > 0 && (
+          <>
+            <h3 className={TITULO_DE_SECAO}>Sem logotipo disponível</h3>
+            <div className="grid grid-cols-8">
+              {genericos.map((valor) => {
+                const dicaItem = dicaDoGenerico(valor)
+                return (
+                  <button
+                    key={valor}
+                    type="button"
+                    aria-label={`${GENERICOS[valor]} (ícone genérico)`}
+                    title={dicaItem}
+                    className={CELULA}
+                    onClick={() => onEscolher({ tipo: 'generico', valor })}
+                    onMouseEnter={() => setDica(dicaItem)}
+                    onFocus={() => setDica(dicaItem)}
+                  >
+                    <IconeDaEntidade icone={{ tipo: 'generico', valor }} tamanho="lg" />
+                  </button>
+                )
+              })}
             </div>
           </>
         )}
         {indice && marcas.length === 0 && genericos.length === 0 && (
           <p className="py-8 text-center text-sm text-grafite">Nenhuma marca com “{termo}”.</p>
         )}
-        <div className="grid grid-cols-8">
-          {marcas.map((marca) => (
-            <button
-              key={marca.s}
-              type="button"
-              aria-label={marca.t}
-              title={marca.t}
-              className={CELULA}
-              onClick={() => onEscolher({ tipo: 'marca', valor: marca.s })}
-              onMouseEnter={() => setDica(marca.t)}
-              onFocus={() => setDica(marca.t)}
-            >
-              <IconeDaEntidade icone={{ tipo: 'marca', valor: marca.s }} tamanho="lg" />
-            </button>
-          ))}
-        </div>
+        {termo.trim() && (
+          <div className="grid grid-cols-8">
+            {marcas.map((marca) => (
+              <button
+                key={marca.s}
+                type="button"
+                aria-label={marca.t}
+                title={marca.t}
+                className={CELULA}
+                onClick={() => onEscolher({ tipo: 'marca', valor: marca.s })}
+                onMouseEnter={() => setDica(marca.t)}
+                onFocus={() => setDica(marca.t)}
+              >
+                <IconeDaEntidade icone={{ tipo: 'marca', valor: marca.s }} tamanho="lg" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <p aria-hidden className="h-5 truncate px-1 text-xs text-grafite">
         {dica ?? 'Simple Icons (CC0). Marcas são de seus donos.'}
