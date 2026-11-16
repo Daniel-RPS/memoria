@@ -15,6 +15,10 @@ import { renderizarApp } from '@/test/renderizar-app'
 
 const HOJE = hoje()
 
+/** Outro dia DA MESMA SEMANA de hoje: amanhã não serve no domingo (cai na semana seguinte). */
+const OUTRO_DIA_DA_SEMANA =
+  inicioDaSemana(HOJE) === HOJE ? somarDias(HOJE, 1) : inicioDaSemana(HOJE)
+
 describe('Grupos nas visões de semana, mês e ano', () => {
   beforeEach(async () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
@@ -43,7 +47,7 @@ describe('Grupos nas visões de semana, mês e ano', () => {
     const usuario = userEvent.setup()
     const cardHoje = await criarGrupo({ titulo: 'Casa', data: HOJE })
     await criarItem(cardHoje.id, 'Fazer comida')
-    const cardAmanha = await criarGrupo({ titulo: 'Casa', data: somarDias(HOJE, 1) })
+    const cardAmanha = await criarGrupo({ titulo: 'Casa', data: OUTRO_DIA_DA_SEMANA })
     await criarItem(cardAmanha.id, 'Lavar roupa')
     // Lista antiga de recolhidos (legado): é apagada.
     localStorage.setItem('memoria:recolhidos:semana:cards', JSON.stringify(['outro']))
