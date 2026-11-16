@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { ListChecks } from 'lucide-react'
+import { Folder, ListChecks } from 'lucide-react'
 import type { DataLocal, GroupItem, Task } from '@/db/types'
 import { ContextoSubetapas } from '@/hooks/contexto-subetapas'
 import { blocoDe, type Bloco } from '@/domain/ordem-de-exibicao'
@@ -174,6 +174,9 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                           texto: String(cards.length),
                           rotulo: cards.length === 1 ? '1 grupo' : `${cards.length} grupos`,
                         }}
+                        icone={<Folder className="size-4" />}
+                        variante="painel"
+                        acento="caneta"
                         isRecolhida={isSecaoRecolhida('grupos')}
                         onAlternar={() => handleAlternarSecao('grupos')}
                         isSemAdicionar={selecao.isSelecionando}
@@ -181,7 +184,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                           !isCarregando && cards.length === 0 ? 'Nenhum grupo neste dia' : undefined
                         }
                       >
-                        <div className="mt-3 flex flex-col gap-4 w-full">
+                        <div className="flex flex-col gap-4 w-full">
                           {cartoesGrupos}
                           {cartaoNovo}
                         </div>
@@ -194,14 +197,17 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                         titulo="Tarefas soltas"
                         contagem={contagemSoltas}
                         rotuloAdicionar="Nova tarefa"
-                        icone={<ListChecks className="size-4 text-grafite" />}
+                        icone={<ListChecks className="size-4" />}
+                        variante="painel"
+                        acento="grafite"
                         isRecolhida={isSecaoRecolhida('soltas')}
                         onAlternar={() => handleAlternarSecao('soltas')}
                         isSemAdicionar={selecao.isSelecionando}
                         textoVazio={textoVazioSoltas}
+                        chaveRascunho={`nova-tarefa:${data}`}
                         campo={(fechar) => <NovaTarefa data={data} onFechar={fechar} />}
                       >
-                        <div className="mt-3 w-full">
+                        <div className="w-full">
                           {listas.renderSoltasCard({
                             contagemTexto: contagemSoltas.texto,
                             concluidas: (
@@ -226,7 +232,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                     return (
                       <div
                         data-modo={modo}
-                        className="mt-2 flex flex-col gap-6 w-full"
+                        className="mt-2 flex flex-col gap-8 w-full"
                       >
                         {secoesOrdenadas}
                       </div>
@@ -250,6 +256,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                         textoVazio={
                           !isCarregando && cards.length === 0 ? 'Nenhum grupo neste dia' : undefined
                         }
+                        chaveRascunho={`novo-grupo:${data}`}
                         campo={(fechar) => <NovoGrupo data={data} onCriado={fechar} />}
                       >
                         {listas.grupos}
@@ -272,6 +279,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                               : 'Nenhuma tarefa solta'
                             : undefined
                         }
+                        chaveRascunho={`nova-tarefa:${data}`}
                         campo={(fechar) => <NovaTarefa data={data} onFechar={fechar} />}
                       >
                         {listas.soltas}

@@ -35,9 +35,45 @@ import {
 import { SeletorDeGrupo } from '@/features/inicio/components/seletor-de-grupo'
 import { useCaptura } from '@/features/inicio/hooks/use-captura'
 import { useSeriesParaEscolher } from '@/features/inicio/hooks/use-series-para-escolher'
+import { lerRascunho } from '@/lib/rascunhos'
+import { useRascunho } from '@/hooks/use-rascunho'
+import { z } from 'zod'
 
 interface CapturaRapidaProps {
   hoje: DataLocal
+}
+
+const CHAVE_RASCUNHO = 'captura'
+
+const esquemaRascunhoCaptura = z.object({
+  texto: z.string(),
+  itens: z.array(z.string()),
+  tipo: z.enum(['tarefa', 'grupo']),
+  categoryId: z.string().optional(),
+  seriesId: z.string().optional(),
+  data: z.string(),
+  horario: z.string().optional(),
+  avisos: z.array(z.number()).optional(),
+})
+
+type RascunhoCaptura = z.infer<typeof esquemaRascunhoCaptura>
+
+function carregarRascunho(hoje: DataLocal): { input: CapturaInput; avisos: number[] } | null {
+  const salvo = lerRascunho(CHAVE_RASCUNHO, esquemaRascunhoCaptura)
+  if (!salvo) return null
+  const dataFinal = salvo.data < hoje ? hoje : (salvo.data as DataLocal)
+  return {
+    input: {
+      texto: salvo.texto,
+      itens: salvo.itens.length > 0 ? salvo.itens : [''],
+      tipo: salvo.tipo,
+      categoryId: salvo.categoryId,
+      seriesId: salvo.seriesId,
+      data: dataFinal,
+      horario: salvo.horario,
+    },
+    avisos: salvo.avisos ?? [],
+  }
 }
 
 /** Campo limpo; o grupo escolhido continua (para jogar vários itens seguidos no mesmo grupo). */
@@ -58,8 +94,11 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   const { capturar } = useCaptura()
   const [anexos, setAnexos] = useState<AnexoDaCaptura[]>([])
   const [isLinkAberto, setIsLinkAberto] = useState(false)
+
+  const [rascunhoInicial] = useState(() => carregarRascunho(hoje))
+
   /** Antecedências dos avisos escolhidos (só valem com horário). */
-  const [avisos, setAvisos] = useState<number[]>([])
+  const [avisos, setAvisos] = useState<number[]>(() => rascunhoInicial?.avisos ?? [])
   const itensRef = useRef<ItensDaCapturaHandle>(null)
   const {
     register,
@@ -74,7 +113,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
     formState: { errors, isSubmitting },
   } = useForm<CapturaInput>({
     resolver: zodResolver(esquemaCaptura),
-    defaultValues: valoresIniciais(hoje),
+    defaultValues: rascunhoInicial?.input ?? valoresIniciais(hoje),
   })
   const [tipo, data, categoryId, seriesId, texto, itens, horario] = useWatch({
     control,
@@ -85,6 +124,45 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
   const grupoEscolhido =
     modo === 'itens' ? series.find((opcao) => opcao.serie.id === seriesId) : undefined
   const erro = errors.texto?.message ?? errors.itens?.message
+
+  const valorAtualRascunho: RascunhoCaptura = {
+    tipo,
+    texto: texto ?? '',
+    itens: itens ?? [''],
+    data,
+    categoryId,
+    seriesId,
+    horario,
+    avisos,
+  }
+
+  function isCapturaVazia(v: RascunhoCaptura): boolean {
+    const textoVazio = v.texto.trim() === ''
+    const itensVazios = v.itens.every((item) => item.trim() === '')
+    const semGrupo = !v.seriesId
+    const semCategoria = !v.categoryId
+    const semHorario = !v.horario
+    const semAvisos = !v.avisos || v.avisos.length === 0
+    const tipoPadrao = v.tipo === 'tarefa'
+    const dataPadrao = v.data === hoje
+
+    return (
+      textoVazio &&
+      itensVazios &&
+      semGrupo &&
+      semCategoria &&
+      semHorario &&
+      semAvisos &&
+      tipoPadrao &&
+      dataPadrao
+    )
+  }
+
+  const { limpar: limparRascunhoCaptura } = useRascunho({
+    chave: CHAVE_RASCUNHO,
+    valor: valorAtualRascunho,
+    isVazio: isCapturaVazia,
+  })
 
   /** Tarefa: o campo de texto; Grupo: o nome; com grupo escolhido: o último item. */
   function focarCampoPrincipal() {
@@ -148,6 +226,7 @@ export function CapturaRapida({ hoje }: CapturaRapidaProps) {
       }
       throw falha
     }
+    limparRascunhoCaptura()
     reset(valoresIniciais(hoje, modoAoCriar === 'itens' ? dados.seriesId : undefined))
     setAnexos([])
     setAvisos([])

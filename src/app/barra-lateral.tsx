@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Archive,
@@ -28,6 +29,8 @@ import { Link, useMatch } from 'react-router'
 import { cn } from 'cn'
 import { DicaDaBarra } from '@/app/dica-da-barra'
 import { TRANSICAO_DA_BARRA, classesDoItemDaBarra } from '@/app/estilo-item-da-barra'
+import { BuscaDaBarra } from '@/app/busca-da-barra'
+import { filtrarDestinos, type DestinoDaBarra } from '@/lib/busca-da-barra'
 import { ItemComRoda } from '@/app/roda-da-barra/item-com-roda'
 import type { SetorDaRoda } from '@/app/roda-da-barra/roda-da-barra'
 import { useRodaDaBarra } from '@/app/roda-da-barra/use-roda-da-barra'
@@ -207,6 +210,8 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const { naoVistos } = useDadosDosLembretes()
   const controleDaRoda = useRodaDaBarra()
 
+  const [consultaBusca, setConsultaBusca] = useState('')
+
   // Setores na ordem horária: topo, direita, baixo, esquerda.
   const setoresDoCalendario: SetorDaRoda[] = [
     {
@@ -314,6 +319,72 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
     },
   ]
 
+  const todosDestinos: DestinoDaBarra[] = [
+    {
+      nome: 'Início',
+      icone: House,
+      para: '/inicio',
+      isAtiva: isNoInicio,
+    },
+  ]
+
+  for (const setor of setoresDoCalendario) {
+    if (setor.para) {
+      todosDestinos.push({
+        nome: setor.nome,
+        icone: setor.icone,
+        para: setor.para,
+        isAtiva: setor.isAtiva ?? false,
+        grupo: 'Calendário',
+      })
+    }
+  }
+
+  for (const setor of setoresDaOrganizacao) {
+    if (setor.para) {
+      todosDestinos.push({
+        nome: setor.nome,
+        icone: setor.icone,
+        para: setor.para,
+        isAtiva: setor.isAtiva ?? false,
+        grupo: 'Organização',
+      })
+    }
+  }
+
+  for (const setor of setoresDosAjustes) {
+    if (setor.para) {
+      todosDestinos.push({
+        nome: setor.nome,
+        icone: setor.icone,
+        para: setor.para,
+        isAtiva: setor.isAtiva ?? false,
+        grupo: 'Ajustes',
+      })
+    }
+  }
+
+  for (const setor of setoresDosDados) {
+    if (setor.para) {
+      todosDestinos.push({
+        nome: setor.nome,
+        icone: setor.icone,
+        para: setor.para,
+        isAtiva: setor.isAtiva ?? false,
+        grupo: 'Dados',
+      })
+    }
+  }
+
+  todosDestinos.push({
+    nome: 'Notificações',
+    icone: Bell,
+    para: '/notificacoes',
+    isAtiva: isNasNotificacoes,
+  })
+
+  const destinosFiltrados = filtrarDestinos(todosDestinos, consultaBusca)
+
   return (
     // O fundo acompanha a página inteira; o conteúdo fica preso no topo ao rolar.
     <div className="shrink-0 border-r border-barra-borda bg-barra text-barra-texto">
@@ -327,7 +398,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
       >
         <div
           className={cn(
-            'mb-6 flex items-center',
+            'mb-4 flex items-center',
             isRecolhida ? 'flex-col gap-3' : 'justify-between pl-2',
           )}
         >
@@ -348,53 +419,62 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
             </button>
           </DicaDaBarra>
         </div>
-        <nav aria-label="Telas" className="flex flex-1 flex-col gap-0.5">
-          <LinkTela para="/inicio" icone={House} isAtiva={isNoInicio} isRecolhida={isRecolhida}>
-            Início
-          </LinkTela>
-          <ItemComRoda
-            id="calendario"
-            nome="Calendário"
-            icone={CalendarFold}
-            setores={setoresDoCalendario}
-            isRecolhida={isRecolhida}
-            controle={controleDaRoda}
-          />
-          <ItemComRoda
-            id="organizacao"
-            nome="Organização"
-            icone={Shapes}
-            setores={setoresDaOrganizacao}
-            isRecolhida={isRecolhida}
-            controle={controleDaRoda}
-          />
-          <ItemComRoda
-            id="ajustes"
-            nome="Ajustes"
-            icone={Settings}
-            setores={setoresDosAjustes}
-            isRecolhida={isRecolhida}
-            aviso={lembreteDeBackup}
-            controle={controleDaRoda}
-          />
-          <ItemComRoda
-            id="dados"
-            nome="Dados"
-            icone={ChartColumn}
-            setores={setoresDosDados}
-            isRecolhida={isRecolhida}
-            controle={controleDaRoda}
-          />
-          <LinkTela
-            para="/notificacoes"
-            icone={Bell}
-            isAtiva={isNasNotificacoes}
-            isRecolhida={isRecolhida}
-            naoVistos={naoVistos}
-          >
-            Notificações
-          </LinkTela>
-        </nav>
+        <BuscaDaBarra
+          isRecolhida={isRecolhida}
+          onAlternarRecolhida={onAlternarRecolhida}
+          consulta={consultaBusca}
+          onMudarConsulta={setConsultaBusca}
+          destinosFiltrados={destinosFiltrados}
+        />
+        {!consultaBusca && (
+          <nav aria-label="Telas" className="flex flex-1 flex-col gap-0.5">
+            <LinkTela para="/inicio" icone={House} isAtiva={isNoInicio} isRecolhida={isRecolhida}>
+              Início
+            </LinkTela>
+            <ItemComRoda
+              id="calendario"
+              nome="Calendário"
+              icone={CalendarFold}
+              setores={setoresDoCalendario}
+              isRecolhida={isRecolhida}
+              controle={controleDaRoda}
+            />
+            <ItemComRoda
+              id="organizacao"
+              nome="Organização"
+              icone={Shapes}
+              setores={setoresDaOrganizacao}
+              isRecolhida={isRecolhida}
+              controle={controleDaRoda}
+            />
+            <ItemComRoda
+              id="ajustes"
+              nome="Ajustes"
+              icone={Settings}
+              setores={setoresDosAjustes}
+              isRecolhida={isRecolhida}
+              aviso={lembreteDeBackup}
+              controle={controleDaRoda}
+            />
+            <ItemComRoda
+              id="dados"
+              nome="Dados"
+              icone={ChartColumn}
+              setores={setoresDosDados}
+              isRecolhida={isRecolhida}
+              controle={controleDaRoda}
+            />
+            <LinkTela
+              para="/notificacoes"
+              icone={Bell}
+              isAtiva={isNasNotificacoes}
+              isRecolhida={isRecolhida}
+              naoVistos={naoVistos}
+            >
+              Notificações
+            </LinkTela>
+          </nav>
+        )}
       </aside>
     </div>
   )

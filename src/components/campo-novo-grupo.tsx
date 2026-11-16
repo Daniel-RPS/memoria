@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { z } from 'zod'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { CampoCategoria } from '@/components/seletor-categoria/campo-categoria'
 import type { CategoriaEscolhida } from '@/components/seletor-categoria/seletor-categoria'
+import { lerRascunho, limparRascunho } from '@/lib/rascunhos'
 
 interface CampoNovoGrupoProps {
   /** Nome acessível do campo, ex.: "Novo grupo em sex, 31". */
@@ -9,7 +11,15 @@ interface CampoNovoGrupoProps {
   tamanho?: 'normal' | 'compacto'
   autoFocus?: boolean
   onCriar: (dados: { titulo: string } & CategoriaEscolhida) => Promise<unknown>
+  chaveRascunho?: string
 }
+
+const esquemaRascunhoNovoGrupo = z.object({
+  titulo: z.string(),
+  categoryId: z.string().optional(),
+})
+
+type RascunhoNovoGrupo = z.infer<typeof esquemaRascunhoNovoGrupo>
 
 /**
  * "+ Novo grupo" com a bolinha de categoria ao lado: a categoria escolhida (ou criada ali
@@ -20,8 +30,16 @@ export function CampoNovoGrupo({
   tamanho = 'normal',
   autoFocus,
   onCriar,
+  chaveRascunho,
 }: CampoNovoGrupoProps) {
-  const [categoria, setCategoria] = useState<CategoriaEscolhida>({})
+  const rascunhoInicial = useMemo<RascunhoNovoGrupo | null>(() => {
+    if (!chaveRascunho) return null
+    return lerRascunho(chaveRascunho, esquemaRascunhoNovoGrupo)
+  }, [chaveRascunho])
+
+  const [categoria, setCategoria] = useState<CategoriaEscolhida>(() => ({
+    categoryId: rascunhoInicial?.categoryId,
+  }))
 
   return (
     <div className="flex items-start gap-1">
@@ -31,7 +49,13 @@ export function CampoNovoGrupo({
           nomeAcessivel={nomeAcessivel}
           tamanho={tamanho}
           autoFocus={autoFocus}
-          onCriar={(titulo) => onCriar({ titulo, ...categoria })}
+          chaveRascunho={chaveRascunho}
+          onCriar={async (t) => {
+            if (chaveRascunho) {
+              limparRascunho(chaveRascunho)
+            }
+            await onCriar({ titulo: t, ...categoria })
+          }}
         />
       </div>
       <CampoCategoria

@@ -1,11 +1,14 @@
-import { useId } from 'react'
-import { useForm } from 'react-hook-form'
+import { useId, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus } from 'lucide-react'
+import { z } from 'zod'
 import { cn } from 'cn'
 import { titulosDoTextoColado } from '@/domain/subetapas'
 import { ErroDeValidacao } from '@/lib/erros'
 import { esquemaNovoItem, TAMANHO_MAXIMO_TITULO, type NovoItemInput } from '@/lib/esquemas'
+import { lerRascunho } from '@/lib/rascunhos'
+import { useRascunho } from '@/hooks/use-rascunho'
 
 interface CampoNovoItemProps {
   /** Texto do placeholder e nome acessível, ex.: "Nova tarefa". */
@@ -24,7 +27,11 @@ interface CampoNovoItemProps {
   onApagarVazio?: () => void
   /** Esc com o campo já vazio (ex.: sair da lista). */
   onSairComEsc?: () => void
+  /** Chave para gravação automática de rascunho no localStorage. */
+  chaveRascunho?: string
 }
+
+const esquemaRascunhoItem = z.string()
 
 /** Linha em branco que cria um item com Enter e continua pronta para o próximo. Esc limpa. */
 export function CampoNovoItem({
@@ -37,10 +44,16 @@ export function CampoNovoItem({
   onColarVarias,
   onApagarVazio,
   onSairComEsc,
+  chaveRascunho,
 }: CampoNovoItemProps) {
   const idErro = useId()
+  const [rascunhoInicial] = useState(() =>
+    chaveRascunho ? lerRascunho(chaveRascunho, esquemaRascunhoItem) : null,
+  )
+
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
@@ -49,14 +62,23 @@ export function CampoNovoItem({
     formState: { errors },
   } = useForm<NovoItemInput>({
     resolver: zodResolver(esquemaNovoItem),
-    defaultValues: { titulo: '' },
+    defaultValues: { titulo: rascunhoInicial ?? '' },
   })
   const erro = errors.titulo?.message
   const isCompacto = tamanho === 'compacto'
 
+  const tituloAtual = useWatch({ control, name: 'titulo' }) ?? ''
+
+  const { limpar: limparRascunhoDoCampo } = useRascunho({
+    chave: chaveRascunho ?? '',
+    valor: tituloAtual,
+    isVazio: (v) => !chaveRascunho || v.trim() === '',
+  })
+
   async function handleCriar({ titulo }: NovoItemInput) {
+    if (chaveRascunho) limparRascunhoDoCampo()
     // Limpa antes de gravar: quem digita rápido não perde o que já começou a escrever.
-    reset()
+    reset({ titulo: '' })
     try {
       await onCriar(titulo)
     } catch (erro) {
@@ -100,7 +122,8 @@ export function CampoNovoItem({
           onKeyDown={(evento) => {
             const isVazio = evento.currentTarget.value === ''
             if (evento.key === 'Escape') {
-              reset()
+              if (chaveRascunho) limparRascunhoDoCampo()
+              reset({ titulo: '' })
               clearErrors()
               if (isVazio) onSairComEsc?.()
             } else if (evento.key === 'Backspace' && isVazio && onApagarVazio) {

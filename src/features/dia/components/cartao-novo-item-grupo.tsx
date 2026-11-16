@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { CampoNovoItem } from '@/components/campo-novo-item'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
+import { temRascunho } from '@/lib/rascunhos'
 
 interface CartaoNovoItemGrupoProps {
   cardId: string
@@ -12,7 +13,8 @@ interface CartaoNovoItemGrupoProps {
  * Cartão tracejado "+" no fim da grade de tarefas de um grupo para adicionar novo item.
  */
 export function CartaoNovoItemGrupo({ cardId, tituloGrupo }: CartaoNovoItemGrupoProps) {
-  const [isCriando, setIsCriando] = useState(false)
+  const chaveRascunho = `novo-item:${cardId}`
+  const [isCriando, setIsCriando] = useState(() => temRascunho(chaveRascunho))
   const { criarItem } = useAcoesGrupo()
 
   if (isCriando) {
@@ -26,6 +28,7 @@ export function CartaoNovoItemGrupo({ cardId, tituloGrupo }: CartaoNovoItemGrupo
           rotulo="Adicionar item"
           nomeAcessivel={`Adicionar item em ${tituloGrupo}`}
           tamanho="compacto"
+          chaveRascunho={chaveRascunho}
           onSairVazio={() => setIsCriando(false)}
           onCriar={async (titulo) => {
             await criarItem(cardId, titulo)

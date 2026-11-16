@@ -195,6 +195,7 @@ export function CardGrupo({ grupo, hoje, alca, pendentes }: CardGrupoProps) {
                 rotulo="Adicionar item"
                 nomeAcessivel={`Adicionar item em ${serie.titulo}`}
                 tamanho="compacto"
+                chaveRascunho={`novo-item:${card.id}`}
                 onCriar={(titulo) => criarItem(card.id, titulo)}
               />
             </div>

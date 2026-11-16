@@ -539,3 +539,56 @@ test('Cartões: cabeçalho recolhe e expande, progresso continua visível e Ente
   )
   await expect(cardGrupo.getByText('Item A')).toBeVisible()
 })
+
+test('Painéis de Grupos e Tarefas soltas no modo Cartões têm variante painel, botões nos lugares certos e espaçamento adequado', async ({
+  page,
+}) => {
+  await semearDiaCartoes(page)
+  await page.goto(`/dia/${HOJE}`)
+  await expect(page.getByText('Fazer compras')).toBeVisible()
+
+  // Alternar para modo Cartões
+  await page
+    .getByRole('group', { name: 'Visualização do dia' })
+    .getByRole('button', { name: 'Cartões' })
+    .click()
+
+  const secaoGrupos = page.locator('section[aria-label="Grupos"]')
+  const secaoSoltas = page.locator('section[aria-label="Tarefas soltas"]')
+
+  // data-variante="painel" em Cartões
+  await expect(secaoGrupos).toHaveAttribute('data-variante', 'painel')
+  await expect(secaoSoltas).toHaveAttribute('data-variante', 'painel')
+
+  // O botão "Novo grupo" está DENTRO de Grupos
+  await expect(secaoGrupos.getByRole('button', { name: 'Novo grupo' })).toBeVisible()
+
+  // O botão "Nova tarefa" está DENTRO de Tarefas soltas
+  await expect(secaoSoltas.getByRole('button', { name: 'Nova tarefa' })).toBeVisible()
+
+  // Vão vertical entre os dois painéis é de pelo menos 24 px
+  const boxGrupos = await secaoGrupos.boundingBox()
+  const boxSoltas = await secaoSoltas.boundingBox()
+  expect(boxGrupos).toBeTruthy()
+  expect(boxSoltas).toBeTruthy()
+  if (boxGrupos && boxSoltas) {
+    const vao = boxSoltas.y - (boxGrupos.y + boxGrupos.height)
+    expect(vao).toBeGreaterThanOrEqual(24)
+  }
+
+  // Em Lista: nenhuma seção tem data-variante="painel"
+  await page
+    .getByRole('group', { name: 'Visualização do dia' })
+    .getByRole('button', { name: 'Lista' })
+    .click()
+  await expect(secaoGrupos).not.toHaveAttribute('data-variante', 'painel')
+  await expect(secaoSoltas).not.toHaveAttribute('data-variante', 'painel')
+
+  // Em Colunas: nenhuma seção tem data-variante="painel"
+  await page
+    .getByRole('group', { name: 'Visualização do dia' })
+    .getByRole('button', { name: 'Colunas' })
+    .click()
+  await expect(secaoGrupos).not.toHaveAttribute('data-variante', 'painel')
+  await expect(secaoSoltas).not.toHaveAttribute('data-variante', 'painel')
+})

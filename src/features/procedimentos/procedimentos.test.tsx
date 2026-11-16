@@ -19,6 +19,7 @@ function etapasNaTela() {
 
 describe('Procedimentos', () => {
   beforeEach(async () => {
+    localStorage.clear()
     await Promise.all(db.tables.map((tabela) => tabela.clear()))
   })
 

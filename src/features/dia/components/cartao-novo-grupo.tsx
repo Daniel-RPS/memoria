@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { DataLocal } from '@/db/types'
 import { NovoGrupo } from '@/features/dia/components/novo-grupo'
+import { temRascunho } from '@/lib/rascunhos'
 
 interface CartaoNovoGrupoProps {
   data: DataLocal
@@ -13,7 +14,8 @@ interface CartaoNovoGrupoProps {
  * Ao clicar, exibe o campo para criar novo grupo.
  */
 export function CartaoNovoGrupo({ data, isSemAdicionar }: CartaoNovoGrupoProps) {
-  const [isCriando, setIsCriando] = useState(false)
+  const chaveRascunho = `novo-grupo:${data}`
+  const [isCriando, setIsCriando] = useState(() => temRascunho(chaveRascunho))
 
   if (isSemAdicionar) return null
 
@@ -33,7 +35,7 @@ export function CartaoNovoGrupo({ data, isSemAdicionar }: CartaoNovoGrupoProps) 
       type="button"
       onClick={() => setIsCriando(true)}
       aria-label="Novo grupo"
-      className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-pauta py-2 text-grafite transition-colors hover:border-caneta/60 hover:text-caneta focus-visible:outline-2 focus-visible:outline-caneta"
+      className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-pauta bg-transparent py-3 text-grafite transition-colors hover:border-caneta/60 hover:text-caneta focus-visible:outline-2 focus-visible:outline-caneta"
     >
       <Plus aria-hidden className="size-4" />
       <span className="text-sm font-medium">Novo grupo</span>

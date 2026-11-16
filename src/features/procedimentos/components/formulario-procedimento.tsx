@@ -19,6 +19,8 @@ interface FormularioProcedimentoProps {
   onEnviar?: (dados: DadosProcedimento) => Promise<unknown>
   /** A cada mudança válida (edição com gravação automática). */
   onAlterar?: (dados: DadosProcedimento) => void
+  /** Notifica qualquer mudança nos valores do formulário (mesmo inválidos, para rascunho). */
+  onMudarValores?: (valores: ValoresProcedimento) => void
   /** Ao lado da categoria, ex.: "Salvo". */
   situacao?: ReactNode
   /** Botões do fim do formulário. */
@@ -30,6 +32,7 @@ export function FormularioProcedimento({
   valoresIniciais,
   onEnviar,
   onAlterar,
+  onMudarValores,
   situacao,
   rodape,
 }: FormularioProcedimentoProps) {
@@ -48,8 +51,10 @@ export function FormularioProcedimento({
   const tituloAtual = useWatch({ control, name: 'titulo' })
 
   const onAlterarRef = useRef(onAlterar)
+  const onMudarValoresRef = useRef(onMudarValores)
   useEffect(() => {
     onAlterarRef.current = onAlterar
+    onMudarValoresRef.current = onMudarValores
   })
 
   // Só o que o usuário muda (não a carga inicial) dispara a gravação.
@@ -58,6 +63,7 @@ export function FormularioProcedimento({
       subscribe({
         formState: { values: true },
         callback: ({ values }) => {
+          onMudarValoresRef.current?.(values)
           const resultado = esquemaProcedimento.safeParse(values)
           if (resultado.success) onAlterarRef.current?.(resultado.data)
         },

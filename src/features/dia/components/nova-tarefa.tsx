@@ -19,6 +19,7 @@ export function NovaTarefa({ data, onFechar }: NovaTarefaProps) {
         <CampoNovoItem
           rotulo="Nova tarefa"
           autoFocus
+          chaveRascunho={`nova-tarefa:${data}`}
           onSairVazio={onFechar}
           onCriar={(titulo) => criarTarefa({ titulo, data })}
         />

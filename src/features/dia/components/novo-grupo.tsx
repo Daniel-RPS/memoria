@@ -18,6 +18,7 @@ export function NovoGrupo({ data, onCriado }: NovoGrupoProps) {
       <div className="min-w-0 flex-1 pl-2">
         <CampoNovoGrupo
           autoFocus
+          chaveRascunho={`novo-grupo:${data}`}
           onCriar={async (dados) => {
             await criarGrupo({ ...dados, data })
             onCriado?.()
