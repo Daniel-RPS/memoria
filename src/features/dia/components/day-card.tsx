@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react'
+import { memo, useId, useState, type ReactNode } from 'react'
 import { Folder } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
@@ -51,7 +51,7 @@ export interface DayCardProps {
  *   nome do grupo em 16px semibold, abaixo bolinha + categoria.
  *   À direita: prioridade, andamento, contagem "1/4", mini barra de progresso (~56px), "· N transferidos" e menu ⋯.
  */
-export function DayCard({
+function DayCardComponent({
   grupo,
   titulo,
   hoje,
@@ -292,3 +292,5 @@ export function DayCard({
     </article>
   )
 }
+
+export const DayCard = memo(DayCardComponent)

@@ -123,6 +123,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                 entradas={entradas}
                 subtarefasPorTarefa={subtarefasPorTarefa}
                 hoje={hoje}
+                isCartoes={isCartoes}
               >
                 {(listas) => {
                   if (isCartoes) {

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { memo, useState, type ReactNode } from 'react'
 import { CornerDownRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
@@ -42,7 +42,7 @@ const SELO_DE_ATRASO = 'text-xs font-medium whitespace-nowrap text-alerta'
  * lugar da caixa, sem riscar, com a etiqueta que leva ao card do dia de destino.
  * No modo 'card', vira um cartão em grade.
  */
-export function LinhaItem({
+function LinhaItemComponent({
   item,
   data,
   hoje,
@@ -356,3 +356,5 @@ export function LinhaItem({
     </div>
   )
 }
+
+export const LinhaItem = memo(LinhaItemComponent)

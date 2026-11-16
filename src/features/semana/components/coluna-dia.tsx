@@ -1,5 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useCombinedRefs } from '@dnd-kit/utilities'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router'
@@ -46,6 +47,7 @@ export function ColunaDia({
   const { setNodeRef, isOver } = useDroppable({ id: `${PREFIXO_COLUNA}${data}` })
   const { active } = useDndContext()
   const listaAnimada = useAnimarReordenacao(ids.join('|'), active !== null)
+  const refDaLista = useCombinedRefs(setNodeRef, listaAnimada)
   const dia = deDataLocal(data)
   const isHoje = data === hoje
   const nomeCurto = format(dia, 'EEE, d', { locale: ptBR })
@@ -87,10 +89,7 @@ export function ColunaDia({
         strategy={verticalListSortingStrategy}
       >
         <ul
-          ref={(elemento) => {
-            setNodeRef(elemento)
-            listaAnimada(elemento)
-          }}
+          ref={refDaLista}
           aria-label={`Pendentes de ${nomeCompleto}`}
           className={cn(
             'flex min-h-16 flex-1 flex-col px-1.5 pb-2 transition-colors',

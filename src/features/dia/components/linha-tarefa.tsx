@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { memo, useState, type ReactNode } from 'react'
 import { Paperclip } from 'lucide-react'
 import { cn } from 'cn'
 import { PainelAnexos } from '@/components/anexos/painel-anexos'
@@ -36,7 +36,7 @@ interface LinhaTarefaProps {
  * Uma linha pautada ou cartão: caixa de seleção, título, selo de atraso, progresso e menu.
  * No modo 'card', vira um cartão para a grade de cartões.
  */
-export function LinhaTarefa({
+function LinhaTarefaComponent({
   tarefa,
   subtarefas,
   hoje,
@@ -419,3 +419,5 @@ export function LinhaTarefa({
     </div>
   )
 }
+
+export const LinhaTarefa = memo(LinhaTarefaComponent)

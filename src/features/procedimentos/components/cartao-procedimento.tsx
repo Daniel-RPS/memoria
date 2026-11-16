@@ -1,7 +1,7 @@
-import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
 import { useDndContext } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { CSS, useCombinedRefs } from '@dnd-kit/utilities'
 import { ChevronDown, ChevronUp, Star } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from 'cn'
@@ -92,12 +92,14 @@ export function CartaoProcedimento({ procedimento, cor, ordem }: CartaoProcedime
     listeners?.onPointerDown?.(evento)
   }
 
+  const setRaiz = useCallback((elemento: HTMLDivElement | null) => {
+    raizRef.current = elemento
+  }, [])
+  const refDoCartao = useCombinedRefs(setRaiz, setNodeRef)
+
   return (
     <div
-      ref={(elemento) => {
-        raizRef.current = elemento
-        setNodeRef(elemento)
-      }}
+      ref={refDoCartao}
       onPointerDown={ordem ? handlePointerDown : undefined}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -23,7 +23,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { CSS, useCombinedRefs } from '@dnd-kit/utilities'
 import { cn } from 'cn'
 import type { DataLocal, GroupItem, Subtask, Task } from '@/db/types'
 import { moverLote } from '@/db/repositories/lote-repository'
@@ -69,6 +69,8 @@ interface ListaDoDiaProps {
   entradas: EntradaDoDia[]
   subtarefasPorTarefa: Map<string, Subtask[]>
   hoje: DataLocal
+  /** Modo "Cartões": o cartão NÃO muda de lista durante o arrastar (só ao soltar). */
+  isCartoes?: boolean
   /** Monta as seções com as listas, dentro do mesmo arrastar. */
   children: (listas: ListasRenderProps) => ReactNode
 }
@@ -178,6 +180,7 @@ export function ListaDoDia({
   entradas,
   subtarefasPorTarefa,
   hoje,
+  isCartoes = false,
   children,
 }: ListaDoDiaProps) {
   const { reordenarTarefa, colocarNoGrupo } = useAcoesTarefa()
@@ -189,6 +192,7 @@ export function ListaDoDia({
   /** Arrastando uma das selecionadas: todas vão juntas (ids na ordem da tela); senão `null`. */
   const [lote, setLote] = useState<string[] | null>(null)
   const selecao = useSelecaoDaFolha()
+  const ultimaTrocaDeColunaRef = useRef(0)
   const sensores = useSensors(
     useSensor(SensorPonteiroSeguro, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
     useSensor(SensorTecladoSeguro, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -354,6 +358,16 @@ export function ListaDoDia({
     const destino = colunaDoAlvo(String(over.id))
     const atual = colunaDe(colunas, id)
     if (!destino || !atual || destino === atual) return
+
+    // Em Cartões a troca de lista só vale ao soltar (handleDragEnd já usa o alvo sob o ponteiro).
+    if (isCartoes) return
+
+    // Trava para evitar oscilação em alta frequência entre colunas durante o arrasto
+    // oxlint-disable-next-line react/purity
+    const agora = Date.now()
+    if (agora - ultimaTrocaDeColunaRef.current < 150) return
+    ultimaTrocaDeColunaRef.current = agora
+
     const indice = indiceNoDestino(destino, String(over.id))
     setColunas((anteriores) => manterBlocosDas(moverEntreColunas(anteriores, id, destino, indice)))
   }
@@ -538,12 +552,10 @@ function AreaDasSoltas({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: AREA_SOLTAS })
   const listaAnimada = useAnimarReordenacao(chave, isArrastando)
+  const refDaLista = useCombinedRefs(setNodeRef, listaAnimada)
   return (
     <ul
-      ref={(elemento) => {
-        setNodeRef(elemento)
-        listaAnimada(elemento)
-      }}
+      ref={refDaLista}
       aria-label="Pendentes"
       className={cn('min-h-2 transition-colors', isOver && 'bg-accent')}
     >
@@ -691,6 +703,7 @@ function CardOrdenavel({
   const { setNodeRef: setAreaRef, isOver } = useDroppable({ id: `${PREFIXO_ITENS}${id}` })
   const { active } = useDndContext()
   const listaAnimada = useAnimarReordenacao(idsPendentes.join('|'), active !== null)
+  const refDaLista = useCombinedRefs(setAreaRef, listaAnimada)
 
   return (
     <li
@@ -713,10 +726,7 @@ function CardOrdenavel({
         pendentes={
           <SortableContext id={id} items={idsPendentes} strategy={verticalListSortingStrategy}>
             <ul
-              ref={(elemento) => {
-                setAreaRef(elemento)
-                listaAnimada(elemento)
-              }}
+              ref={refDaLista}
               aria-label={`Itens de ${grupo.serie.titulo}`}
               className={cn('min-h-2 transition-colors', isOver && 'bg-accent')}
             >
@@ -771,6 +781,7 @@ function CardOrdenavelCustomizado({
   const { setNodeRef: setAreaRef, isOver } = useDroppable({ id: `${PREFIXO_ITENS}${id}` })
   const { active } = useDndContext()
   const listaAnimada = useAnimarReordenacao<HTMLDivElement>(idsPendentes.join('|'), active !== null)
+  const refDaLista = useCombinedRefs(setAreaRef, listaAnimada)
 
   const itensCards = idsPendentes.map((idItem) => {
     const item = itemPorId.get(idItem)
@@ -805,10 +816,7 @@ function CardOrdenavelCustomizado({
     >
       <SortableContext id={id} items={idsPendentes} strategy={rectSortingStrategy}>
         <div
-          ref={(elemento) => {
-            setAreaRef(elemento)
-            listaAnimada(elemento)
-          }}
+          ref={refDaLista}
           className={cn('h-full transition-colors', isOver && 'bg-accent/40')}
         >
           <DayCard
