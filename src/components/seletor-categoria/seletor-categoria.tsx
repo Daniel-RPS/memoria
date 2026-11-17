@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, Plus, Search } from 'lucide-react'
 import {
   DropdownMenuItem,
@@ -32,6 +32,8 @@ export interface SeletorCategoriaProps {
    * as categorias, sem criar. Escolher "Todas" devolve `{}`.
    */
   modo?: 'escolha' | 'filtro'
+  /** Avisa o menu quando o painel "Nova categoria" abre ou fecha (para fixá-lo). */
+  onCriandoChange?: (isCriando: boolean) => void
 }
 
 const SEM_CATEGORIA = 'sem-categoria'
@@ -58,10 +60,16 @@ export function SeletorCategoria({
   tipo,
   onFechar,
   modo = 'escolha',
+  onCriandoChange,
 }: SeletorCategoriaProps) {
   const { categorias } = useCategorias(tipo)
   const { criarCategoria, criarDeCategoriaDeProcedimento } = useAcoesCategoria()
   const [isCriando, setIsCriando] = useState(false)
+
+  useEffect(() => {
+    onCriandoChange?.(isCriando)
+    return () => onCriandoChange?.(false)
+  }, [isCriando, onCriandoChange])
 
   function handleEscolher(valor: string) {
     onEscolher(valor === SEM_CATEGORIA ? {} : { categoryId: valor })

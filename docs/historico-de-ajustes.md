@@ -75,3 +75,5 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - 17/11/2026: ícone de "Dia" vira Lua das 18:00 às 05:59 (`periodoDoDia`, `useIconeDia`); troca sozinho na virada e ao voltar para a aba.
 - 17/11/2026: modo Cartões do Dia: título só quebra entre palavras (`break-words`, `text-pretty`), espaço da bandeira sempre reservado (`ComBandeira isReservado`) para o título começar no mesmo x, ⋯ absoluto no canto (sem reservar largura), título 14px/500 em `text-tinta/90`, rodapé alinhado ao título e colado na base.
 - 17/11/2026: grade dos cartões com largura mínima de 15rem; E2E novo (x do título igual com/sem bandeira) e `arrasto-itens-grupo` passou a expandir o grupo antes de arrastar.
+- 17/11/2026: submenu "Categoria ›" (menu ⋯ de tarefa e grupo): lista fecha com atraso de 300 ms e cancela se o mouse volta; painel "Nova categoria" fica fixo (só Esc, "← Categorias", "Criar e aplicar" ou clique fora fecham) — `useSubmenuTolerante` + `SubmenuCategoria`.
+- 17/11/2026: E2E `submenu-categoria.spec.ts` e teste unitário do hook com timers simulados.
