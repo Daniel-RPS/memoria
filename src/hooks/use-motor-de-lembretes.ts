@@ -22,6 +22,7 @@ export function useMotorDeLembretes(
   const isRodandoRef = useRef(false)
   const isPendenteRef = useRef(false)
   const temporizadorRef = useRef<number | undefined>(undefined)
+  const isMontadoRef = useRef(false)
 
   const conferir = useEffectEvent(async () => {
     if (isRodandoRef.current) {
@@ -44,10 +45,13 @@ export function useMotorDeLembretes(
       // Banco ocupado ou fechado (outra aba importando backup): tenta de novo no próximo ciclo.
     } finally {
       isRodandoRef.current = false
-      temporizadorRef.current = window.setTimeout(() => void conferir(), espera)
-      if (isPendenteRef.current) {
-        isPendenteRef.current = false
-        void conferir()
+      // Desmontado durante a conferência (ou janela já destruída): não reagenda nem reconfere.
+      if (isMontadoRef.current && typeof window !== 'undefined') {
+        temporizadorRef.current = window.setTimeout(() => void conferir(), espera)
+        if (isPendenteRef.current) {
+          isPendenteRef.current = false
+          void conferir()
+        }
       }
     }
   })
@@ -58,12 +62,15 @@ export function useMotorDeLembretes(
   }, [linhas])
 
   useEffect(() => {
+    isMontadoRef.current = true
     const handleVoltar = () => {
       if (document.visibilityState === 'visible') void conferir()
     }
     document.addEventListener('visibilitychange', handleVoltar)
     window.addEventListener('focus', handleVoltar)
     return () => {
+      isMontadoRef.current = false
+      isPendenteRef.current = false
       document.removeEventListener('visibilitychange', handleVoltar)
       window.removeEventListener('focus', handleVoltar)
       window.clearTimeout(temporizadorRef.current)
