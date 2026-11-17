@@ -102,6 +102,7 @@ test.describe('arrasto de itens dentro do grupo', () => {
     await page.goto(`/dia/${HOJE}`)
     await page.getByRole('button', { name: 'Cartões' }).click()
 
+    await expandirGrupos(page)
     const cartaoGrupo = page.getByRole('article', { name: 'Grupo Projeto Teste' })
     await expect(cartaoGrupo).toBeVisible()
 

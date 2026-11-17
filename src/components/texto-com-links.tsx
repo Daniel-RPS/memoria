@@ -10,7 +10,7 @@ interface TextoComLinksProps {
 
 /** Estilo do link no texto: cor de destaque, sublinhado e quebra de URL longa. */
 export const CLASSE_LINK_NO_TEXTO =
-  'rounded-sm text-caneta underline decoration-caneta/60 underline-offset-2 [overflow-wrap:anywhere] hover:text-violeta-profundo hover:decoration-violeta-profundo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta'
+  'rounded-sm text-caneta underline decoration-caneta/60 underline-offset-2 [overflow-wrap:break-word] hover:text-violeta-profundo hover:decoration-violeta-profundo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caneta'
 
 /** O link abre o site sem acionar o elemento em volta (abrir, concluir, editar, arrastar). */
 function handleIsolar(evento: SyntheticEvent) {

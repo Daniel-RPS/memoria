@@ -10,6 +10,7 @@ import {
   montarAviso,
   mudancaAoEntrarNoGrupo,
   mudancaAoSairDoGrupo,
+  textoDaTrocaDeGrupo,
   type AvisoDeCategoria,
 } from '@/domain/categoria-no-grupo'
 import { tabelaDoDia } from '@/db/repositories/task-repository'
@@ -292,6 +293,43 @@ export async function colocarNoGrupoComDesfazer(
     () => colocarNoGrupo(tarefaId, cardId, idsEmOrdem),
     idsEmOrdem,
   )
+}
+
+/**
+ * Item passa direto de um grupo para outro do MESMO dia (menu ⋯ "Mover para grupo…" ou arrastar),
+ * sem virar tarefa solta: o mesmo `passarItemParaCard`. Mover/desfazer numa transação só. Devolve
+ * `null` se não houve mudança (item ou card inexistente, ou já era o grupo de destino).
+ */
+export async function passarItemParaGrupoComDesfazer(
+  itemId: string,
+  cardId: string,
+  idsEmOrdem?: string[],
+): Promise<{ texto: string; desfazer: () => Promise<void> } | null> {
+  const ids = [...new Set([itemId, ...(idsEmOrdem ?? [])])]
+  return db.transaction('rw', TABELAS, async () => {
+    const [item, cardDestino] = await Promise.all([
+      db.groupItems.get(itemId),
+      db.groupCards.get(cardId),
+    ])
+    if (!item || !cardDestino || item.cardId === cardId) return null
+    const cardOrigem = await db.groupCards.get(item.cardId)
+    const [serieOrigem, serieDestino, nomes] = await Promise.all([
+      cardOrigem && db.groupSeries.get(cardOrigem.seriesId),
+      db.groupSeries.get(cardDestino.seriesId),
+      lerNomesDeCategoria(),
+    ])
+    if (!serieOrigem || !serieDestino) return null
+    const instantaneo = await capturar(ids, [itemId])
+    await passarItemParaCard(itemId, cardId, idsEmOrdem)
+    const nomeDe = (id?: string) => (id ? nomes.get(id) : undefined)
+    return {
+      texto: textoDaTrocaDeGrupo(item.titulo, serieOrigem.titulo, serieDestino.titulo, {
+        de: nomeDe(serieOrigem.categoryId),
+        para: nomeDe(serieDestino.categoryId),
+      }),
+      desfazer: () => restaurar(instantaneo, [itemId]),
+    }
+  })
 }
 
 /** Um item vira tarefa solta (arrastar um só, menu ⋯ "Tirar do grupo"), com "Desfazer" e aviso. */

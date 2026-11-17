@@ -194,7 +194,9 @@ export function ListaDoDia({
   const selecao = useSelecaoDaFolha()
   const ultimaTrocaDeColunaRef = useRef(0)
   const sensores = useSensors(
-    useSensor(SensorPonteiroSeguro, { activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR } }),
+    useSensor(SensorPonteiroSeguro, {
+      activationConstraint: { distance: DISTANCIA_PARA_ARRASTAR },
+    }),
     useSensor(SensorTecladoSeguro, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
@@ -308,10 +310,7 @@ export function ListaDoDia({
 
   function handleDragStart({ active }: DragStartEvent) {
     // Se o elemento ativo atual no DOM for um campo de texto ou elemento interativo, cancela imediatamente
-    if (
-      document.activeElement instanceof Element &&
-      isElementoInterativo(document.activeElement)
-    ) {
+    if (document.activeElement instanceof Element && isElementoInterativo(document.activeElement)) {
       return
     }
     setIdAtivo(String(active.id))
@@ -501,7 +500,7 @@ export function ListaDoDia({
         <div className="flex flex-col gap-3">
           {opcoes.formularioNovo}
           {soltasCards.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] items-start gap-2.5">
               {soltasCards}
             </div>
           ) : opcoes.textoVazio && !opcoes.formularioNovo ? (
@@ -637,12 +636,7 @@ function ItemDeGrupoOrdenavel({
         {...attributes}
         {...listeners}
       >
-        <LinhaItem
-          item={item}
-          data={data}
-          hoje={hoje}
-          variant="card"
-        />
+        <LinhaItem item={item} data={data} hoje={hoje} variant="card" />
       </div>
     )
   }
@@ -787,13 +781,7 @@ function CardOrdenavelCustomizado({
     const item = itemPorId.get(idItem)
     if (item) {
       return (
-        <ItemDeGrupoOrdenavel
-          key={idItem}
-          item={item}
-          data={data}
-          hoje={hoje}
-          variant="card"
-        />
+        <ItemDeGrupoOrdenavel key={idItem} item={item} data={data} hoje={hoje} variant="card" />
       )
     }
     const tarefa = tarefaPorId.get(idItem)
@@ -815,10 +803,7 @@ function CardOrdenavelCustomizado({
       className={cn('relative w-full', isDragging && 'z-10 opacity-40')}
     >
       <SortableContext id={id} items={idsPendentes} strategy={rectSortingStrategy}>
-        <div
-          ref={refDaLista}
-          className={cn('h-full transition-colors', isOver && 'bg-accent/40')}
-        >
+        <div ref={refDaLista} className={cn('h-full transition-colors', isOver && 'bg-accent/40')}>
           <DayCard
             grupo={grupo}
             titulo={grupo.serie.titulo}
@@ -834,13 +819,15 @@ function CardOrdenavelCustomizado({
             }
             totalPendentes={idsPendentes.length}
             pendentes={
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] items-start gap-2.5">
                 <CartaoNovoItemGrupo cardId={id} tituloGrupo={grupo.serie.titulo} />
                 {itensCards}
               </div>
             }
             concluidas={concluidas}
-            subtitulo={idsPendentes.length === 0 && !concluidas ? 'Nenhum item pendente' : undefined}
+            subtitulo={
+              idsPendentes.length === 0 && !concluidas ? 'Nenhum item pendente' : undefined
+            }
           />
         </div>
       </SortableContext>

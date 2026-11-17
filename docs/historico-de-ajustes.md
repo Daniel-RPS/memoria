@@ -71,3 +71,7 @@ Fases 1 a 8 concluídas: app completo para o uso planejado. Mudanças agora são
 - Ajuste 15/11/2026: rascunho automático em Início (captura rápida), Novo Procedimento e campos de criação do Dia (`CampoNovoItem`, `NovaTarefa`, `NovoGrupo`, `CartaoNovoItemGrupo`), com expiração de 7 dias e reabertura automática
 - Ajuste 15/11/2026: busca rápida de telas na barra lateral (`BuscaDaBarra`, `filtrarDestinos`), atalho "/", navegação por teclado e visual recolhido com lupa
 - Ajuste 15/11/2026: recarga automática no evento `vite:preloadError` (máx. 1 a cada 10s via sessionStorage) para tratar módulos dinâmicos desatualizados pós-deploy
+- 17/11/2026: item de grupo passa direto para outro grupo do dia (menu ⋯ "Mover para grupo…" e arrasto), sem virar tarefa solta; aviso com Desfazer (`passarItemParaGrupoComDesfazer`).
+- 17/11/2026: ícone de "Dia" vira Lua das 18:00 às 05:59 (`periodoDoDia`, `useIconeDia`); troca sozinho na virada e ao voltar para a aba.
+- 17/11/2026: modo Cartões do Dia: título só quebra entre palavras (`break-words`, `text-pretty`), espaço da bandeira sempre reservado (`ComBandeira isReservado`) para o título começar no mesmo x, ⋯ absoluto no canto (sem reservar largura), título 14px/500 em `text-tinta/90`, rodapé alinhado ao título e colado na base.
+- 17/11/2026: grade dos cartões com largura mínima de 15rem; E2E novo (x do título igual com/sem bandeira) e `arrasto-itens-grupo` passou a expandir o grupo antes de arrastar.

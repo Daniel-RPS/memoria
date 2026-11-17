@@ -16,12 +16,7 @@ import { contarEmAndamento } from '@/lib/andamento'
 import { useCategoriasDoContexto } from '@/hooks/contexto-categorias'
 import { classificarTarefa } from '@/lib/categorias'
 import { ErroDeValidacao } from '@/lib/erros'
-import {
-  isGrupoEncerrado,
-  podeCopiarGrupo,
-  progressoDoGrupo,
-  type GrupoDoDia,
-} from '@/lib/grupos'
+import { isGrupoEncerrado, podeCopiarGrupo, progressoDoGrupo, type GrupoDoDia } from '@/lib/grupos'
 import { useAcoesGrupo } from '@/features/dia/hooks/use-acoes-grupo'
 import { useSelecaoDaFolha } from '@/features/dia/hooks/use-selecao'
 import { MenuGrupo } from '@/features/dia/components/menu-grupo'
@@ -181,7 +176,9 @@ function DayCardComponent({
               isComLinks
               titulo={titulo}
               isEditando={isEditandoTitulo}
-              onIniciarEdicao={() => (isSelecionavel ? alternar(card.id) : setIsEditandoTitulo(true))}
+              onIniciarEdicao={() =>
+                isSelecionavel ? alternar(card.id) : setIsEditandoTitulo(true)
+              }
               onSalvar={(t) => void handleSalvarTitulo(t)}
               onCancelar={() => setIsEditandoTitulo(false)}
               className={cn(
@@ -222,18 +219,14 @@ function DayCardComponent({
           {prioritarios > 0 && (
             <IndicadorPrioridade
               rotulo={
-                prioritarios === 1
-                  ? '1 item prioritário'
-                  : `${prioritarios} itens prioritários`
+                prioritarios === 1 ? '1 item prioritário' : `${prioritarios} itens prioritários`
               }
             />
           )}
           {emAndamento > 0 && (
             <PontoDeAndamento
               rotulo={
-                emAndamento === 1
-                  ? '1 item em andamento'
-                  : `${emAndamento} itens em andamento`
+                emAndamento === 1 ? '1 item em andamento' : `${emAndamento} itens em andamento`
               }
             />
           )}
@@ -267,11 +260,7 @@ function DayCardComponent({
           </div>
 
           {!isSelecionavel && (
-            <MenuGrupo
-              grupo={grupo}
-              hoje={hoje}
-              onRenomear={() => setIsEditandoTitulo(true)}
-            />
+            <MenuGrupo grupo={grupo} hoje={hoje} onRenomear={() => setIsEditandoTitulo(true)} />
           )}
         </div>
       </header>
@@ -281,9 +270,7 @@ function DayCardComponent({
         <div className="p-3 pl-4">
           {pendentes}
 
-          {subtitulo && (
-            <p className="py-2 text-xs text-grafite italic">{subtitulo}</p>
-          )}
+          {subtitulo && <p className="py-2 text-xs text-grafite italic">{subtitulo}</p>}
 
           {/* Concluídas (bloco recolhível) */}
           {concluidas}

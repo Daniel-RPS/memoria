@@ -70,6 +70,23 @@ export function montarAviso(
   }
 }
 
+/**
+ * Item que passa direto de um grupo para outro: a posição entra no fim do destino (como todo
+ * item novo) e o item passa a seguir a categoria do grupo de destino (o item não tem própria).
+ */
+export function textoDaTrocaDeGrupo(
+  titulo: string,
+  grupoDe: string,
+  grupoPara: string,
+  categoria?: { de?: string | undefined; para?: string | undefined },
+): string {
+  const base = `"${titulo}" foi do grupo ${grupoDe} para o grupo ${grupoPara}`
+  if ((categoria?.de ?? '') === (categoria?.para ?? '')) return `${base}.`
+  return categoria?.para
+    ? `${base} e agora está na categoria ${categoria.para}.`
+    : `${base} e ficou sem categoria.`
+}
+
 /** Texto do aviso (um por operação); `null` se nenhuma linha mudou de categoria. */
 export function textoDoAviso(avisos: AvisoDeCategoria[]): string | null {
   if (avisos.length === 0) return null

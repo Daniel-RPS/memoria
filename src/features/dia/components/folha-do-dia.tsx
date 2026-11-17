@@ -141,7 +141,7 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                       const blocoConcluidas =
                         itensConcluidos.length > 0 ? (
                           <GrupoConcluidasDoCard quantidade={itensConcluidos.length}>
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5 pt-1">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] items-start gap-2.5 pt-1">
                               {itensConcluidos.map((item) => (
                                 <LinhaItem
                                   key={item.id}
@@ -225,15 +225,10 @@ export function FolhaDoDia({ data, hoje }: FolhaDoDiaProps) {
                     )
 
                     const secoesOrdenadas =
-                      ordem === 'soltas'
-                        ? [secaoSoltas, secaoGrupos]
-                        : [secaoGrupos, secaoSoltas]
+                      ordem === 'soltas' ? [secaoSoltas, secaoGrupos] : [secaoGrupos, secaoSoltas]
 
                     return (
-                      <div
-                        data-modo={modo}
-                        className="mt-2 flex flex-col gap-8 w-full"
-                      >
+                      <div data-modo={modo} className="mt-2 flex flex-col gap-8 w-full">
                         {secoesOrdenadas}
                       </div>
                     )

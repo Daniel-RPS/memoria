@@ -171,3 +171,34 @@ test('3 selecionadas com categorias diferentes para um grupo: um aviso só; Desf
   await expect.poll(() => categoriaDaSolta(page, 'Ler capítulo')).toBe('Estudos')
   await expect.poll(() => categoriaDaSolta(page, 'Marcar consulta')).toBe('Saúde')
 })
+
+test('item: menu ⋯ "Mover para grupo…" move direto e Desfazer devolve', async ({ page }) => {
+  await page.getByRole('button', { name: 'Mais ações para Lavar louça' }).click()
+  await page.getByRole('menuitem', { name: 'Mover para grupo…' }).press('ArrowRight')
+  await page.getByRole('menuitem', { name: 'Escritório', exact: true }).press('Enter')
+
+  await expect(itemDoCard(page, 'Escritório', 'Lavar louça')).toBeVisible()
+  await expect(
+    page.getByText(
+      '"Lavar louça" foi do grupo Casa para o grupo Escritório e agora está na categoria Trabalho.',
+    ),
+  ).toBeVisible()
+  await expect(tarefaSolta(page, 'Lavar louça')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Desfazer' }).click()
+  await expect(itemDoCard(page, 'Casa', 'Lavar louça')).toBeVisible()
+  await expect(itemDoCard(page, 'Escritório', 'Lavar louça')).toHaveCount(0)
+})
+
+test('item: arrastar de um grupo para outro move direto, com aviso', async ({ page }) => {
+  const alca = itemDoCard(page, 'Casa', 'Lavar louça').getByRole('button', {
+    name: 'Mover Lavar louça',
+    exact: true,
+  })
+  await arrastarAte(page, alca, itemDoCard(page, 'Escritório', 'Imprimir'))
+  await expect(itemDoCard(page, 'Escritório', 'Lavar louça')).toBeVisible()
+  await expect(
+    page.getByText('"Lavar louça" foi do grupo Casa para o grupo Escritório', { exact: false }),
+  ).toBeVisible()
+  await expect(tarefaSolta(page, 'Lavar louça')).toHaveCount(0)
+})

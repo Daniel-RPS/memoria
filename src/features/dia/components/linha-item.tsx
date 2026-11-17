@@ -42,13 +42,7 @@ const SELO_DE_ATRASO = 'text-xs font-medium whitespace-nowrap text-alerta'
  * lugar da caixa, sem riscar, com a etiqueta que leva ao card do dia de destino.
  * No modo 'card', vira um cartão em grade.
  */
-function LinhaItemComponent({
-  item,
-  data,
-  hoje,
-  alca,
-  variant = 'line',
-}: LinhaItemProps) {
+function LinhaItemComponent({ item, data, hoje, alca, variant = 'line' }: LinhaItemProps) {
   const { definirConclusaoItem, renomearItem } = useAcoesGrupo()
   const [isEditando, setIsEditando] = useState(false)
   const [isSubetapasAbertas, setIsSubetapasAbertas] = useState(false)
@@ -93,7 +87,7 @@ function LinhaItemComponent({
     return (
       <div
         className={cn(
-          'group/linha relative flex h-full flex-col justify-between overflow-hidden rounded-md border border-pauta bg-papel/90 dark:bg-card/75 p-2.5 shadow-none transition-colors motion-reduce:transition-none hover:border-caneta/45',
+          'group/linha relative flex h-full flex-col overflow-hidden rounded-md border border-pauta bg-papel/90 dark:bg-card/75 p-2.5 shadow-none transition-colors motion-reduce:transition-none hover:border-caneta/45',
           isSelecionado && 'bg-accent border-caneta/50',
           isConcluido && 'opacity-60 bg-papel/40 dark:bg-card/30',
         )}
@@ -129,11 +123,11 @@ function LinhaItemComponent({
             {...alvoDePrioridade('item', item.id, isPendente)}
             {...duploClique}
             data-sem-arrasto={isEditando ? '' : undefined}
-            className="min-w-0 flex-1 leading-snug"
+            className="min-w-0 flex-1 text-left text-sm leading-[1.4] text-pretty text-tinta/90"
           >
-            <ComBandeira isPrioritario={isPrioritario && !isEditando}>
+            <ComBandeira isReservado isPrioritario={isPrioritario && !isEditando}>
               {isTransferido ? (
-                <span className="min-w-0 text-[0.8125rem] leading-snug break-words text-grafite">
+                <span className="min-w-0 text-sm leading-[1.4] text-pretty break-words text-grafite">
                   <TextoComLinks texto={item.titulo} />
                 </span>
               ) : (
@@ -145,7 +139,7 @@ function LinhaItemComponent({
                   onSalvar={handleSalvarTitulo}
                   onCancelar={() => setIsEditando(false)}
                   className={cn(
-                    'text-[0.8125rem] font-medium leading-snug break-words',
+                    'text-sm font-medium leading-[1.4] text-pretty break-words',
                     isConcluido && 'text-grafite line-through decoration-tinta/50',
                   )}
                 />
@@ -154,7 +148,10 @@ function LinhaItemComponent({
           </div>
 
           {!isSelecionavel && (
-            <div data-sem-arrasto="" className="shrink-0">
+            <div
+              data-sem-arrasto=""
+              className="absolute top-1 right-1 z-10 rounded-md bg-papel opacity-0 group-hover/linha:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100"
+            >
               <MenuItemGrupo
                 item={item}
                 data={data}
@@ -169,8 +166,13 @@ function LinhaItemComponent({
         </div>
 
         {/* Rodapé do cartão: indicadores e badges */}
-        <div data-sem-arrasto="" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-grafite">
-          {isEmAndamento && !isEditando && <IndicadorAndamento desde={item.emAndamentoDesde} isCompacto />}
+        <div
+          data-sem-arrasto=""
+          className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-2 pl-6 text-xs font-normal text-grafite"
+        >
+          {isEmAndamento && !isEditando && (
+            <IndicadorAndamento desde={item.emAndamentoDesde} isCompacto />
+          )}
           {!isEditando && !isTransferido && (
             <HorarioDaTarefa
               alvo={{ tipo: 'item', id: item.id }}
@@ -194,7 +196,7 @@ function LinhaItemComponent({
           )}
           {!isEditando && <IndicadorNotas vinculo={vinculoDoItem(item)} titulo={item.titulo} />}
           {isAtrasado && !isEditando && (
-            <span className="text-[0.6875rem] font-medium whitespace-nowrap text-alerta">
+            <span className="text-[0.6875rem] font-normal whitespace-nowrap text-alerta">
               desde {diaCurto(item.dataOriginal)}
             </span>
           )}
@@ -223,7 +225,12 @@ function LinhaItemComponent({
 
         {/* Subetapas expandidas no próprio cartão */}
         {isSubetapasAbertas && (
-          <div id={idPainel} data-no-drag="" data-sem-arrasto="" className="mt-2 border-t border-pauta/60 pt-2">
+          <div
+            id={idPainel}
+            data-no-drag=""
+            data-sem-arrasto=""
+            className="mt-2 border-t border-pauta/60 pt-2"
+          >
             <ListaSubtarefas
               dono={item}
               subtarefas={subetapas}

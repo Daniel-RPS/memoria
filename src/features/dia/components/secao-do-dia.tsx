@@ -54,7 +54,9 @@ export function SecaoDoDia({
   children,
 }: SecaoDoDiaProps) {
   const idConteudo = useId()
-  const [isCriando, setIsCriando] = useState(() => (chaveRascunho ? temRascunho(chaveRascunho) : false))
+  const [isCriando, setIsCriando] = useState(() =>
+    chaveRascunho ? temRascunho(chaveRascunho) : false,
+  )
   const isFaixaAgora = isFaixa && isRecolhida
   const isPainel = variante === 'painel'
 
@@ -134,13 +136,12 @@ export function SecaoDoDia({
               !isRecolhida && 'rotate-90',
             )}
           />
-          {icone && (
-            isPainel ? (
+          {icone &&
+            (isPainel ? (
               <span className={estilosPainel.iconeCaixa}>{icone}</span>
             ) : (
               <span className="shrink-0">{icone}</span>
-            )
-          )}
+            ))}
           <span className="whitespace-nowrap">{titulo}</span>
           {isPainel ? (
             <span aria-hidden className={estilosPainel.pilula}>

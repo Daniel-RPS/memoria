@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Clock,
   Flag,
+  FolderInput,
   FolderOutput,
   ListPlus,
   MoreHorizontal,
@@ -35,8 +36,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useGruposDoDia } from '@/features/dia/hooks/contexto-extras'
 import type { DataLocal, GroupItem } from '@/db/types'
 import { contarNotasQueFicamAvulsas } from '@/db/repositories/note-repository'
 import { useAndamento } from '@/hooks/use-andamento'
@@ -79,7 +84,8 @@ export function MenuItemGrupo({
   isCompacto = false,
 }: MenuItemGrupoProps) {
   const totalAvisos = useLembretesDe(item.id).length
-  const { tirarDoGrupo, arquivarItem, excluirItem } = useAcoesGrupo()
+  const { tirarDoGrupo, passarItemParaCard, arquivarItem, excluirItem } = useAcoesGrupo()
+  const outrosGrupos = useGruposDoDia().filter((grupo) => grupo.id !== item.cardId)
   const { mover, adiar } = useMoverTarefas()
   const { marcarEmAndamento, pararAndamento } = useAndamento()
   const { marcarPrioridade, tirarPrioridade } = usePrioridade()
@@ -206,6 +212,23 @@ export function MenuItemGrupo({
               <DropdownMenuItem onSelect={() => void tirarDoGrupo(item.id)}>
                 <FolderOutput /> Tirar do grupo
               </DropdownMenuItem>
+              {outrosGrupos.length > 0 && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FolderInput /> Mover para grupo…
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
+                    {outrosGrupos.map((grupo) => (
+                      <DropdownMenuItem
+                        key={grupo.id}
+                        onSelect={() => void passarItemParaCard(item.id, grupo.id)}
+                      >
+                        {grupo.titulo}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
             </>
           )}
           <ItensDeNotaDoMenu vinculo={vinculoDoItem(item)} />

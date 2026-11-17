@@ -13,6 +13,8 @@ interface IndicadorPrioridadeProps {
 interface ComBandeiraProps {
   isPrioritario: boolean
   isCompacto?: boolean
+  /** Reserva a largura da bandeira mesmo sem prioridade (modo Cartões). */
+  isReservado?: boolean
   children: ReactNode
 }
 
@@ -20,7 +22,23 @@ interface ComBandeiraProps {
  * O título com a bandeira à esquerda (só se for prioridade): os dois ficam juntos mesmo quando
  * o título quebra de linha.
  */
-export function ComBandeira({ isPrioritario, isCompacto = false, children }: ComBandeiraProps) {
+export function ComBandeira({
+  isPrioritario,
+  isCompacto = false,
+  isReservado = false,
+  children,
+}: ComBandeiraProps) {
+  if (isReservado) {
+    // Cartões: o espaço da bandeira existe SEMPRE, para todos os títulos começarem no mesmo x.
+    return (
+      <span className="flex min-w-0 items-start gap-1.5">
+        <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          {isPrioritario && <IndicadorPrioridade />}
+        </span>
+        {children}
+      </span>
+    )
+  }
   if (!isPrioritario) return <>{children}</>
   return (
     <span className="flex min-w-0 items-start gap-1.5">

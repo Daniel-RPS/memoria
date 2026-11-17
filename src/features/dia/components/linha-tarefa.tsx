@@ -94,7 +94,7 @@ function LinhaTarefaComponent({
     return (
       <div
         className={cn(
-          'group/linha relative flex h-full flex-col justify-between overflow-hidden rounded-md border border-pauta bg-papel p-2.5 pl-3 transition-colors motion-reduce:transition-none hover:border-caneta/45 shadow-xs',
+          'group/linha relative flex h-full flex-col overflow-hidden rounded-md border border-pauta bg-papel p-2.5 pl-3 transition-colors motion-reduce:transition-none hover:border-caneta/45 shadow-xs',
           isSelecionada && 'bg-accent border-caneta/50',
           isConcluida && 'opacity-60 bg-papel/50',
         )}
@@ -122,7 +122,9 @@ function LinhaTarefaComponent({
               <Checkbox
                 checked={isConcluida}
                 onCheckedChange={(marcada) => void definirConclusao(tarefa.id, marcada === true)}
-                aria-label={isConcluida ? `Desmarcar ${tarefa.titulo}` : `Concluir ${tarefa.titulo}`}
+                aria-label={
+                  isConcluida ? `Desmarcar ${tarefa.titulo}` : `Concluir ${tarefa.titulo}`
+                }
                 className="size-4 rounded-[4px] border-[1.5px] border-tinta/45 bg-papel data-[state=checked]:border-caneta data-[state=checked]:bg-caneta"
               />
             )}
@@ -135,15 +137,15 @@ function LinhaTarefaComponent({
             {...alvoDePrioridade('tarefa', tarefa.id, tarefa.status === 'pendente')}
             {...duploClique}
             data-sem-arrasto={isEditando ? '' : undefined}
-            className="min-w-0 flex-1 leading-snug"
+            className="min-w-0 flex-1 text-left text-sm leading-[1.4] text-pretty text-tinta/90"
           >
-            <ComBandeira isPrioritario={isPrioritaria && !isEditando}>
+            <ComBandeira isReservado isPrioritario={isPrioritaria && !isEditando}>
               {isSelecionavel ? (
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => alternar(tarefa.id)}
-                  className="min-w-0 text-left text-[0.8125rem] font-medium leading-snug break-words"
+                  className="min-w-0 text-left text-sm font-medium leading-[1.4] text-pretty break-words"
                 >
                   {tarefa.titulo}
                 </button>
@@ -156,7 +158,7 @@ function LinhaTarefaComponent({
                   onSalvar={handleSalvarTitulo}
                   onCancelar={() => setIsEditando(false)}
                   className={cn(
-                    'text-[0.8125rem] font-medium leading-snug break-words',
+                    'text-sm font-medium leading-[1.4] text-pretty break-words',
                     isConcluida && 'text-grafite line-through decoration-tinta/50',
                   )}
                 />
@@ -165,7 +167,10 @@ function LinhaTarefaComponent({
           </div>
 
           {!isSelecionavel && (
-            <div data-sem-arrasto="" className="shrink-0">
+            <div
+              data-sem-arrasto=""
+              className="absolute top-1 right-1 z-10 rounded-md bg-papel opacity-0 group-hover/linha:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100"
+            >
               <MenuTarefa
                 tarefa={tarefa}
                 hoje={hoje}
@@ -180,8 +185,13 @@ function LinhaTarefaComponent({
         </div>
 
         {/* Rodapé do cartão: indicadores e badges */}
-        <div data-sem-arrasto="" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-grafite">
-          {isEmAndamento && !isEditando && <IndicadorAndamento desde={tarefa.emAndamentoDesde} isCompacto />}
+        <div
+          data-sem-arrasto=""
+          className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-2 pl-6 text-xs font-normal text-grafite"
+        >
+          {isEmAndamento && !isEditando && (
+            <IndicadorAndamento desde={tarefa.emAndamentoDesde} isCompacto />
+          )}
           {!isEditando && (
             <HorarioDaTarefa
               alvo={{ tipo: 'tarefa', id: tarefa.id }}
@@ -207,7 +217,7 @@ function LinhaTarefaComponent({
             <IndicadorNotas vinculo={{ tipo: 'tarefa', id: tarefa.id }} titulo={tarefa.titulo} />
           )}
           {dias !== null && !isEditando && (
-            <span className="text-[0.6875rem] font-medium whitespace-nowrap text-alerta">
+            <span className="text-[0.6875rem] font-normal whitespace-nowrap text-alerta">
               {textoDiasPendente(dias)}
             </span>
           )}
@@ -238,7 +248,10 @@ function LinhaTarefaComponent({
 
         {/* Rodapé da categoria: bolinha + nome */}
         {classificacao && !isEditando && (
-          <div data-sem-arrasto="" className="mt-1.5 flex items-center gap-1.5 text-xs text-grafite">
+          <div
+            data-sem-arrasto=""
+            className="mt-1.5 flex items-center gap-1.5 pl-6 text-xs text-grafite"
+          >
             <span
               aria-hidden
               className="size-2 shrink-0 rounded-full"
@@ -250,7 +263,12 @@ function LinhaTarefaComponent({
 
         {/* Painéis expandidos dentro do cartão */}
         {isAnexosAbertos && (
-          <div id={idPainelAnexos} data-no-drag="" data-sem-arrasto="" className="mt-2 border-t border-pauta/60 pt-2">
+          <div
+            id={idPainelAnexos}
+            data-no-drag=""
+            data-sem-arrasto=""
+            className="mt-2 border-t border-pauta/60 pt-2"
+          >
             <PainelAnexos
               dono={{ tipo: 'task', id: tarefa.id }}
               descricaoDono={`da tarefa ${tarefa.titulo}`}
@@ -258,7 +276,12 @@ function LinhaTarefaComponent({
           </div>
         )}
         {isSubtarefasAbertas && (
-          <div id={idPainel} data-no-drag="" data-sem-arrasto="" className="mt-2 border-t border-pauta/60 pt-2">
+          <div
+            id={idPainel}
+            data-no-drag=""
+            data-sem-arrasto=""
+            className="mt-2 border-t border-pauta/60 pt-2"
+          >
             <ListaSubtarefas
               dono={tarefa}
               subtarefas={subtarefas}

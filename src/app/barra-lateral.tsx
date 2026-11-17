@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIconeDia } from '@/hooks/use-icone-dia'
 import type { LucideIcon } from 'lucide-react'
 import {
   Archive,
@@ -22,7 +23,6 @@ import {
   Settings,
   Shapes,
   StickyNote,
-  Sun,
   Tags,
 } from 'lucide-react'
 import { Link, useMatch } from 'react-router'
@@ -209,6 +209,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const totalArquivados = useTotalArquivados()
   const { naoVistos } = useDadosDosLembretes()
   const controleDaRoda = useRodaDaBarra()
+  const iconeDoDia = useIconeDia()
 
   const [consultaBusca, setConsultaBusca] = useState('')
 
@@ -216,7 +217,7 @@ export function BarraLateral({ isRecolhida, onAlternarRecolhida }: BarraLateralP
   const setoresDoCalendario: SetorDaRoda[] = [
     {
       nome: 'Dia',
-      icone: Sun,
+      icone: iconeDoDia,
       classeDoArco: 'stroke-roda-violeta-1',
       para: `/dia/${hoje()}`,
       isAtiva: rotaDia !== null,

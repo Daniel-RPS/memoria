@@ -48,7 +48,7 @@ export function GrupoConcluidas({
           <div
             id="lista-concluidas"
             aria-label="Concluídas"
-            className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-start gap-2.5 pt-1"
+            className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] items-start gap-2.5 pt-1"
           >
             {concluidas.map((tarefa) => (
               <LinhaTarefa

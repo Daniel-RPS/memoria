@@ -149,10 +149,16 @@ test('Cartão com 1 item prioritário e 1 em andamento mostra os dois no topo; c
       const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
       const grupos = (await importar('/src/db/repositories/group-repository.ts')) as ModuloGrupos
       const prioridadeRepo = (await importar('/src/db/repositories/prioridade-repository.ts')) as {
-        definirPrioridade: (alvos: { tarefas?: string[]; itens?: string[] }, prioridade: boolean) => Promise<unknown>
+        definirPrioridade: (
+          alvos: { tarefas?: string[]; itens?: string[] },
+          prioridade: boolean,
+        ) => Promise<unknown>
       }
       const andamentoRepo = (await importar('/src/db/repositories/andamento-repository.ts')) as {
-        definirAndamento: (alvos: { tarefas?: string[]; itens?: string[] }, emAndamento: boolean) => Promise<unknown>
+        definirAndamento: (
+          alvos: { tarefas?: string[]; itens?: string[] },
+          emAndamento: boolean,
+        ) => Promise<unknown>
       }
       const projeto = await grupos.criarGrupo({ titulo: 'Projeto', data: hoje })
       await grupos.criarItem(projeto.id, 'Item Normal')
@@ -293,12 +299,10 @@ test('Marcar um item no cartão atualiza a contagem do cabeçalho; menu Levar pe
     })
   }
 
-  await expect
-    .poll(lerCasa)
-    .toEqual([
-      { data: HOJE, itens: ['[x] Lavar louça', '[→] Regar plantas'] },
-      { data: AMANHA, itens: ['[ ] Regar plantas'] },
-    ])
+  await expect.poll(lerCasa).toEqual([
+    { data: HOJE, itens: ['[x] Lavar louça', '[→] Regar plantas'] },
+    { data: AMANHA, itens: ['[ ] Regar plantas'] },
+  ])
 
   await expect(cartaoCasa.getByText('encerrado')).toBeVisible()
 })
@@ -591,4 +595,64 @@ test('Painéis de Grupos e Tarefas soltas no modo Cartões têm variante painel,
     .click()
   await expect(secaoGrupos).not.toHaveAttribute('data-variante', 'painel')
   await expect(secaoSoltas).not.toHaveAttribute('data-variante', 'painel')
+})
+
+test('Cartões: título começa no mesmo x com e sem bandeira e nenhum título quebra palavra no meio', async ({
+  page,
+}) => {
+  await page.evaluate(
+    async ({ hoje }) => {
+      const importar = (caminho: string) => import(/* @vite-ignore */ caminho)
+      const grupos = (await importar('/src/db/repositories/group-repository.ts')) as ModuloGrupos
+      const prioridadeRepo = (await importar('/src/db/repositories/prioridade-repository.ts')) as {
+        definirPrioridade: (alvos: { itens?: string[] }, prioridade: boolean) => Promise<unknown>
+      }
+      const projeto = await grupos.criarGrupo({ titulo: 'Projeto', data: hoje })
+      await grupos.criarItem(projeto.id, 'Configurações gerais do desenvolvimento')
+      const comBandeira = await grupos.criarItem(projeto.id, 'Revisar desenvolvimento semanal')
+      await prioridadeRepo.definirPrioridade({ itens: [comBandeira.id] }, true)
+    },
+    { hoje: HOJE },
+  )
+
+  await page.goto(`/dia/${HOJE}`)
+  await page
+    .getByRole('group', { name: 'Visualização do dia' })
+    .getByRole('button', { name: 'Cartões' })
+    .click()
+  await expandirGrupos(page)
+
+  const cartao = page.getByRole('article', { name: 'Grupo Projeto' })
+  const comBandeira = cartao
+    .locator('[class*="group/linha"]')
+    .filter({ hasText: 'Revisar desenvolvimento' })
+  const semBandeira = cartao
+    .locator('[class*="group/linha"]')
+    .filter({ hasText: 'Configurações gerais' })
+  await expect(comBandeira.locator('[data-indicador-prioridade]')).toBeVisible()
+  await expect(semBandeira.locator('[data-indicador-prioridade]')).toHaveCount(0)
+
+  const recuoDoTitulo = async (linha: typeof comBandeira, texto: string): Promise<number> => {
+    const caixaCartao = await linha.boundingBox()
+    const caixaTitulo = await linha.getByText(texto).boundingBox()
+    expect(caixaCartao).not.toBeNull()
+    expect(caixaTitulo).not.toBeNull()
+    return (caixaTitulo?.x ?? 0) - (caixaCartao?.x ?? 0)
+  }
+  // Cartões lado a lado: compara o recuo do título dentro de cada cartão.
+  const recuoCom = await recuoDoTitulo(comBandeira, 'Revisar desenvolvimento semanal')
+  const recuoSem = await recuoDoTitulo(semBandeira, 'Configurações gerais do desenvolvimento')
+  expect(Math.abs(recuoCom - recuoSem)).toBeLessThanOrEqual(0.5)
+
+  const quebras = await cartao
+    .locator('button, [role="button"]')
+    .evaluateAll(
+      (elementos) =>
+        elementos
+          .map((el) => getComputedStyle(el))
+          .filter(
+            (estilo) => estilo.wordBreak === 'break-all' || estilo.overflowWrap === 'anywhere',
+          ).length,
+    )
+  expect(quebras).toBe(0)
 })

@@ -34,12 +34,7 @@ export function ItemPendente({ tarefa, subtarefas, hoje, variant = 'line' }: Ite
         {...attributes}
         {...listeners}
       >
-        <LinhaTarefa
-          tarefa={tarefa}
-          subtarefas={subtarefas}
-          hoje={hoje}
-          variant="card"
-        />
+        <LinhaTarefa tarefa={tarefa} subtarefas={subtarefas} hoje={hoje} variant="card" />
       </div>
     )
   }
